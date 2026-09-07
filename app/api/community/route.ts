@@ -1,0 +1,8 @@
+import { database } from '@/db';
+import {ensurePlayer,getData,mutate} from '@/db/service';
+import {InputError} from '@/lib/account-rules';
+export const dynamic='force-dynamic';
+const noCache={'Cache-Control':'no-store'};
+async function handle(request:Request,write:boolean){try{const id=request.headers.get('oai-authenticated-user-id');if(!id)throw new InputError('Sign in to access your SkillClash account.',401);const url=new URL(request.url);if(write){const origin=request.headers.get('origin');if((origin&&origin!==url.origin)||request.headers.get('sec-fetch-site')==='cross-site')throw new InputError('Request origin rejected.',403);if(!request.headers.get('content-type')?.startsWith('application/json'))throw new InputError('Use JSON for this request.');}const db=database();await ensurePlayer(db,id);let result;if(write){const raw=await request.text();if(raw.length>8192)throw new InputError('Request is too large.',413);let body;try{body=JSON.parse(raw)}catch{throw new InputError('Invalid request.')}if(!body||typeof body!=='object'||Array.isArray(body))throw new InputError('Invalid request.');result=await mutate(db,id,body)}else result=await getData(db,id,url);return Response.json(result,{headers:noCache})}catch(error){if(error instanceof InputError)return Response.json({error:error.message},{status:error.status,headers:noCache});console.error('Account request failed',String(error));return Response.json({error:'We could not save or load your account. Please try again.'},{status:500,headers:noCache})}}
+export function GET(request:Request){return handle(request,false)}
+export function POST(request:Request){return handle(request,true)}

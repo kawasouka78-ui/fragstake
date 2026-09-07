@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono, Barlow_Condensed } from 'next/font/google';
 import './globals.css';
+import AccountProviderWrapper from './provider-wrapper';
 
 const displayFont = Barlow_Condensed({ variable: '--font-display', subsets: ['latin'], weight: ['600', '700', '800'], display: 'swap' });
 
@@ -30,11 +31,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${displayFont.variable} antialiased`}
       >
-        {children}
+        <AccountProviderWrapper>{children}</AccountProviderWrapper>
       </body>
     </html>
   );
 }
+
 
 
 

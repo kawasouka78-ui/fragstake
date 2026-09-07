@@ -1,27 +1,36 @@
 # SkillClash
 
-A browser FPS prototype with a playable raycast arena, local bots, and device-local demo credits.
+A browser FPS demo with shared player accounts, friends, profiles, wallet records and bot-match rankings.
 
-## Included
+## Available pages
 
-- Free practice against nine bots.
-- Beginner (€2), Contender (€5), and Pro (€10) free-for-all scoring.
-- 1v1 and 2v2 bot duels, €10 per player, first side to five eliminations.
-- Equal payout to each winning teammate, draw refunds, early-leave forfeits.
-- Demo wallet, recent results, keyboard/mouse and touch controls.
+- `/`: playable practice, FFA and duel bot arena.
+- `/wallet`: persistent demo balance, transaction filters, idempotent demo top-ups and unfinished-match recovery.
+- `/friends`: player search, incoming/outgoing requests, acceptance, decline, cancellation, removal and profile viewing.
+- `/leaderboard`: recorded bot-match rankings, game mode, seven-day and friends filters, pagination.
+- `/history`: recent matches, results, filters and round details.
+- `/profile`: unique player handle, display name, bio, avatar color and saved stats.
+
+## Identity and data
+
+Sites supplies authenticated user identity through trusted dispatcher headers. All account API operations require identity. Private-site access still controls who can visit. Friends must have access to this Site and open it to create an account before they can be found. No emails are exposed through player search or rankings.
+
+D1 stores players, friendships, match sessions and ledger entries. Prepared statements and transactional batches guard ownership and avoid duplicate settlement. The initial saved account starts with €100 in demo credits; device-local prototype balances are not imported as authoritative records.
+
+## Prototype boundaries
+
+Matches still run against local bots. Credits have no cash value. Payments, withdrawals, real-player matchmaking and anti-cheat are not implemented. The leaderboard explicitly labels bot results as client-reported and unverified. Do not use these client results for real-money settlement or verified competitive rankings.
 
 ## Development
 
-Install with npm install. Start with npm run dev. Build with npm run build.
-Run scoring checks with node --experimental-strip-types --test tests/game-rules.test.mjs.
+- Install: `npm install`
+- Generate migrations after changing `db/schema.ts`: `npx drizzle-kit generate`
+- Apply a new migration locally: `npx wrangler d1 execute DB --local --config wrangler.local.json --file drizzle/<migration>.sql`
+- Run: `npm run dev`
+- Build: `npm run build`
+- Type check: `npx tsc --noEmit`
+- Tests: `node --experimental-strip-types --test tests/accounts.test.mjs tests/game-rules.test.mjs`
 
-## Prototype scope
+The tests use isolated SQLite databases and synthetic users; no test fixtures are published. They cover account initialization, wallet isolation and idempotency, friendship authorization, unique handles, search privacy, match ownership, FFA scoring, duel settlement/refunds/forfeits, and leaderboard filters.
 
-All matches run locally against bots. Credits have no monetary value. There is no real-player matchmaking, authentication, cash payment processing, withdrawal system, authoritative game server, or anti-cheat service. Do not use the client-side scoring or local storage as a real-money ledger.
-
-Real multiplayer and cash settlement require a separate server-authoritative implementation and payment integration. The 2v2 interpretation is €10 per player, a €40 pot, and €20 returned to each player on the winning team, with no platform fee.
-
-## Validation
-
-Scoring and payout tests are automated. Browser interaction testing was not requested. WebMCP configure_match is optional and feature-detected; no supported WebMCP validation context was available during authoring.
-
+WebMCP match configuration remains feature-detected. No supported WebMCP test context was available. Browser interaction testing was not requested.
