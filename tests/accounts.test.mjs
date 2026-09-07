@@ -4,6 +4,14 @@ import {DatabaseSync} from 'node:sqlite';
 import {readdirSync,readFileSync} from 'node:fs';
 import {ensurePlayer,state,getData,mutate} from '../db/service.ts';
 let sql,db;
+test('selected maps persist through match history and idempotent start retries',async()=>{
+ const body={action:'match_start',mode:'practice',rate:2,team:'1v1',key:'map-round-01',mapId:'relay'};
+ const first=await mutate(db,'alice',body);assert.equal(first.match.map_id,'relay');
+ const retry=await mutate(db,'alice',{...body,mapId:'drydock'});assert.equal(retry.match.map_id,'relay');
+ await finish('alice',first.match);assert.equal((await state(db,'alice')).matches[0].map_id,'relay');
+ const fallback=await start('bob','practice');assert.equal(fallback.match.map_id,'foundry');
+ await assert.rejects(mutate(db,'charlie',{...body,mapId:'unknown'}),/Invalid match/);
+});
 function statement(query,values=[]){return {bind(...args){return statement(query,args)},async first(column){const row=sql.prepare(query).get(...values);return column?row?.[column]:row??null},async all(){return {results:sql.prepare(query).all(...values),success:true}},async run(){const r=sql.prepare(query).run(...values);return {success:true,meta:{changes:Number(r.changes)}}},query,values};}
 beforeEach(async()=>{sql?.close();sql=new DatabaseSync(':memory:');sql.exec('PRAGMA foreign_keys=ON');for(const file of readdirSync(new URL('../drizzle/',import.meta.url)).filter(f=>f.endsWith('.sql')).sort()){sql.exec(readFileSync(new URL('../drizzle/'+file,import.meta.url),'utf8'))}db={prepare:statement,async batch(items){sql.exec('BEGIN');try{const result=[];for(const item of items)result.push(await item.run());sql.exec('COMMIT');return result}catch(e){sql.exec('ROLLBACK');throw e}}};for(const id of ['alice','bob','charlie'])await ensurePlayer(db,id);});
 const view=(id,query='')=>getData(db,id,new URL('http://localhost/?'+query));

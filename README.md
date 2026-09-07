@@ -2,6 +2,14 @@
 
 A browser FPS demo with shared player accounts, friends, profiles, wallet records and bot-match rankings.
 
+## Arena gameplay
+
+Three.js renders three selectable 3D arenas: Foundry, Relay and Drydock. Each has connected flanking routes, low and tall cover, marked health/ammo stations and safe-spawn selection. Map choice is stored with each match; existing matches default to Foundry.
+
+The fixed-step simulation supports mouse pitch/yaw, aiming down sights, acceleration, normalized movement, sprint stamina, jumping, crouching, three weapons, magazine/reserve ammo, reloads, recoil, headshots, regeneration, temporary spawn protection and pathfinding bots. Pausing stops simulation and preserves whether the match has started. The first winning duel kill ends simulation immediately.
+
+Controls: WASD move, mouse look, left click fire, right click aim, Shift sprint, Space jump, C crouch, R reload, 1/2/3 weapons, Tab scoreboard, P/Escape pause. Arrow keys aim and F fires as a keyboard fallback. Touch devices have move/look pads and action buttons. Mouse sensitivity, field of view, sound and graphics settings are device-local preferences. WebGL 2 is required; an unplayed match can be cancelled with a stake refund when graphics are unavailable.
+
 ## Available pages
 
 - `/`: playable practice, FFA and duel bot arena.
@@ -29,7 +37,7 @@ Matches still run against local bots. Credits have no cash value. Payments, with
 - Run: `npm run dev`
 - Build: `npm run build`
 - Type check: `npx tsc --noEmit`
-- Tests: `node --experimental-strip-types --test tests/accounts.test.mjs tests/game-rules.test.mjs`
+- Tests: `node --experimental-strip-types --test tests/*.test.mjs`
 
 The tests use isolated SQLite databases and synthetic users; no test fixtures are published. They cover account initialization, wallet isolation and idempotency, friendship authorization, unique handles, search privacy, match ownership, FFA scoring, duel settlement/refunds/forfeits, and leaderboard filters.
 
