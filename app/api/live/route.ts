@@ -5,6 +5,7 @@ import { checkSanction, rateLimit } from '@/db/live';
 import { accountIdentity } from '@/lib/identity';
 import { issueTicket, type LiveMode } from '@/lib/live/security';
 import { InputError } from '@/lib/account-rules';
+import { validRoomId, type OpenRoom } from '@/lib/live/matchmaking';
 export const dynamic = 'force-dynamic';
 const headers = { 'Cache-Control': 'no-store' };
 export async function GET() {
@@ -12,6 +13,7 @@ export async function GET() {
   let online = false,
     players = 0,
     region = 'unavailable';
+  let rooms: OpenRoom[] = [];
   if (enabled)
     try {
       const health = new URL(env.LIVE_SERVER_URL!);
@@ -19,14 +21,19 @@ export async function GET() {
       health.pathname = '/health';
       const r = await fetch(health, { signal: AbortSignal.timeout(1500) });
       if (r.ok) {
-        const data = (await r.json()) as { players: number; region: string };
+        const data = (await r.json()) as {
+          players: number;
+          region: string;
+          openRooms?: OpenRoom[];
+        };
         online = true;
         players = data.players;
         region = data.region;
+        rooms = data.openRooms ?? [];
       }
     } catch {}
   return Response.json(
-    { enabled, online, players, region, paidMatches: false },
+    { enabled, online, players, region, rooms, paidMatches: false },
     { headers },
   );
 }
@@ -49,6 +56,8 @@ export async function POST(request: Request) {
       !['citadel', 'depot', 'underpass'].includes(b.mapId)
     )
       throw new InputError('Choose a valid format and map.');
+    if (b.roomId !== undefined && !validRoomId(b.roomId))
+      throw new InputError('Choose a valid match.');
     const db = database(),
       id = await accountIdentity(request.headers);
     await rateLimit(
@@ -65,6 +74,7 @@ export async function POST(request: Request) {
       guest: !id,
       mode: b.mode as LiveMode,
       mapId: b.mapId,
+      ...(b.roomId ? { roomId: b.roomId } : {}),
     });
     return Response.json(
       { ticket, url: env.LIVE_SERVER_URL, guest: !id },

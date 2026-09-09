@@ -6,11 +6,12 @@ export async function requestLiveMatch(
   mode: LiveMode,
   mapId: string,
   fetcher: typeof fetch = fetch,
+  roomId?: string,
 ): Promise<MatchConfig> {
   const response = await fetcher('/api/live', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ mode, mapId }),
+    body: JSON.stringify({ mode, mapId, ...(roomId ? { roomId } : {}) }),
     signal: AbortSignal.timeout(8000),
   });
   let value: unknown;

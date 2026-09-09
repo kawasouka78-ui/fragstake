@@ -7,6 +7,7 @@ import type { MatchRow, Player } from '@/db/service';
 import Arena from './arena';
 import { useLiveStatus } from './use-live-status';
 import { requestLiveMatch } from '@/lib/live/launch';
+import type { OpenRoom } from '@/lib/live/matchmaking';
 import './live-platform.css';
 import { catalog, cosmeticFinish } from '@/lib/catalog';
 import { maps, getMap, type MapId } from '@/lib/fps/maps';
@@ -14,6 +15,7 @@ import OpenDuels, { DuelFields, type DuelRules } from './open-duels';
 import './lobby-refresh.css';
 import './maps.css';
 import MatchReceipt from './match-receipt';
+import LiveMatchResult from './live-match-result';
 import { canEnter, type MatchConfig, type Result } from '@/lib/game-rules';
 import {
   Crosshair,
@@ -72,7 +74,8 @@ export default function Home() {
   const startKey = useRef('');
   const [opponents, setOpponents] = useState<'players' | 'bots'>('players');
   const livePlay = mode !== 'practice' && opponents === 'players';
-  const live = useLiveStatus(livePlay && !game);
+  const live = useLiveStatus(!game);
+  const [selectedRoom, setSelectedRoom] = useState<OpenRoom | null>(null);
   async function startLive() {
     if (busy) return;
     setBusy(true);
@@ -81,6 +84,8 @@ export default function Home() {
       const config = await requestLiveMatch(
         mode === 'ffa' ? 'ffa' : team === '2v2' ? '2v2' : '1v1',
         mapId,
+        fetch,
+        selectedRoom?.id,
       );
       setLaunch(false);
       setResult(null);
@@ -92,6 +97,7 @@ export default function Home() {
     }
   }
   function reviewMatch() {
+    setSelectedRoom(null);
     setSaveError('');
     setLaunch(true);
   }
@@ -803,6 +809,16 @@ export default function Home() {
         </div>
         <OpenDuels
           mapId={mapId}
+          live={live}
+          onJoin={(room) => {
+            setMode(room.mode === 'ffa' ? 'ffa' : 'duel');
+            setTeam(room.mode === '2v2' ? '2v2' : '1v1');
+            setMapId(getMap(room.mapId).id);
+            setOpponents('players');
+            setSelectedRoom(room);
+            setSaveError('');
+            setLaunch(true);
+          }}
           onPractice={(r) => {
             configureDuel(r);
             setMode('duel');
@@ -918,7 +934,9 @@ export default function Home() {
               <div className="live-availability">
                 <span>
                   {live.status?.online
-                    ? 'Ready to find a match'
+                    ? selectedRoom
+                      ? 'Joining your selected match'
+                      : 'Ready to find a match'
                     : live.checking
                       ? 'Checking match availability…'
                       : 'The player server is offline'}
@@ -1086,7 +1104,8 @@ export default function Home() {
           <DialogTitle>{result?.reason}</DialogTitle>
           <DialogDescription>
             {result?.live
-              ? 'Free human match · Server-controlled results'
+              ? 'Free player match · ' +
+                (result.liveMode === 'ffa' ? 'FFA' : result.liveMode + ' duel')
               : busy
                 ? 'Saving your match…'
                 : 'Match results · Demo credits only'}
@@ -1096,9 +1115,11 @@ export default function Home() {
               {saveError}
             </p>
           )}
+          {result?.live && <LiveMatchResult result={result} />}
           {result && (
             <MatchReceipt
               stats={result}
+              hideTotal={!!result.live && !!result.standings?.length}
               mode={result.mode ?? 'practice'}
               net={result.net}
               returned={result.returned}
@@ -1143,6 +1164,7 @@ export default function Home() {
               className="primary"
               disabled={!!pendingResult}
               onClick={() => {
+                setSelectedRoom(null);
                 setSaveError('');
                 setLaunch(true);
                 setResult(null);

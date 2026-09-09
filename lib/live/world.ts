@@ -138,6 +138,11 @@ export class LiveRoom {
     p.game.player.hp = 0;
     p.input = idleInput();
     this.events.push({ tick: this.tick, kind: 'leave', actor: subject });
+    // Rebuild an incomplete group instead of trapping it with consumed slots.
+    if (this.status === 'waiting') {
+      this.finish();
+      return;
+    }
     if (this.status === 'playing' && this.mode !== 'ffa') {
       this.score[1 - p.game.player.team] = Math.max(
         10,
@@ -309,6 +314,7 @@ export class LiveRoom {
           : this.score[g.player.team] > this.score[1 - g.player.team]),
       room: this.id,
       status: this.status,
+      cancelled: this.status === 'finished' && !this.hadOpponents,
       mode: this.mode,
       tick: this.tick,
       ack: p.seq,

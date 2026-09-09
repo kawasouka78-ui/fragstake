@@ -1,8 +1,14 @@
 'use client';
 import { useCallback, useEffect, useState } from 'react';
-type Status = { online: boolean; players: number; region: string };
+import type { OpenRoom } from '@/lib/live/matchmaking';
+export type LiveStatus = {
+  online: boolean;
+  players: number;
+  region: string;
+  rooms: OpenRoom[];
+};
 export function useLiveStatus(enabled: boolean) {
-  const [status, setStatus] = useState<Status | null>(null),
+  const [status, setStatus] = useState<LiveStatus | null>(null),
     [checking, setChecking] = useState(false);
   const refresh = useCallback(async (signal?: AbortSignal) => {
     setChecking(true);
@@ -13,11 +19,16 @@ export function useLiveStatus(enabled: boolean) {
           : AbortSignal.timeout(4000),
       });
       if (!response.ok) throw new Error();
-      const value = (await response.json()) as Status;
+      const value = (await response.json()) as LiveStatus;
       if (!signal?.aborted) setStatus(value);
     } catch {
       if (!signal?.aborted)
-        setStatus({ online: false, players: 0, region: 'unavailable' });
+        setStatus({
+          online: false,
+          players: 0,
+          region: 'unavailable',
+          rooms: [],
+        });
     } finally {
       if (!signal?.aborted) setChecking(false);
     }

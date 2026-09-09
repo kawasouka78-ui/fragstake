@@ -1,3 +1,4 @@
+import { validRoomId } from './matchmaking.ts';
 const encoder = new TextEncoder();
 const encode = (bytes: Uint8Array) =>
   btoa(String.fromCharCode(...bytes))
@@ -56,6 +57,7 @@ export type Ticket = {
   guest: boolean;
   mode: LiveMode;
   mapId: string;
+  roomId?: string;
   nonce: string;
   exp: number;
   aud: 'skillclash-game';
@@ -104,7 +106,8 @@ export async function readTicket(
       typeof c.guest === 'boolean' &&
       typeof c.nonce === 'string' &&
       ['ffa', '1v1', '2v2'].includes(c.mode) &&
-      ['citadel', 'depot', 'underpass'].includes(c.mapId)
+      ['citadel', 'depot', 'underpass'].includes(c.mapId) &&
+      (c.roomId === undefined || validRoomId(c.roomId))
       ? c
       : null;
   } catch {

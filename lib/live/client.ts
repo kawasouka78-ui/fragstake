@@ -7,6 +7,7 @@ import {
 } from '../fps/simulation.ts';
 import type { MatchConfig } from '../game-rules.ts';
 import type { Snapshot } from './world.ts';
+import { liveResultDetails } from './result.ts';
 export class NetworkSimulation extends Simulation {
   socket: WebSocket | null = null;
   resumeToken = '';
@@ -199,6 +200,7 @@ export class NetworkSimulation extends Simulation {
     this.end(this.started ? 'Left live match' : 'Match cancelled');
   }
   end(reason: string) {
+    if (this.ended) return;
     this.ended = true;
     const p = this.latest?.actors[0] || this.player;
     this.result = {
@@ -217,6 +219,8 @@ export class NetworkSimulation extends Simulation {
       mode: 'practice',
       mapId: this.map.id,
       net: 0,
+      liveMode: this.config.live?.mode,
+      ...liveResultDetails(this.latest, reason === 'Live match complete'),
     };
   }
   dispose() {

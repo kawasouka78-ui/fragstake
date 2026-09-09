@@ -96,13 +96,42 @@ test(
           }),
         ),
       );
-      const a = connect({ type: 'join', ticket: tickets[0] }),
-        b = connect({ type: 'join', ticket: tickets[1] });
-      const [aw, bw] = await Promise.all([
-        a.wait((m) => m.type === 'welcome'),
-        b.wait((m) => m.type === 'welcome'),
-      ]);
+      const a = connect({ type: 'join', ticket: tickets[0] });
+      const aw = await a.wait((m) => m.type === 'welcome');
+      const listed = await (
+        await fetch(`http://127.0.0.1:${port}/health`)
+      ).json();
+      assert.equal(listed.openRooms.length, 1);
+      assert.equal(listed.openRooms[0].id, aw.room);
+      assert.equal(listed.openRooms[0].players, 1);
+      const targetTicket = await issueTicket(secret, {
+        sub: 'bob',
+        name: 'bob',
+        guest: true,
+        mode: '1v1',
+        mapId: 'citadel',
+        roomId: aw.room,
+      });
+      const b = connect({ type: 'join', ticket: targetTicket });
+      const bw = await b.wait((m) => m.type === 'welcome');
       assert.equal(aw.room, bw.room);
+      const full = await (
+        await fetch(`http://127.0.0.1:${port}/health`)
+      ).json();
+      assert.equal(full.openRooms.length, 0);
+      const lateTicket = await issueTicket(secret, {
+        sub: 'late',
+        name: 'late',
+        guest: true,
+        mode: '1v1',
+        mapId: 'citadel',
+        roomId: aw.room,
+      });
+      const late = connect({ type: 'join', ticket: lateTicket });
+      assert.match(
+        (await late.wait((m) => m.type === 'error')).message,
+        /no longer available/,
+      );
       const bad = connect({ type: 'join', ticket: tickets[0] });
       assert.match(
         (await bad.wait((m) => m.type === 'error')).message,

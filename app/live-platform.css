@@ -2,6 +2,228 @@
   font: 700 30px var(--font-display);
   margin: 9px 0;
 }
+
+.available-matches .duel-list-caption > span:first-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #a0e4c4;
+}
+.available-match {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr) auto auto;
+  gap: 20px;
+  align-items: center;
+  padding: 18px 26px;
+  border-top: 1px solid #2b3b47;
+  background: #14212b;
+}
+.available-map {
+  height: 65px;
+  border: 1px solid #50616d;
+  border-radius: 6px;
+  display: flex;
+  align-items: flex-end;
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+}
+.available-map.map-citadel {
+  background-image: url('/maps/citadel-arena.webp');
+}
+.available-map.map-depot {
+  background-image: url('/maps/depot-arena.webp');
+}
+.available-map.map-underpass {
+  background-image: url('/maps/underpass-arena.webp');
+}
+.available-map span {
+  background: #0a141bd9;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #c7ede0;
+  width: 100%;
+}
+.available-description {
+  min-width: 0;
+}
+.available-description h3 {
+  font: 700 23px var(--font-display);
+  margin: 0 0 8px;
+}
+.available-description h3 small {
+  font: 400 13px var(--font-geist-sans);
+  color: #a2b9c7;
+  margin-left: 8px;
+}
+.available-description p {
+  color: #9bb6c4;
+  font-size: 13px;
+  margin: 0;
+  line-height: 1.5;
+}
+.available-description i {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #89dcb7;
+  margin-right: 7px;
+}
+.available-description i.playing {
+  background: #ffa377;
+}
+.available-slots {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 4px 7px;
+  color: #d1e1eb;
+  font-size: 14px;
+}
+.available-slots small {
+  grid-column: 1/-1;
+  font-size: 12px;
+  color: #819dac;
+  text-align: center;
+}
+.available-empty {
+  padding: 20px 26px;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.65;
+  color: #9cb2c1;
+  border-top: 1px solid #293b46;
+  background: #111c25;
+}
+.live-result-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 18px;
+  background: linear-gradient(135deg, #213748, #16222c);
+  border: 1px solid #395363;
+  border-radius: 8px;
+}
+.live-result-score.victory {
+  border-color: #497968;
+  background: linear-gradient(135deg, #23483b, #162b2b);
+}
+.live-result-score > svg {
+  color: #ff9c73;
+}
+.live-result-score > span {
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  color: #a6bdc9;
+}
+.live-result-score > strong {
+  font: 700 46px var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+.live-result-score.victory > strong {
+  color: #b0f2d2;
+}
+.live-result-score > small {
+  color: #9bb6c5;
+  font-size: 12px;
+  text-align: center;
+}
+.result-standings {
+  margin: 16px 0;
+  border: 1px solid #344853;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.result-standings summary {
+  cursor: pointer;
+  font-size: 14px;
+  padding: 14px;
+  background: #192936;
+}
+.result-standings table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 13px;
+}
+.result-standings th {
+  background: #10202b;
+  color: #91aebc;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 10px 6px;
+}
+.result-standings th:first-child {
+  width: 49%;
+  text-align: left;
+  padding-left: 14px;
+}
+.result-standings td {
+  text-align: center;
+  padding: 12px 6px;
+  border-top: 1px solid #2d414c;
+  font-variant-numeric: tabular-nums;
+}
+.result-standings td:first-child {
+  text-align: left;
+  padding-left: 14px;
+  overflow-wrap: anywhere;
+}
+.result-standings td small {
+  display: block;
+  font-size: 10px;
+  color: #8da8b7;
+  margin-top: 4px;
+}
+.result-standings .is-you {
+  background: #63423030;
+  color: #ffba95;
+}
+@media (max-width: 650px) {
+  .available-match {
+    grid-template-columns: 62px minmax(0, 1fr) auto;
+    gap: 12px;
+    padding: 16px;
+  }
+  .available-map {
+    height: 58px;
+  }
+  .available-description h3 small {
+    display: block;
+    margin: 4px 0 0;
+  }
+  .available-match > .primary {
+    grid-column: 2/-1;
+    justify-content: center;
+  }
+  .available-empty {
+    padding: 18px;
+  }
+  .site-shell .play-main .duel-browser .lobby-toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .site-shell .play-main .duel-browser .lobby-toolbar [role='group'] {
+    display: grid;
+    grid-template-columns: 1.5fr repeat(3, 1fr);
+    gap: 3px;
+    width: 100%;
+  }
+  .site-shell .play-main .duel-browser .lobby-toolbar [role='group'] button {
+    padding: 7px 3px;
+    font-size: 12px;
+    min-width: 0;
+  }
+  .site-shell .play-main .duel-browser .lobby-toolbar > .text-button {
+    justify-self: end;
+    width: auto;
+    padding: 7px;
+  }
+}
 .progress-hero p {
   font-size: 13px;
   color: #8ca7ba;

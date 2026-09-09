@@ -36,6 +36,27 @@ for (const mode of ['ffa', '1v1', '2v2']) {
   });
 }
 
+test('targeted entry passes the selected room to the ticket service', async () => {
+  const roomId = crypto.randomUUID();
+  await requestLiveMatch(
+    '1v1',
+    'depot',
+    async (_url, options) => {
+      assert.deepEqual(JSON.parse(options.body), {
+        mode: '1v1',
+        mapId: 'depot',
+        roomId,
+      });
+      return Response.json({
+        ticket: 'ticket',
+        url: 'ws://localhost:3010/play',
+        guest: true,
+      });
+    },
+    roomId,
+  );
+});
+
 test('match entry surfaces server rejection and rejects unusable connections', async () => {
   await assert.rejects(
     requestLiveMatch('ffa', 'citadel', async () =>

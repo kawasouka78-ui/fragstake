@@ -5,6 +5,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { LiveRoom } from '../lib/live/world.ts';
 import { readTicket, signature } from '../lib/live/security.ts';
 import { RECONNECT_MS } from '../lib/live/protocol.ts';
+import { openRooms, findRoom } from '../lib/live/matchmaking.ts';
 
 const secret = process.env.LIVE_TICKET_SECRET || '';
 if (secret.length < 32)
@@ -52,6 +53,7 @@ const server = createServer((req, res) => {
         players: [...sessions.values()].filter((s) => s.socket).length,
         tickRate: 30,
         payments: false,
+        openRooms: openRooms(rooms.values()),
       }),
     );
     return;
@@ -204,14 +206,7 @@ wss.on('connection', (ws: WebSocket) => {
           )
             throw new Error('You already have a live match.');
           used.set(claims.nonce, claims.exp);
-          let room = [...rooms.values()].find(
-            (r) =>
-              r.mode === claims.mode &&
-              r.mapId === claims.mapId &&
-              r.status !== 'finished' &&
-              (r.status === 'waiting' || r.mode === 'ffa') &&
-              r.players.size < r.capacity,
-          );
+          let room = findRoom(rooms.values(), claims);
           if (!room) {
             if (rooms.size >= 24)
               throw new Error('All servers are busy. Try again soon.');

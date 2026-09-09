@@ -6,7 +6,7 @@ Updated 10 September 2026. This release runs locally. Public hosting and real pa
 
 | Area          | Working foundation                                                                                                                                          | Remaining production work                                                                                                                                                                       |
 | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Human matches | Separate Node/WebSocket server, free FFA with 2–10 humans, 1v1 and 2v2, map-specific automatic room selection, ready state, common timer, first-to-10 duels | Regional routing, skill-based matchmaking, party/team queue reservations, spectator mode, custom live lobby rules                                                                               |
+| Human matches | Separate Node/WebSocket server, free FFA with 2–10 humans, 1v1 and 2v2, automatic or listed-room joining, public open-match browser, ready state, common timer, first-to-10 duels | Regional routing, skill-based matchmaking, party/team queue reservations, spectator mode, custom live lobby rules                                                                               |
 | Authority     | Server reuses collision, movement, slide, ammo, recoil and weapon rules; only validated inputs are accepted                                                 | Client prediction/reconciliation, lag compensation, tick fairness/load validation                                                                                                               |
 | Reconnection  | Private reconnect token restores a slot for 15 seconds; stale input stops; duel abandonment forfeits                                                        | Durable recovery of active rooms across server crashes, regional failover                                                                                                                       |
 | Integrity     | 60-second signed single-use join tickets, origin allowlist, input sequence validation, packet/rate/connection limits, server-owned damage/results           | Aim-assistance detection, collusion detection, sanction revocation of existing sessions, independent security review                                                                            |
@@ -22,7 +22,7 @@ Updated 10 September 2026. This release runs locally. Public hosting and real pa
 The Sites application remains a Vinext/React Worker with D1 account persistence. A separate long-running game service owns room state and simulation. Sites is not assumed to support custom Durable Object bindings or a long-lived game loop.
 
 1. The site derives identity from dispatch-owned sign-in headers. Anonymous guests receive random temporary subjects.
-2. `/api/live` issues an HMAC-signed ticket binding identity, guest status, mode and map. Its one-minute expiry and nonce are checked by the game server. Tickets travel in the first socket message, not a URL.
+2. `/api/live` issues an HMAC-signed ticket binding identity, guest status, mode, map and an optional selected room ID. Its one-minute expiry and nonce are checked by the game server. Tickets travel in the first socket message, not a URL.
 3. The game service validates origins, authenticates each connection, chooses a room and accepts movement/aim/button inputs. Browser coordinates, hit claims, kills and money are ignored.
 4. A 30 Hz server loop steps each human simulation and broadcasts snapshots. Client rendering interpolates positions; it does not decide damage. FFA starts with two ready players. Duels require all seats ready. No bots fill live rooms.
 5. Live Escape menus stop that client’s inputs; the shared arena continues, including damage and respawning. Existing solo bot practice retains its full pause behavior.
@@ -65,7 +65,7 @@ Before activating a market: obtain qualified local advice and any required appro
 
 ## Validation for this release
 
-- 135 tests passed, including isolated D1 persistence tests, live entry and public-roster validation, and a real WebSocket connection/reconnection/forfeit integration test.
+- 143 tests passed, including isolated D1 persistence tests, live entry and public-roster validation, and a real WebSocket connection/reconnection/forfeit integration test.
 - Type checking and the production build passed. Local signing/operator secrets and temporary QA files were absent from the build artifacts.
 - Two browser tabs joined the same free FFA round; the common clock, live connection, and Escape/loadout behavior were checked.
 - Live entry is now integrated into the main FFA/Duels setup through Players/Bots tabs. Two browser guests joined the same Depot 1v1, saw each other's readiness, started the shared round, opened the Escape menu and ended the match through forfeit. Play Again reopened the same format/map; free FFA entry was also checked. The duplicate Human Multiplayer panel and its styles were removed.
@@ -74,3 +74,11 @@ Before activating a market: obtain qualified local advice and any required appro
 - An anonymous browser received the expected moderator-access rejection. Signed-in friend chat and XP persistence were checked with isolated database tests; a multi-account browser chat session was not tested.
 - The game-service SQLite backup passed its integrity check. This is not a restore drill or a production load test.
 - The ws runtime and its transitive copies were updated to patched 8.21.0. Other framework dependency advisories remain part of the production hardening backlog.
+
+## Open matches and result reports
+
+The existing match browser now lists joinable live rooms above the preserved demo previews. Health responses expose room ID, format, map, readiness and capacity only; identities and connection credentials stay private. Room selection is signed into the ticket and validated again at join time. A full, started duel, missing room or map/format mismatch fails explicitly instead of silently creating another match. FFA can accept late arrivals while slots remain. Departed FFA slots remain consumed until the round ends in this initial server model. If someone leaves before a round starts, the waiting group is cancelled so nobody gets stuck in an unfillable room; Play Again finds a fresh group.
+
+Completed live duels show Victory, Defeat or Draw with the server team score. FFA shows placement, sharing positions on tied kill totals. A collapsible final scoreboard contains only real participants and highlights the current player. Leaving early keeps an incomplete-match report; it does not fabricate final standings. Play Again clears the finished room target while retaining format and map.
+
+Validation: two browser guests discovered and joined the same Citadel duel through the actual open-room row, readied up, and verified a forfeit victory report with the final roster and score. The populated room list fit 320, 390 and 768-pixel widths without horizontal overflow. Automated checks include listing privacy, targeting/race handling, signed room IDs, tie placement, and victory/defeat/draw reports.
