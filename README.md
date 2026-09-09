@@ -47,4 +47,10 @@ Matches still run against local bots. Credits have no cash value. Payments, with
 
 The tests use isolated SQLite databases and synthetic users; no test fixtures are published. They cover account initialization, wallet isolation and idempotency, friendship authorization, unique handles, search privacy, match ownership, FFA scoring, duel settlement/refunds/forfeits, and leaderboard filters.
 
-WebMCP match configuration remains feature-detected. No supported WebMCP test context was available. Browser interaction testing was not requested.
+WebMCP match configuration remains feature-detected. No supported WebMCP test context was available. Browser interaction testing is authorized and is being used to verify navigation and saved flows.
+
+## Platform expansion
+
+Native document links replace the failing client navigation. Added Duel configuration (custom 5–100 demo stakes, first to 5/10, best of three, restricted weapons, maps), funded Arena presets with eight-second combat cash-out, eight playable weapons, and owned cosmetic finishes. Saved account features include party invitations, challenge invitations, shop purchases, equipped inventory, private reports, separate demo ratings, and leaderboard metric/time filters. Device settings apply to gameplay. Unfinished demo matches can be reopened without another reservation.
+
+These are functional demo flows, with persisted data and ownership checks. Accepted challenges do not start a shared game or hold funds. Public queues, authoritative human multiplayer, spectating, 3v3, replay recording, anti-cheat enforcement, real deposits/withdrawals, crypto and provider approval are still external production work. The UI states these boundaries. Demo ratings and client-reported results must never settle real funds.

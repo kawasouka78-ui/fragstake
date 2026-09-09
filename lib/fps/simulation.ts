@@ -2,13 +2,20 @@ import {collisionBoxes,getMap,type ArenaMap,type Box} from './maps.ts';
 import {duelPayout,type MatchConfig,type Result} from '../game-rules.ts';
 
 export type Vec={x:number;y:number;z:number};
-export type WeaponId='rifle'|'smg'|'marksman';
+export type WeaponId='rifle'|'carbine'|'smg'|'vector'|'marksman'|'pistol'|'handcannon'|'shotgun';
 export const weapons={
  rifle:{name:'VANGUARD',type:'ASSAULT RIFLE',mag:30,damage:28,head:2.5,interval:.105,reload:1.65,spread:.012,recoil:.018,auto:true,range:75},
  smg:{name:'PHANTOM',type:'SUBMACHINE GUN',mag:36,damage:19,head:2,interval:.067,reload:1.35,spread:.023,recoil:.013,auto:true,range:45},
  marksman:{name:'LONGSHOT',type:'MARKSMAN RIFLE',mag:10,damage:65,head:1.7,interval:.48,reload:2.05,spread:.003,recoil:.055,auto:false,range:100}
+,carbine:{name:'SENTINEL',type:'ASSAULT RIFLE',mag:30,damage:24,head:2.4,interval:.09,reload:1.7,spread:.009,recoil:.013,auto:true,range:70},
+ vector:{name:'VECTOR',type:'SUBMACHINE GUN',mag:24,damage:16,head:2,interval:.055,reload:1.25,spread:.021,recoil:.012,auto:true,range:35},
+ pistol:{name:'SIDEWINDER',type:'PISTOL',mag:15,damage:30,head:2,interval:.23,reload:1.1,spread:.012,recoil:.021,auto:false,range:40},
+ handcannon:{name:'JUDGEMENT',type:'HEAVY PISTOL',mag:7,damage:55,head:2,interval:.4,reload:1.6,spread:.008,recoil:.05,auto:false,range:55},
+ shotgun:{name:'BREACHER',type:'SHOTGUN',mag:6,damage:14,head:1.2,interval:.8,reload:2.4,spread:.085,recoil:.07,auto:false,range:20}
 } as const;
-export const weaponIds:WeaponId[]=['rifle','smg','marksman'];
+export const weaponIds:WeaponId[]=['rifle','smg','marksman','carbine','vector','pistol','handcannon','shotgun'];
+const ammoFor=()=>Object.fromEntries(weaponIds.map(id=>[id,weapons[id].mag])) as Record<WeaponId,number>;
+const reserveFor=()=>Object.fromEntries(weaponIds.map(id=>[id,weapons[id].mag*4])) as Record<WeaponId,number>;
 export type Actor={id:number;name:string;team:number;x:number;z:number;y:number;vy:number;yaw:number;hp:number;kills:number;deaths:number;respawn:number;shield:number;cooldown:number;crouch:boolean;moving:number;path:{x:number;z:number}[];repath:number;target:number;reaction:number;lastDamage:number};
 export type Controls={forward:number;right:number;fire:boolean;aim:boolean;sprint:boolean;crouch:boolean;jump:boolean;reload:boolean;weapon?:WeaponId};
 export const idleInput=():Controls=>({forward:0,right:0,fire:false,aim:false,sprint:false,crouch:false,jump:false,reload:false});
@@ -47,9 +54,9 @@ export class Navigation{
 const names=['Viper','Ghost','Nova','Rook','Echo','Blaze','Atlas','Jinx','Cipher'];
 export class Simulation{
  config:MatchConfig;map:ArenaMap;boxes:Box[];nav:Navigation;rng:()=>number;actors:Actor[]=[];time=180;elapsed=0;balance:number;score=0;enemyScore=0;ended=false;result:Result|null=null;started=false;
- yaw=0;pitch=0;vx=0;vz=0;weapon:WeaponId='rifle';ammo:Record<WeaponId,number>={rifle:30,smg:36,marksman:10};reserve:Record<WeaponId,number>={rifle:120,smg:180,marksman:40};reloadLeft=0;shotCooldown=0;switchLeft=0;aim=0;recoil=0;bloom=0;stamina=100;sprinting=false;fireHeld=false;jumpHeld=false;combo=0;hitMarker=0;headMarker=false;hurt=0;hurtAngle=0;events:GameEvent[]=[];shots:Shot[]=[];feed:Feed[]=[];pickups:Pickup[]=[];feedId=0;
+ yaw=0;pitch=0;vx=0;vz=0;weapon:WeaponId='rifle';ammo=ammoFor();reserve=reserveFor();roundScore=0;roundEnemyScore=0;headshots=0;maxStreak=0;combatAt=-99;reloadLeft=0;shotCooldown=0;switchLeft=0;aim=0;recoil=0;bloom=0;stamina=100;sprinting=false;fireHeld=false;jumpHeld=false;combo=0;hitMarker=0;headMarker=false;hurt=0;hurtAngle=0;events:GameEvent[]=[];shots:Shot[]=[];feed:Feed[]=[];pickups:Pickup[]=[];feedId=0;
  constructor(config:MatchConfig,rng:()=>number=Math.random){
-  this.config=config;this.rng=rng;this.map=getMap(config.mapId);this.boxes=collisionBoxes(this.map);this.nav=new Navigation(this.map);this.balance=config.balance;
+  this.config=config;this.rng=rng;this.map=getMap(config.mapId);this.boxes=collisionBoxes(this.map);this.nav=new Navigation(this.map);this.balance=config.entry||config.balance;this.weapon=config.weaponRule==='sniper'?'marksman':config.weaponRule==='pistol'?'pistol':'rifle';
   const count=config.mode==='duel'?(config.team==='2v2'?4:2):10;
   let starts=this.map.spawns.filter((_,i)=>Array.from({length:count},(_,id)=>Math.floor(id*this.map.spawns.length/count)).includes(i));
   if(config.mode==='duel'){
@@ -65,30 +72,34 @@ export class Simulation{
  stepSound=0;
  get player(){return this.actors[0];}
  get gun(){return weapons[this.weapon];}
+ get allowedWeapons(){return weaponIds.filter(id=>this.config.weaponRule==='sniper'?id==='marksman':this.config.weaponRule==='pistol'?['pistol','handcannon'].includes(id):this.config.weaponRule==='rifle'?['rifle','carbine'].includes(id):true);}
+ get cashOutWait(){return Math.max(0,8-(this.elapsed-this.combatAt));}
+ cashOut(){if(this.config.mode==='ffa'&&this.player.hp>0&&this.cashOutWait===0)this.finish('Arena cash-out');}
+ completeRound(){if(this.roundScore===this.roundEnemyScore){this.finish();return;}if(this.roundScore>this.roundEnemyScore)this.score++;else this.enemyScore++;if(this.score>=2||this.enemyScore>=2){this.finish();return;}this.roundScore=0;this.roundEnemyScore=0;this.time=180;for(const actor of this.actors)this.respawn(actor);}
  eye(a:Actor):Vec{return {x:a.x,y:a.y+(a.crouch?1.05:1.62),z:a.z};}
  look(dx:number,dy:number){this.yaw-=dx;this.pitch=clamp(this.pitch-dy,-1.35,1.35);}
  start(){this.started=true;}
- finish(reason?:string){if(this.ended)return;this.ended=true;const won=this.config.mode==='duel'?this.score>this.enemyScore:this.player.kills>this.player.deaths;const draw=this.score===this.enemyScore;const cancel=reason==='Match cancelled';const forfeit=reason==='Duel forfeited';if(this.config.mode==='duel')this.balance+=cancel?10:forfeit?0:duelPayout(won,draw);this.result={kills:this.player.kills,deaths:this.player.deaths,balance:this.balance,reason:reason??(this.config.mode==='duel'?(won?'Duel won':draw?'Draw — stake returned':'Duel lost'):'Round complete'),won:!cancel&&!forfeit&&reason!=='Left the arena'&&won,score:this.score,enemyScore:this.enemyScore};}
+ finish(reason?:string){if(this.ended)return;this.ended=true;const won=this.config.mode==='duel'?this.score>this.enemyScore:this.player.kills>this.player.deaths;const draw=this.score===this.enemyScore;const cancel=reason==='Match cancelled';const forfeit=reason==='Duel forfeited';if(this.config.mode==='duel')this.balance+=cancel?(this.config.stake??10):forfeit?0:(won?2*(this.config.stake??10):draw?(this.config.stake??10):0);this.result={kills:this.player.kills,deaths:this.player.deaths,balance:this.balance,reason:reason??(this.config.mode==='duel'?(won?'Duel won':draw?'Draw — stake returned':'Duel lost'):'Round complete'),won:!cancel&&!forfeit&&reason!=='Left the arena'&&won,score:this.score,enemyScore:this.enemyScore,headshots:this.headshots,maxStreak:this.maxStreak};}
  leave(){this.finish(!this.started?'Match cancelled':this.config.mode==='duel'?'Duel forfeited':'Left the arena');}
- switchWeapon(id:WeaponId){if(this.weapon===id)return;this.weapon=id;this.reloadLeft=0;this.switchLeft=.25;this.fireHeld=true;this.bloom=0;}
+ switchWeapon(id:WeaponId){if(this.weapon===id||!this.allowedWeapons.includes(id))return;this.weapon=id;this.reloadLeft=0;this.switchLeft=.25;this.fireHeld=true;this.bloom=0;}
  reload(){if(this.reloadLeft||this.ammo[this.weapon]>=this.gun.mag||this.reserve[this.weapon]<=0||this.player.hp<=0)return;this.reloadLeft=this.gun.reload;this.events.push({kind:'reload'});}
  respawn(a:Actor){
   const enemies=this.actors.filter(b=>b.id!==a.id&&b.team!==a.team&&b.hp>0);
   const ranked=this.map.spawns.map(s=>{const distance=Math.min(80,...enemies.map(e=>Math.hypot(e.x-s.x,e.z-s.z))),exposure=enemies.some(e=>Math.hypot(e.x-s.x,e.z-s.z)<28&&visible(this.boxes,{x:s.x,y:1.6,z:s.z},this.eye(e)))?9:0;return {s,value:Math.min(25,distance)-Math.max(0,distance-32)*.7-exposure-this.actors.filter(b=>b.id!==a.id&&b.hp>0&&Math.hypot(b.x-s.x,b.z-s.z)<2).length*20+this.rng()*2};}).sort((a,b)=>b.value-a.value);
   const s=ranked[0].s;Object.assign(a,{x:s.x,z:s.z,y:0,vy:0,yaw:s.yaw,hp:100,shield:1.8,respawn:0,path:[],repath:0,cooldown:.8,reaction:.6});
-  if(a.id===0){this.yaw=s.yaw;this.pitch=0;this.vx=this.vz=0;this.reloadLeft=0;this.ammo={rifle:30,smg:36,marksman:10};this.reserve={rifle:120,smg:180,marksman:40};this.stamina=100;this.events.push({kind:'spawn'});}
+  if(a.id===0){this.yaw=s.yaw;this.pitch=0;this.vx=this.vz=0;this.reloadLeft=0;this.ammo=ammoFor();this.reserve=reserveFor();this.stamina=100;this.events.push({kind:'spawn'});}
  }
  damage(victim:Actor,attacker:Actor,amount:number,head=false){
-  if(this.ended||victim.hp<=0||victim.shield>0||victim.team===attacker.team)return;
+  if(this.ended||victim.hp<=0||victim.shield>0||victim.team===attacker.team||(this.config.weaponRule==='headshots'&&!head))return;if(victim.id===0||attacker.id===0)this.combatAt=this.elapsed;
   victim.hp=Math.max(0,victim.hp-amount);victim.lastDamage=this.elapsed;
   if(attacker.id===0){this.hitMarker=.17;this.headMarker=head;this.events.push({kind:'hit',head});}
   if(victim.id===0){this.hurt=.6;this.hurtAngle=Math.atan2(attacker.x-victim.x,attacker.z-victim.z)+this.yaw;this.events.push({kind:'hurt',angle:this.hurtAngle});}
   if(victim.hp>0)return;
   victim.deaths++;attacker.kills++;victim.respawn=2.4;victim.path=[];
   this.feed.unshift({id:++this.feedId,killer:attacker.name,victim:victim.name,head,you:attacker.id===0||victim.id===0,age:0});this.feed=this.feed.slice(0,5);
-  if(attacker.id===0){this.combo++;this.events.push({kind:'kill',head});if(this.config.mode==='ffa')this.balance+=this.config.rate;}
+  if(attacker.id===0){this.combo++;this.maxStreak=Math.max(this.maxStreak,this.combo);if(head)this.headshots++;this.events.push({kind:'kill',head});if(this.config.mode==='ffa')this.balance+=this.config.rate;}
   if(victim.id===0){this.combo=0;if(this.config.mode==='ffa')this.balance=Math.max(0,this.balance-this.config.rate);}
-  if(this.config.mode==='duel'){if(attacker.team===0)this.score++;else this.enemyScore++;if(this.score>=5||this.enemyScore>=5){this.finish();return;}}
+  if(this.config.mode==='duel'){const target=this.config.target??5;if(this.config.bestOf===3){if(attacker.team===0)this.roundScore++;else this.roundEnemyScore++;if(this.roundScore>=target||this.roundEnemyScore>=target)this.completeRound();}else{if(attacker.team===0)this.score++;else this.enemyScore++;if(this.score>=target||this.enemyScore>=target){this.finish();return;}}}
   if(this.config.mode==='ffa'&&this.balance<this.config.rate)this.finish('Round complete');
  }
  cast(attacker:Actor,dir:Vec,damage:number,headMultiplier:number,range:number){
@@ -104,16 +115,16 @@ export class Simulation{
  fire(){
   if(this.ended||this.player.hp<=0||this.reloadLeft>0||this.shotCooldown>0||this.switchLeft>0||this.sprinting)return false;
   if(this.ammo[this.weapon]===0){this.reload();return false;}
-  this.ammo[this.weapon]--;this.shotCooldown=this.gun.interval;this.player.shield=0;
+  this.combatAt=this.elapsed;this.ammo[this.weapon]--;this.shotCooldown=this.gun.interval;this.player.shield=0;
   const spread=this.gun.spread*(1-this.aim*.82)*(this.player.crouch?.7:1)*(this.player.y>0?3:1)+(Math.hypot(this.vx,this.vz)>.5?.009*(1-this.aim*.5):0)+this.bloom*.08;
   const dir=direction(this.yaw+(this.rng()-.5)*spread*2,this.pitch+this.recoil+(this.rng()-.5)*spread*2);
-  this.cast(this.player,dir,this.gun.damage,this.gun.head,this.gun.range);this.recoil=Math.min(.12,this.recoil+this.gun.recoil*(this.aim>.5?.75:1));this.bloom=Math.min(.12,this.bloom+.018);this.events.push({kind:'shot',weapon:this.weapon});return true;
+  if(this.weapon==='shotgun'){for(let pellet=0;pellet<8;pellet++)this.cast(this.player,direction(this.yaw+(this.rng()-.5)*spread*2,this.pitch+this.recoil+(this.rng()-.5)*spread*2),this.gun.damage,this.gun.head,this.gun.range);}else this.cast(this.player,dir,this.gun.damage,this.gun.head,this.gun.range);this.recoil=Math.min(.12,this.recoil+this.gun.recoil*(this.aim>.5?.75:1));this.bloom=Math.min(.12,this.bloom+.018);this.events.push({kind:'shot',weapon:this.weapon});return true;
  }
  step(dt:number,input:Controls){
   if(this.ended||!this.started)return;
   // The caller supplies fixed simulation steps. Clamp protects collision and AI from a stalled frame.
   dt=clamp(dt,0,1/30);this.elapsed+=dt;this.time=Math.max(0,this.time-dt);
-  if(this.time===0){this.finish();return;}
+  if(this.time===0){if(this.config.mode==='duel'&&this.config.bestOf===3)this.completeRound();else this.finish();return;}
   this.hitMarker=Math.max(0,this.hitMarker-dt);this.hurt=Math.max(0,this.hurt-dt);this.recoil*=Math.exp(-dt*9);this.bloom*=Math.exp(-dt*4);this.shotCooldown=Math.max(0,this.shotCooldown-dt);this.switchLeft=Math.max(0,this.switchLeft-dt);
   this.shots=this.shots.filter(s=>(s.age+=dt)<.08);this.feed=this.feed.filter(f=>(f.age+=dt)<5);
   for(const p of this.pickups)p.ready=Math.max(0,p.ready-dt);
@@ -159,10 +170,10 @@ export class Simulation{
   }
   moveActor(bot,mx*dt,mz*dt,this.boxes);bot.moving=Math.hypot(mx,mz);
   if(canSee&&bot.reaction<=0&&bot.cooldown<=0&&bot.shield<=.8){
-   bot.shield=0;bot.cooldown=.27+this.rng()*.32;
-   const from=this.eye(bot),aimY=target.y+(target.crouch?.82:1.18),pitch=Math.atan2(aimY-from.y,Math.max(.1,distance));
+   const restricted=this.config.weaponRule==='sniper'?weapons.marksman:this.config.weaponRule==='pistol'?weapons.pistol:null;bot.shield=0;bot.cooldown=restricted?restricted.interval+.15+this.rng()*.2:.27+this.rng()*.32;
+   const from=this.eye(bot),aimY=target.y+(this.config.weaponRule==='headshots'?(target.crouch?1.04:1.52):(target.crouch?.82:1.18)),pitch=Math.atan2(aimY-from.y,Math.max(.1,distance));
    const error=(this.config.mode==='practice'?.055:.038)*(distance<5?.65:1);
-   this.cast(bot,direction(bot.yaw+(this.rng()-.5)*error*2,pitch+(this.rng()-.5)*error*2),this.config.mode==='practice'?13:17,1.5,50);
+   this.cast(bot,direction(bot.yaw+(this.rng()-.5)*error*2,pitch+(this.rng()-.5)*error*2),restricted?restricted.damage:(this.config.mode==='practice'?13:17),1.5,50);
    const listenerDistance=Math.hypot(bot.x-this.player.x,bot.z-this.player.z);if(listenerDistance<28)this.events.push({kind:'enemyShot',distance:listenerDistance});
   }
  }

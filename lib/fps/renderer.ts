@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {type Simulation,type Actor,weapons,type WeaponId} from './simulation.ts';
+import {type Simulation,type Actor,weapons,weaponIds,type WeaponId} from './simulation.ts';
 import {ArenaWorld} from './world.ts';
 import {ArenaPipeline} from './pipeline.ts';
 
@@ -12,7 +12,7 @@ export class ArenaRenderer{
   this.renderer.toneMappingExposure=.94;this.camera.rotation.order='YXZ';this.world=new ArenaWorld(this.scene,this.renderer,game.map);this.sun=this.world.sun;this.ready=this.world.ready;this.buildWorld();
   this.rigs=game.actors.slice(1).map(a=>this.actor(a));
   this.weaponScene.add(new THREE.HemisphereLight(0xffffff,0x3b332f,3));const key=new THREE.DirectionalLight(0xffffff,3);key.position.set(-2,4,2);this.weaponScene.add(key);this.weaponScene.add(this.gunRoot);
-  for(const id of ['rifle','smg','marksman'] as WeaponId[]){const model=this.weapon(id);this.gunModels.set(id,model);this.gunRoot.add(model);}
+  for(const id of weaponIds){const model=this.weapon(id);this.gunModels.set(id,model);this.gunRoot.add(model);}
   this.flash=new THREE.Mesh(new THREE.ConeGeometry(.06,.22,6),new THREE.MeshBasicMaterial({color:0xffd16f,transparent:true,opacity:.9,depthWrite:false}));this.flash.rotation.x=-Math.PI/2;this.flash.position.set(0,.025,-.68);this.gunRoot.add(this.flash);
   for(let i=0;i<32;i++){const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]),new THREE.LineBasicMaterial({color:0xffcc88,transparent:true,opacity:.8,depthWrite:false}));line.frustumCulled=false;line.visible=false;this.tracers.push(line);this.scene.add(line);const impact=new THREE.Mesh(new THREE.SphereGeometry(.045,5,4),new THREE.MeshBasicMaterial({color:0xffcf83}));impact.visible=false;this.impacts.push(impact);this.scene.add(impact);}
   this.pipeline=new ArenaPipeline(this.renderer,this.scene,this.camera,this.weaponScene,this.weaponCamera);
@@ -38,7 +38,7 @@ export class ArenaRenderer{
   const health=new THREE.Mesh(new THREE.PlaneGeometry(.65,.045),new THREE.MeshBasicMaterial({color:trim,side:THREE.DoubleSide,depthTest:true}));health.position.y=2.1;root.add(health);this.scene.add(root);return {root,legs,shield,health};
  }
  weapon(id:WeaponId){
-  const root=new THREE.Group(),short=id==='smg',long=id==='marksman',color=long?'#5c6659':short?'#475866':'#555b5a';
+  const root=new THREE.Group(),short=id==='smg',long=id==='marksman',color=this.game.config.skin??(long?'#5c6659':short?'#475866':'#555b5a');
   this.box(root,0,0,0,.095,.12,.32,color,.6);this.box(root,0,.072,-.04,.078,.025,.35,'#151e24',.7);
   this.box(root,0,-.115,.05,.06,.19,.09,'#252d32');this.box(root,0,-.15,-.085,.063,.23,.12,'#242e34');
   this.box(root,0,.004,-.3,.074,.09,short?.2:long?.43:.32,color,.5);const barrel=this.cylinder(root,0,.024,long?-.68:short?-.48:-.57,.021,long?.3:.2,'#222d32');barrel.rotation.x=Math.PI/2;
@@ -50,7 +50,7 @@ export class ArenaRenderer{
   this.box(root,.052,.03,.025,.006,.035,.09,this.game.map.accent);
   // Gloved support hand and forearm, part of the first-person rig.
   const hand=this.box(root,-.045,-.068,-.26,.11,.085,.14,'#525b54');hand.rotation.z=-.2;const arm=this.box(root,-.1,-.2,-.19,.11,.28,.12,'#2b3639');arm.rotation.z=-.35;
-  this.box(root,.01,-.16,.075,.09,.1,.13,'#525b54');return root;
+  this.box(root,.01,-.16,.075,.09,.1,.13,'#525b54');if(id==='pistol'||id==='handcannon')root.scale.set(.9,.9,.58);if(id==='shotgun')root.scale.set(1.12,1,1.1);return root;
  }
  resize(width:number,height:number){this.renderer.setSize(width,height,false);this.camera.aspect=width/height;this.camera.updateProjectionMatrix();this.weaponCamera.aspect=width/height;this.weaponCamera.updateProjectionMatrix();this.pipeline.resize(width,height);}
  setQuality(quality:string){if(this.quality===quality)return;this.quality=quality;this.renderer.setPixelRatio(Math.min(devicePixelRatio,quality==='high'?1.5:1));this.renderer.shadowMap.enabled=true;this.pipeline.setQuality(quality);}
