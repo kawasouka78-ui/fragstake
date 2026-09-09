@@ -37,7 +37,7 @@ export default function Home(){
  return <div className="site-shell">
  <SiteHeader/>
  <main className="main play-main">
-   <div className="page-heading"><div><div className="eyebrow"><span className="orange-line"/> SKILLCLASH / PLAY</div><h1>READY TO PLAY<span>?</span></h1></div><div className="server-status"><span/> ARENA PREVIEW <i/> <small>Bots · Demo credits</small></div></div>
+   <div className="page-heading"><div><div className="eyebrow"><span className="orange-line"/> SKILLCLASH / PLAY</div><h1>READY TO PLAY<span>?</span></h1></div></div>
    <div className="lobby-layout">
      <section className="modes-section" aria-label="Game modes">
        <div className="section-heading"><h2><span>01</span> CHOOSE YOUR MODE</h2><span>THREE WAYS TO PLAY</span></div>
