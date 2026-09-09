@@ -10,11 +10,16 @@
     "build": "vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json",
     "lint": "oxlint",
-    "format": "oxfmt"
+    "format": "oxfmt",
+    "live:setup": "node scripts/setup-live.mjs",
+    "live": "node --env-file=.env.local --experimental-strip-types server/game-server.ts",
+    "test": "node --experimental-strip-types --test tests/*.test.mjs",
+    "ops:backup": "node scripts/backup-game.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",
     "@shadcn/react": "0.3.0",
+    "@types/ws": "^8.18.1",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "cmdk": "1.1.1",
@@ -33,7 +38,8 @@
     "tailwind-merge": "3.6.0",
     "three": "0.180.0",
     "tw-animate-css": "1.4.0",
-    "vinext": "1.0.0-beta.5"
+    "vinext": "1.0.0-beta.5",
+    "ws": "8.21.0"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.37.1",
@@ -55,5 +61,8 @@
     "vite": "8.0.13",
     "wrangler": "4.92.0"
   },
-  "type": "module"
+  "type": "module",
+  "overrides": {
+    "ws": "$ws"
+  }
 }
