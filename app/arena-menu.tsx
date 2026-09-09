@@ -13,7 +13,7 @@ import PausedSession from './paused-session';
 type Preferences={sensitivity:number;fov:number;quality:string;muted:boolean};
 type Props={game:Simulation|undefined;config:MatchConfig;map:ArenaMap;ready:boolean;error:string;settings:boolean;prefs:Preferences;setSettings:(value:boolean)=>void;preference:(value:Partial<Preferences>)=>void;select:(id:WeaponId)=>void;resume:()=>void;leave:()=>void;cashOut:()=>void;};
 
-function WeaponPreview({id,skin}:{id:WeaponId;skin?:string}){
+export function WeaponPreview({id,skin}:{id:WeaponId;skin?:string}){
   const canvas=useRef<HTMLCanvasElement>(null),view=useRef<LoadoutRenderer|null>(null),selection=useRef({id,skin});
   const [failed,setFailed]=useState(false);
   selection.current={id,skin};
@@ -38,7 +38,7 @@ export default function ArenaMenu({game,config,map,ready,error,settings,prefs,se
   const round=config.mode==='duel'?(config.bestOf===3?`Best of 3 · First to ${config.target??5}`:`First to ${config.target??5}`):'3 minutes';
   const helpKeys=game?.allowedWeapons.length??6;
   return <div className="fps-menu-scrim deployment-scrim"><section className={"deployment-menu"+(game?.started?" is-paused":"")} aria-label="Arena menu">
-    <header className="deployment-heading"><div><span className="deployment-eyebrow">{game?.started?'MATCH PAUSED':'MATCH SETUP'}<i/>{mode}</span><h1>{error?'LET’S TRY AGAIN':settings?'MAKE IT YOURS':'CHOOSE YOUR LOADOUT'}<span>.</span></h1></div><div className="deployment-location"><Crosshair size={18}/><div><b>{map.name}</b><span>{round} · Bot match</span></div></div></header>
+    <header className="deployment-heading"><div><span className="deployment-eyebrow">{game?.started?'MATCH PAUSED':'MATCH SETUP'}<i/>{mode}</span><h1>{error?'LET’S TRY AGAIN':settings?'GAME SETTINGS':game?.started?'MATCH PAUSED':'CHOOSE YOUR LOADOUT'}<span>.</span></h1></div><div className="deployment-location"><Crosshair size={18}/><div><b>{map.name}</b><span>{round} · Bot match</span></div></div></header>
     {error?<div className="deployment-error" role="alert"><p>{error}</p><button className="secondary" onClick={leave}><ArrowLeft size={17}/> Back to Play</button></div>:<>
       <div className="deployment-body">
         <section className="loadout-spotlight" aria-label="Selected weapon">

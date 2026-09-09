@@ -35,14 +35,18 @@ export class LoadoutRenderer {
     if(!this.model)return;
     this.camera.position.set(1,.3,-.38).normalize().multiplyScalar(3);
     this.camera.lookAt(0,0,0);this.camera.updateMatrixWorld();
-    const size=new THREE.Box3().setFromObject(this.model).getSize(new THREE.Vector3());
-    const right=new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld,0);
-    const up=new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld,1);
-    const halfWidth=(Math.abs(right.x)*size.x+Math.abs(right.y)*size.y+Math.abs(right.z)*size.z)/2;
-    const halfHeight=(Math.abs(up.x)*size.x+Math.abs(up.y)*size.y+Math.abs(up.z)*size.z)/2;
-    const frame=Math.max(halfHeight,halfWidth/this.aspect)*1.15;
-    this.camera.left=-frame*this.aspect;this.camera.right=frame*this.aspect;
-    this.camera.top=frame;this.camera.bottom=-frame;this.camera.updateProjectionMatrix();
+    // Fit the visible model itself, avoiding empty space from its world box.
+    this.model.updateMatrixWorld(true);
+    const bounds=new THREE.Box3(),point=new THREE.Vector3(),matrix=new THREE.Matrix4();
+    this.model.traverse(node=>{if(node instanceof THREE.Mesh){
+      matrix.multiplyMatrices(this.camera.matrixWorldInverse,node.matrixWorld);
+      const positions=node.geometry.attributes.position;
+      for(let i=0;i<positions.count;i++)bounds.expandByPoint(point.fromBufferAttribute(positions,i).applyMatrix4(matrix));
+    }});
+    const centre=bounds.getCenter(new THREE.Vector3()),size=bounds.getSize(new THREE.Vector3());
+    const frame=Math.max(size.y/2,size.x/2/this.aspect)*1.18;
+    this.camera.left=centre.x-frame*this.aspect;this.camera.right=centre.x+frame*this.aspect;
+    this.camera.top=centre.y+frame;this.camera.bottom=centre.y-frame;this.camera.updateProjectionMatrix();
     this.renderer.render(this.scene,this.camera);
   }
   clearModel(){
