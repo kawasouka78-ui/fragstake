@@ -18,10 +18,7 @@ type Point = readonly [number, number, number];
 type Finish = 'shell' | 'polymer' | 'steel' | 'edge' | 'recess' | 'accent' | 'glove' | 'fabric' | 'stitch' | 'lens' | 'reticle';
 type Section = readonly [z: number, width: number, height: number, centerY: number];
 
-const defaults: Record<WeaponId, string> = {
-  rifle: '#596166', carbine: '#777b68', smg: '#45565c', vector: '#8b806e',
-  marksman: '#68705b', pistol: '#4d5c64', handcannon: '#949d9f', shotgun: '#6d6252',
-};
+const defaultFinish = '#141619';
 
 class ModelBuilder {
   root = new THREE.Group() as WeaponModel;
@@ -39,12 +36,12 @@ class ModelBuilder {
     this.id=id;this.showHands=showHands;
     const material = (color: string, metalness: number, roughness: number) => new THREE.MeshStandardMaterial({color, metalness, roughness});
     this.finishes = {
-      shell: material(skin ?? defaults[id], .54, .42),
-      polymer: material('#242b2d', .06, .78),
-      steel: material('#394348', .83, .32),
-      edge: material('#77858b', .8, .36),
-      recess: material('#11191c', .2, .81),
-      accent: material('#bd9258', .64, .42),
+      shell: material(skin ?? defaultFinish, .42, .48),
+      polymer: material('#0e1012', .06, .78),
+      steel: material('#1c1f23', .72, .36),
+      edge: material('#30343a', .65, .4),
+      recess: material('#08090b', .2, .81),
+      accent: material('#24272b', .52, .46),
       glove: material('#505849', .02, .95),
       fabric: material('#323d38', .02, 1),
       stitch: material('#737b67', .02, .96),
