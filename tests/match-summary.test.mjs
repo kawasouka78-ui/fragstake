@@ -38,3 +38,26 @@ test('faster slides cover over six metres without exceeding the speed cap',()=>{
  const g=new Simulation({mode:'practice',rate:2,team:'1v1',balance:0},()=>.5);g.actors=[g.player];g.boxes=[];g.pickups=[];Object.assign(g.player,{x:0,z:0});g.yaw=0;g.start();g.step(1/60,{...idleInput(),slide:true});assert.ok(g.player.moving>10.8);
  for(let n=1;n<48;n++)g.step(1/60,idleInput());assert.ok(-g.player.z>6.3);assert.ok(g.player.moving<14);
 });
+
+test('pausing during death freezes every actor and timer, then cashout retains the death cost once',()=>{
+ const g=new Simulation(ffa,()=>.5);g.start();g.player.shield=0;g.damage(g.player,g.actors[1],100);g.pause();
+ const frozen=JSON.stringify({actors:g.actors,time:g.time,elapsed:g.elapsed,balance:g.balance,pickups:g.pickups});
+ for(let n=0;n<600;n++)g.step(1/60,{...idleInput(),fire:true,forward:1,jump:true});
+ assert.equal(JSON.stringify({actors:g.actors,time:g.time,elapsed:g.elapsed,balance:g.balance,pickups:g.pickups}),frozen);
+ g.cashOut();assert.equal(g.result.returned,18);assert.equal(g.result.net,-2);assert.equal(g.result.lastDeathLoss,2);assert.equal(g.result.deaths,1);assert.equal(g.player.hp,0);
+ const result=JSON.stringify(g.result);g.cashOut();g.leave();assert.equal(JSON.stringify(g.result),result);
+});
+
+test('paused loadout selection and resume preserve the pending respawn',()=>{
+ const g=new Simulation(ffa,()=>.5);g.start();g.player.shield=0;g.damage(g.player,g.actors[1],100);g.pause();
+ const respawn=g.player.respawn;g.switchWeapon('smg');assert.equal(g.weapon,'smg');g.start();
+ assert.equal(g.player.respawn,respawn);assert.equal(g.player.hp,0);assert.equal(g.balance,18);assert.equal(g.player.deaths,1);
+ g.step(1/60,idleInput());assert.ok(Math.abs(g.player.respawn-(respawn-1/60))<1e-8);assert.equal(g.paused,false);
+});
+
+test('paused cashout accepts recent combat while preventing further damage or fire',()=>{
+ const g=new Simulation(ffa,()=>.5);g.start();g.player.shield=0;g.damage(g.player,g.actors[1],25);g.cashOut();assert.equal(g.ended,false);g.pause();
+ g.damage(g.player,g.actors[1],100);assert.equal(g.player.hp,75);assert.equal(g.fire(),false);g.cashOut();assert.equal(g.result.net,0);assert.equal(g.result.returned,20);
+ const pending=new Simulation(ffa);pending.pause();pending.cashOut();assert.equal(pending.ended,false);
+ for(const mode of ['practice','duel']){const other=new Simulation({...ffa,mode});other.start();other.pause();other.cashOut();assert.equal(other.ended,false);}
+});
