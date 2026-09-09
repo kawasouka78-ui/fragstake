@@ -10,7 +10,7 @@ const depotTheme={wall:'#c9b69b',metal:'#8c8069',dark:'#50493c',container:'#ad78
 const underpassTheme={wall:'#a3b4bf',metal:'#5c7d8d',dark:'#304e61',container:'#718b90',ground:'#78929d',fog:'#355263',sun:'#d4edff',elevation:.5,accent:'#84d3e0',ceiling:'#637f92',impact:'#527589',trim:'#82c7da',fixture:'#b5e1f5',fixtureAlt:'#def5fd',line:'#afe7f4',roomFloor:'#8298a4',hemisphere:'#d6f2ff',bounce:'#475f78',fill:'#86bdd6'};
 export const worldThemes={citadel:citadelTheme,depot:depotTheme,underpass:underpassTheme,foundry:citadelTheme,relay:citadelTheme,drydock:citadelTheme};
 
-/** Every selected arena supplies its own architecture, wayfinding and light palette. */
+/** Every selected arena supplies its own architecture and light palette. */
 export class ArenaWorld{
  get layout(){return getMapLayout(this.map);}
  scene:THREE.Scene;renderer:THREE.WebGLRenderer;map:ArenaMap;theme=citadelTheme;root=new THREE.Group();batches=new Map<string,Batch>();materials=new Map<string,THREE.MeshStandardMaterial>();textures:THREE.Texture[]=[];sun:THREE.DirectionalLight;lights:THREE.PointLight[]=[];ready:Promise<void>;disposed=false;staticMeshCount=0;
@@ -21,7 +21,7 @@ export class ArenaWorld{
   // Broad fill keeps rooms legible on integrated GPUs; local fixtures supply colour.
   this.sun=new THREE.DirectionalLight(this.theme.sun,1.35);this.sun.position.set(-8,15,7);this.sun.castShadow=false;scene.add(this.sun);
   const fill=new THREE.DirectionalLight(this.theme.fill,.7);fill.position.set(8,5,-12);scene.add(fill);
-  this.buildGround();this.buildCover();this.buildInfrastructure();this.buildSurroundings();this.buildWayfinding();this.merge();
+  this.buildGround();this.buildCover();this.buildInfrastructure();this.merge();
   if(this.map.id==='citadel'){for(const [i,r]of this.layout.rooms.entries())if(i%2===0){const light=new THREE.PointLight(i%4===0?this.theme.fixtureAlt:this.theme.fixture,24,17,2);light.position.set((r.x1+r.x2)/2,this.layout.height-.85,(r.z1+r.z2)/2);this.lights.push(light);this.root.add(light);}}else{const lightPoints=this.map.id==='depot'?[[-24,4.8,0],[-6,4.8,0],[12,4.8,0],[30,4,-4],[-12,3,27]]:this.map.id==='underpass'?[[0,5.2,-24],[0,5.2,-8],[0,5.2,8],[0,5.2,24],[-24,3,0],[26,3,-2]]:this.layout.rooms.filter((_,i)=>i%2===0).map(r=>[(r.x1+r.x2)/2,this.layout.height-.85,(r.z1+r.z2)/2]);
   for(const [i,p]of lightPoints.entries()){const light=new THREE.PointLight(i%2?this.theme.fixture:this.theme.fixtureAlt,34,25,2);light.position.set(p[0],p[1],p[2]);this.lights.push(light);this.root.add(light);}}
   this.ready=this.loadTextures();
@@ -42,11 +42,6 @@ export class ArenaWorld{
   this.add(geometry,this.material(surface,color),x,y,z,shadow);
  }
  cylinder(x:number,y:number,z:number,r:number,h:number,color:string,rotation?:THREE.Euler){this.add(new THREE.CylinderGeometry(r,r,h,12),this.material('metal',color),x,y,z,true,rotation);}
- sign(text:string,x:number,y:number,z:number,width:number,rotation=new THREE.Euler(),color='#e9e5d4',background='#253c42'){
-  const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=256;const ctx=canvas.getContext('2d')!;ctx.fillStyle=background;ctx.fillRect(0,0,1024,256);ctx.fillStyle=color;ctx.fillRect(0,0,10,256);ctx.font='700 78px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,512,132,940);
-  const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=4;this.textures.push(texture);
-  const material=new THREE.MeshStandardMaterial({map:texture,roughness:.75,metalness:.02,side:THREE.FrontSide});this.add(new THREE.PlaneGeometry(width,width/4),material,x,y,z,false,rotation);
- }
  buildGround(){
   if(this.map.id==='depot')return this.buildDepotFloor();
   if(this.map.id==='underpass')return this.buildStationFloor();
@@ -141,29 +136,6 @@ export class ArenaWorld{
   // Jamb lights are fixed to validated, wall-supported portal frames.
   for(const d of this.layout.doors){const ax=d.axis==='x';for(const side of [-1,1]){this.box(d.x+(ax?side*(d.width/2-.105):0),2.15,d.z+(ax?0:side*(d.width/2-.105)),ax?.025:.285,1.55,ax?.285:.025,d.color,'light',false);}
    this.box(d.x,3.23,d.z,ax?d.width-.18:.3,.055,ax?.3:d.width-.18,'#b7c6b5','metal');
-  }
- }
- buildSurroundings(){
-  // Room identity plaques attach to continuous wall faces. There are no
-  // decorative window panes pretending to be openings in the solid shell.
-  for(const p of this.layout.roomSigns){const ax=p.axis==='x',offset=p.normal*.035;
-   this.box(p.x+(ax?0:offset),3.1,p.z+(ax?offset:0),ax?4.16:.08,1.12,ax?.08:4.16,this.theme.dark,'metal',false);
-  }
- }
- buildWayfinding(){
-  for(const p of this.layout.roomSigns){const ax=p.axis==='x',offset=p.normal*.081,rotation=new THREE.Euler(0,ax?(p.normal===1?0:Math.PI):p.normal*Math.PI/2,0);
-   this.sign(p.room.code+'  /  '+p.room.name.toUpperCase(),p.x+(ax?0:offset),3.1,p.z+(ax?offset:0),3.96,rotation,p.room.color);
-  }
-  for(const r of this.layout.rooms){const x=(r.x1+r.x2)/2,z=(r.z1+r.z2)/2;
-   this.sign(r.code,x-Math.min(2.5,(r.x2-r.x1)/2-1),.026,z+Math.min(3.5,(r.z2-r.z1)/2-1),1.45,new THREE.Euler(-Math.PI/2,0,0),'#ddd7bd','#6a7c78');
-  }
-  for(const d of this.layout.doors){const ax=d.axis==='x';for(const side of [-1,1]){
-   const offset=side*.151,rotation=new THREE.Euler(0,ax?(side===1?0:Math.PI):side*Math.PI/2,0);
-   // The room-facing side directs you down the hallway; the hallway-facing
-   // side identifies the room you are entering. Each face has its own text.
-   const label=side===d.roomNormal?'TO '+d.label:d.room.code+'  /  '+d.room.name.toUpperCase();
-   this.sign(label,d.x+(ax?0:offset),(d.clearance??3.2)+.63,d.z+(ax?offset:0),Math.min(3.8,d.width-.8),rotation,d.color);
-  }
   }
  }
  // Depot and Underpass use authored industrial/transit forms. Their structural
@@ -272,14 +244,11 @@ export class ArenaWorld{
  buildDepotInfrastructure(){
   for(const z of [-12,0,12])for(const x of [-24,-6,12])this.box(x,5.997,z,7.2,.014,.18,'#ffe5a7','light',false);
   for(const r of this.layout.rooms.slice(2)){const x=(r.x1+r.x2)/2,z=(r.z1+r.z2)/2,y=r.code==='D3'?3.744:4.244,offset=Math.min(8,(r.x2-r.x1-6)/2);for(const side of [-1,1])this.box(x+side*offset,y,z,4,.014,.25,'#e3eccd','light',false);}
-  this.sign('TRANSFER 04',-6,5.8,.565,2.7,new THREE.Euler(),'#fff0b7','#4a6058');
-  let n=1;for(const b of this.map.walls.filter(b=>b.material==='loading-shutter'))this.sign('DOCK 0'+n++,35.978,5.4,b.z,3.6,new THREE.Euler(0,-Math.PI/2,0),'#e8d49c','#4c6058');
   this.buildNativePortalTrim();
  }
  buildStationInfrastructure(){
   // Linear platform lighting is fixed to the physical longitudinal beams.
   for(const x of [-5,5])for(const z of [-24,-8,8,24])this.box(x,7.395,z,.45,.014,11,'#d8f0df','light',false);
-  for(const z of [-16,16])for(const side of [-1,1])this.sign(z<0?'01  NORTHBOUND':'02  SOUTHBOUND',0,4.2,z+side*.107,5.2,new THREE.Euler(0,side===1?0:Math.PI,0),'#e1ecdc','#344f60');
   for(const r of this.layout.rooms.slice(1)){const x=(r.x1+r.x2)/2,z=(r.z1+r.z2)/2;this.box(x,3.844,z,Math.min(r.x2-r.x1-1,5),.014,.42,'#d5e9df','light',false);}
   this.buildNativePortalTrim();
  }

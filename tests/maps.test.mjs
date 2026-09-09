@@ -32,11 +32,6 @@ for(const map of maps){const layout=getMapLayout(map);
   }
   for(const p of layout.roomSigns)for(let along=-2.1;along<=2.1;along+=.1){const ax=p.axis==='x',x=p.x+(ax?along:-p.normal*.05),z=p.z+(ax?-p.normal*.05:along);assert.equal(layout.walkable(x,z),false);assert.equal(layout.walkable(x+(ax?0:p.normal*.2),z+(ax?p.normal*.2:0)),true);}
  });
- test(map.name+': the renderer uses only selected-room labels with correct portal destinations',()=>{
-  const signs=[],world=Object.create(ArenaWorld.prototype);world.map=map;world.sign=(...args)=>signs.push(args);world.buildWayfinding();
-  assert.equal(signs.length,layout.rooms.length*2+layout.doors.length*2);
-  for(const door of layout.doors){const ax=door.axis==='x',labels=signs.filter(s=>Math.abs(s[2]-((door.clearance??3.2)+.63))<.001&&Math.abs(s[1]-door.x)<.2&&Math.abs(s[3]-door.z)<.2);assert.equal(labels.length,2);for(const [text,x,,z,,rotation]of labels){const normal=ax?Math.cos(rotation.y):Math.sin(rotation.y),side=Math.sign(ax?z-door.z:x-door.x);assert.equal(Math.round(normal),side);assert.equal(text,side===door.roomNormal?'TO '+door.label:door.room.code+'  /  '+door.room.name.toUpperCase());}}
- });
  test(map.name+': every physical obstacle and roof member is rendered at its exact collision dimensions',()=>{
   const rendered=[],world=Object.create(ArenaWorld.prototype);Object.assign(world,{map,theme:worldThemes[map.id]});
   world.box=(x,y,z,w,h,d)=>rendered.push({x,y,z,w,h,d});world.cylinder=()=>{};world.sign=()=>{};

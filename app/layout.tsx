@@ -5,6 +5,7 @@ import './visual-refresh.css';
 import './platform-polish.css';
 import './lobby-polish.css';
 import './game-polish.css';
+import './responsive.css';
 import AccountProviderWrapper from './provider-wrapper';
 
 const displayFont = Barlow_Condensed({ variable: '--font-display', subsets: ['latin'], weight: ['600', '700', '800'], display: 'swap' });

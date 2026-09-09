@@ -258,11 +258,6 @@ for(let x=-15.5;x<16;x+=1){const level=vaultLevel(x);underpassRoof.push(roofBox(
 for(const x of [-5,5])underpassRoof.push(roofBox(x,0,.8,64,7.4,.4,'platform-beam','#657c80'));
 for(const room of underpassRooms.slice(1))underpassRoof.push(roofBox((room.x1+room.x2)/2,(room.z1+room.z2)/2,room.x2-room.x1,room.z2-room.z1,3.85,4.25,'utility-ceiling','#738b90'));
 for(const p of underpassPassages)underpassRoof.push(roofBox((p.x1+p.x2)/2,(p.z1+p.z2)/2,p.x2-p.x1,p.z2-p.z1,3.7,4.4,'utility-ceiling','#69858c'));
-// Suspended platform information boards, with real support rods to the vault.
-for(const z of [-16,16]){
- underpassRoof.push(roofBox(0,z,6,.2,3.7,1,'platform-board','#344f60'));
- for(const x of [-2.5,2.5])underpassRoof.push(roofBox(x,z,.075,.075,4.7,vaultLevel(x)-4.7,'sign-hanger','#758b91'));
-}
 const underpassMap:ArenaMap={
  id:'underpass',name:'Underpass',tagline:'Own the platform. Cross between the rails.',
  description:'A vaulted station with twin rail channels, a north interchange, service works and outer concourses connected by maintenance loops.',

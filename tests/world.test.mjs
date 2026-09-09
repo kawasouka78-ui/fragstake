@@ -19,7 +19,7 @@ for(const map of maps){
   const original=globalThis.document;globalThis.document={createElement:labelCanvas};
   try{
    const world=Object.create(ArenaWorld.prototype);Object.assign(world,{map,theme:worldThemes[map.id],root:new THREE.Group(),batches:new Map(),materials:new Map(),textures:[],staticMeshCount:0});
-   world.buildGround();world.buildCover();world.buildInfrastructure();world.buildSurroundings();world.buildWayfinding();const pieces=[...world.batches.values()].reduce((n,b)=>n+b.geometries.length,0);world.merge();world.root.updateMatrixWorld(true);
+   world.buildGround();world.buildCover();world.buildInfrastructure();const pieces=[...world.batches.values()].reduce((n,b)=>n+b.geometries.length,0);world.merge();world.root.updateMatrixWorld(true);
    assert.ok(world.staticMeshCount<pieces*.5,'static detail should be batched');assert.ok(world.staticMeshCount<500,'draw batches must stay bounded');
    world.root.traverse(mesh=>{if(mesh instanceof THREE.Mesh){assert.ok(mesh.geometry.attributes.position.count>0);for(const n of mesh.geometry.attributes.position.array)assert.ok(Number.isFinite(n));}});
    const boxes=collisionBoxes(map),ray=new THREE.Raycaster();for(const e of getMapLayout(map).edges){

@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {citadelDoors,citadelRooms,citadelWalkable,citadelRoomSigns,collisionBoxes,maps} from '../lib/fps/maps.ts';
-import {ArenaWorld} from '../lib/fps/world.ts';
 import {clearAt,Navigation} from '../lib/fps/simulation.ts';
 
 test('every portal crosses a complete opening and has solid backing at both jambs',()=>{
@@ -24,19 +23,6 @@ test('every room plaque is backed by a continuous wall across its full width',()
   const ax=p.axis==='x',x=p.x+(ax?along:-p.normal*.05),z=p.z+(ax?-p.normal*.05:along);
   assert.equal(citadelWalkable(x,z),false,p.room.name);
   assert.equal(citadelWalkable(x+(ax?0:p.normal*.2),z+(ax?p.normal*.2:0)),true,p.room.name);
- }
-});
-
-test('portal signs name the room ahead from each approach direction',()=>{
- const signs=[],world=Object.create(ArenaWorld.prototype);world.map=maps[0];world.sign=(...args)=>signs.push(args);world.buildWayfinding();
- for(const door of citadelDoors){
-  const ax=door.axis==='x',labels=signs.filter(s=>s[2]===3.83&&Math.abs(s[1]-door.x)<.2&&Math.abs(s[3]-door.z)<.2);
-  assert.equal(labels.length,2);
-  for(const [text,x,,z,,rotation]of labels){
-   const normal=ax?Math.cos(rotation.y):Math.sin(rotation.y),side=Math.sign(ax?z-door.z:x-door.x);
-   assert.equal(Math.round(normal),side);
-   assert.equal(text,side===door.roomNormal?'TO '+door.label:door.room.code+'  /  '+door.room.name.toUpperCase());
-  }
  }
 });
 
