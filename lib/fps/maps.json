@@ -3,13 +3,13 @@
     "id": "foundry",
     "name": "Foundry",
     "tagline": "Hold the furnace. Own the crossfire.",
-    "description": "A warm industrial courtyard with three clear lanes, a split central reactor, and broad connecting routes behind both furnace halls. Low supply stacks create brief fighting positions while taller machinery interrupts long views.",
-    "width": 48,
-    "depth": 40,
-    "sky": "#3b2926",
-    "fog": "#654337",
-    "ground": "#51423a",
-    "accent": "#ff9a36",
+    "description": "An expanded furnace district, with twin reactor lanes at its heart, heavy casting halls, open loading courts, and connected service alleys. The outer loop changes direction around perimeter buildings while shorter routes feed the central fight.",
+    "width": 80,
+    "depth": 64,
+    "sky": "#a88469",
+    "fog": "#a58d78",
+    "ground": "#6d665b",
+    "accent": "#ffa447",
     "walls": [
       {
         "x": -7,
@@ -48,40 +48,40 @@
         "color": "#65554b"
       },
       {
-        "x": -17,
+        "x": -16,
         "z": -12,
-        "w": 6,
+        "w": 8,
         "d": 3,
-        "h": 3.6,
+        "h": 4,
         "material": "concrete",
-        "color": "#82705e"
+        "color": "#95826a"
       },
       {
-        "x": -17,
+        "x": -16,
         "z": 12,
-        "w": 6,
+        "w": 8,
         "d": 3,
-        "h": 3.6,
+        "h": 4,
         "material": "concrete",
-        "color": "#82705e"
+        "color": "#95826a"
       },
       {
-        "x": 17,
+        "x": 16,
         "z": -12,
-        "w": 6,
+        "w": 8,
         "d": 3,
-        "h": 3.6,
+        "h": 4,
         "material": "concrete",
-        "color": "#82705e"
+        "color": "#95826a"
       },
       {
-        "x": 17,
+        "x": 16,
         "z": 12,
-        "w": 6,
+        "w": 8,
         "d": 3,
-        "h": 3.6,
+        "h": 4,
         "material": "concrete",
-        "color": "#82705e"
+        "color": "#95826a"
       },
       {
         "x": 0,
@@ -105,7 +105,7 @@
         "x": -2.6,
         "z": 0,
         "w": 2,
-        "d": 3,
+        "d": 8,
         "h": 3.8,
         "material": "metal",
         "color": "#ad6236"
@@ -114,64 +114,280 @@
         "x": 2.6,
         "z": 0,
         "w": 2,
-        "d": 3,
+        "d": 8,
         "h": 3.8,
         "material": "metal",
         "color": "#ad6236"
       },
       {
-        "x": -17,
+        "x": -23,
         "z": 0,
-        "w": 4,
-        "d": 5,
+        "w": 16,
+        "d": 3,
+        "h": 5.4,
+        "material": "metal",
+        "color": "#75685a"
+      },
+      {
+        "x": 23,
+        "z": 0,
+        "w": 16,
+        "d": 3,
+        "h": 5.4,
+        "material": "metal",
+        "color": "#75685a"
+      },
+      {
+        "x": -11.5,
+        "z": -6,
+        "w": 2,
+        "d": 2,
         "h": 3.2,
         "material": "metal",
-        "color": "#746154"
+        "color": "#a5754b"
       },
       {
-        "x": 17,
-        "z": 0,
-        "w": 4,
-        "d": 5,
+        "x": -11.5,
+        "z": 6,
+        "w": 2,
+        "d": 2,
         "h": 3.2,
         "material": "metal",
-        "color": "#746154"
+        "color": "#a5754b"
       },
       {
-        "x": -12,
-        "z": -5.5,
+        "x": 11.5,
+        "z": -6,
         "w": 2,
         "d": 2,
-        "h": 1.1,
-        "material": "crate",
-        "color": "#be8b55"
+        "h": 3.2,
+        "material": "metal",
+        "color": "#a5754b"
       },
       {
-        "x": -12,
-        "z": 5.5,
+        "x": 11.5,
+        "z": 6,
         "w": 2,
         "d": 2,
-        "h": 1.1,
-        "material": "crate",
-        "color": "#be8b55"
+        "h": 3.2,
+        "material": "metal",
+        "color": "#a5754b"
       },
       {
-        "x": 12,
-        "z": -5.5,
-        "w": 2,
-        "d": 2,
-        "h": 1.1,
-        "material": "crate",
-        "color": "#be8b55"
+        "x": -35.5,
+        "z": -11,
+        "w": 9,
+        "d": 14,
+        "h": 6.4,
+        "material": "concrete",
+        "color": "#84705d"
       },
       {
-        "x": 12,
-        "z": 5.5,
-        "w": 2,
-        "d": 2,
+        "x": -35.5,
+        "z": 11,
+        "w": 9,
+        "d": 14,
+        "h": 6.4,
+        "material": "concrete",
+        "color": "#84705d"
+      },
+      {
+        "x": 35.5,
+        "z": -11,
+        "w": 9,
+        "d": 14,
+        "h": 6.4,
+        "material": "concrete",
+        "color": "#84705d"
+      },
+      {
+        "x": 35.5,
+        "z": 11,
+        "w": 9,
+        "d": 14,
+        "h": 6.4,
+        "material": "concrete",
+        "color": "#84705d"
+      },
+      {
+        "x": -15.5,
+        "z": -29,
+        "w": 12,
+        "d": 6,
+        "h": 5.8,
+        "material": "metal",
+        "color": "#705c4c"
+      },
+      {
+        "x": -15.5,
+        "z": 29,
+        "w": 12,
+        "d": 6,
+        "h": 5.8,
+        "material": "metal",
+        "color": "#705c4c"
+      },
+      {
+        "x": 15.5,
+        "z": -29,
+        "w": 12,
+        "d": 6,
+        "h": 5.8,
+        "material": "metal",
+        "color": "#705c4c"
+      },
+      {
+        "x": 15.5,
+        "z": 29,
+        "w": 12,
+        "d": 6,
+        "h": 5.8,
+        "material": "metal",
+        "color": "#705c4c"
+      },
+      {
+        "x": -25,
+        "z": -20,
+        "w": 5,
+        "d": 7,
+        "h": 4.8,
+        "material": "metal",
+        "color": "#9a6b43"
+      },
+      {
+        "x": -25,
+        "z": 20,
+        "w": 5,
+        "d": 7,
+        "h": 4.8,
+        "material": "metal",
+        "color": "#9a6b43"
+      },
+      {
+        "x": 25,
+        "z": -20,
+        "w": 5,
+        "d": 7,
+        "h": 4.8,
+        "material": "metal",
+        "color": "#9a6b43"
+      },
+      {
+        "x": 25,
+        "z": 20,
+        "w": 5,
+        "d": 7,
+        "h": 4.8,
+        "material": "metal",
+        "color": "#9a6b43"
+      },
+      {
+        "x": -32,
+        "z": -25,
+        "w": 4,
+        "d": 3,
         "h": 1.1,
         "material": "crate",
-        "color": "#be8b55"
+        "color": "#ba965f"
+      },
+      {
+        "x": -32,
+        "z": 25,
+        "w": 4,
+        "d": 3,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#ba965f"
+      },
+      {
+        "x": 32,
+        "z": -25,
+        "w": 4,
+        "d": 3,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#ba965f"
+      },
+      {
+        "x": 32,
+        "z": 25,
+        "w": 4,
+        "d": 3,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#ba965f"
+      },
+      {
+        "x": 0,
+        "z": -19.5,
+        "w": 21,
+        "d": 3,
+        "h": 3.8,
+        "material": "metal",
+        "color": "#7d6853"
+      },
+      {
+        "x": 0,
+        "z": 19.5,
+        "w": 21,
+        "d": 3,
+        "h": 3.8,
+        "material": "metal",
+        "color": "#7d6853"
+      },
+      {
+        "x": -26,
+        "z": -9,
+        "w": 3,
+        "d": 3,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#ad8251"
+      },
+      {
+        "x": -26,
+        "z": 9,
+        "w": 3,
+        "d": 3,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#ad8251"
+      },
+      {
+        "x": 26,
+        "z": -9,
+        "w": 3,
+        "d": 3,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#ad8251"
+      },
+      {
+        "x": 26,
+        "z": 9,
+        "w": 3,
+        "d": 3,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#ad8251"
+      },
+      {
+        "x": 0,
+        "z": -25,
+        "w": 6,
+        "d": 3,
+        "h": 3.2,
+        "material": "metal",
+        "color": "#957854"
+      },
+      {
+        "x": 0,
+        "z": 25,
+        "w": 6,
+        "d": 3,
+        "h": 3.2,
+        "material": "metal",
+        "color": "#957854"
       }
     ],
     "spawns": [
@@ -194,16 +410,6 @@
         "x": 21,
         "z": 16,
         "yaw": 0.9197
-      },
-      {
-        "x": 0,
-        "z": -17,
-        "yaw": 3.1416
-      },
-      {
-        "x": 0,
-        "z": 17,
-        "yaw": 0
       },
       {
         "x": -21,
@@ -234,6 +440,66 @@
         "x": 11,
         "z": 0,
         "yaw": 1.5708
+      },
+      {
+        "x": -34,
+        "z": -21,
+        "yaw": -2.1241
+      },
+      {
+        "x": -34,
+        "z": 21,
+        "yaw": -1.0175
+      },
+      {
+        "x": 34,
+        "z": -21,
+        "yaw": 2.1241
+      },
+      {
+        "x": 34,
+        "z": 21,
+        "yaw": 1.0175
+      },
+      {
+        "x": 0,
+        "z": -29.5,
+        "yaw": 3.1416
+      },
+      {
+        "x": 0,
+        "z": 29.5,
+        "yaw": 0
+      },
+      {
+        "x": -25,
+        "z": -28,
+        "yaw": -2.4127
+      },
+      {
+        "x": -25,
+        "z": 28,
+        "yaw": -0.7289
+      },
+      {
+        "x": 25,
+        "z": -28,
+        "yaw": 2.4127
+      },
+      {
+        "x": 25,
+        "z": 28,
+        "yaw": 0.7289
+      },
+      {
+        "x": -34,
+        "z": 0,
+        "yaw": -1.5708
+      },
+      {
+        "x": 34,
+        "z": 0,
+        "yaw": 1.5708
       }
     ],
     "landmarks": [
@@ -254,28 +520,36 @@
       },
       {
         "x": 0,
-        "z": -17,
+        "z": -15.2,
         "label": "North Loading"
       },
       {
         "x": 0,
-        "z": 17,
+        "z": 15.2,
         "label": "South Loading"
+      },
+      {
+        "x": -34,
+        "z": 0,
+        "label": "Boiler Court"
+      },
+      {
+        "x": 34,
+        "z": 0,
+        "label": "Service Court"
+      },
+      {
+        "x": 6,
+        "z": -26.5,
+        "label": "Cooling Yard"
+      },
+      {
+        "x": 6,
+        "z": 26.5,
+        "label": "Dispatch Yard"
       }
     ],
     "decorations": [
-      {
-        "kind": "pipe",
-        "x": -7,
-        "z": -10,
-        "h": 5.6
-      },
-      {
-        "kind": "pipe",
-        "x": 7,
-        "z": 10,
-        "h": 5.6
-      },
       {
         "kind": "tower",
         "x": -17,
@@ -302,15 +576,63 @@
       },
       {
         "kind": "vent",
-        "x": -17,
+        "x": -21,
         "z": 0,
         "h": 3.8
       },
       {
         "kind": "vent",
-        "x": 17,
+        "x": 21,
         "z": 0,
         "h": 3.8
+      },
+      {
+        "kind": "pipe",
+        "x": -21,
+        "z": 0,
+        "h": 6.2
+      },
+      {
+        "kind": "pipe",
+        "x": 21,
+        "z": 0,
+        "h": 6.2
+      },
+      {
+        "kind": "tower",
+        "x": -35.5,
+        "z": -11,
+        "h": 10.4
+      },
+      {
+        "kind": "tower",
+        "x": 35.5,
+        "z": 11,
+        "h": 10.4
+      },
+      {
+        "kind": "vent",
+        "x": -15.5,
+        "z": 29,
+        "h": 6.2
+      },
+      {
+        "kind": "vent",
+        "x": 15.5,
+        "z": -29,
+        "h": 6.2
+      },
+      {
+        "kind": "light",
+        "x": -25,
+        "z": -20,
+        "h": 5.2
+      },
+      {
+        "kind": "light",
+        "x": 25,
+        "z": 20,
+        "h": 5.2
       }
     ]
   },
@@ -318,13 +640,13 @@
     "id": "relay",
     "name": "Relay",
     "tagline": "Cut through the static.",
-    "description": "A blue-lit communications facility built around a central uplink. Short equipment aisles feed an inner circuit, while paired server walls divide the outer flanks into readable approach routes.",
-    "width": 48,
-    "depth": 40,
-    "sky": "#172c45",
-    "fog": "#29465f",
-    "ground": "#405367",
-    "accent": "#55d6ff",
+    "description": "A complete communications campus surrounding the central uplink. Server aisles open into laboratory courts, split equipment gates, and covered perimeter approaches. Large research blocks and signal halls separate the outer routes into distinct engagements.",
+    "width": 80,
+    "depth": 64,
+    "sky": "#91b3c7",
+    "fog": "#8fa8b7",
+    "ground": "#657580",
+    "accent": "#74dcf0",
     "walls": [
       {
         "x": 0,
@@ -429,91 +751,379 @@
         "x": -19.5,
         "z": -12,
         "w": 3,
-        "d": 3,
-        "h": 1.1,
-        "material": "crate",
-        "color": "#819ba9"
+        "d": 8,
+        "h": 3.2,
+        "material": "metal",
+        "color": "#627c8d"
       },
       {
         "x": -19.5,
         "z": 12,
         "w": 3,
-        "d": 3,
-        "h": 1.1,
-        "material": "crate",
-        "color": "#819ba9"
+        "d": 8,
+        "h": 3.2,
+        "material": "metal",
+        "color": "#627c8d"
       },
       {
         "x": 19.5,
         "z": -12,
         "w": 3,
-        "d": 3,
-        "h": 1.1,
-        "material": "crate",
-        "color": "#819ba9"
+        "d": 8,
+        "h": 3.2,
+        "material": "metal",
+        "color": "#627c8d"
       },
       {
         "x": 19.5,
         "z": 12,
         "w": 3,
+        "d": 8,
+        "h": 3.2,
+        "material": "metal",
+        "color": "#627c8d"
+      },
+      {
+        "x": -23.25,
+        "z": 0,
+        "w": 11.5,
+        "d": 10,
+        "h": 5.5,
+        "material": "metal",
+        "color": "#3b596e"
+      },
+      {
+        "x": 23.25,
+        "z": 0,
+        "w": 11.5,
+        "d": 10,
+        "h": 5.5,
+        "material": "metal",
+        "color": "#3b596e"
+      },
+      {
+        "x": -7.5,
+        "z": -5.3,
+        "w": 2,
+        "d": 1.5,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#79a8ba"
+      },
+      {
+        "x": -7.5,
+        "z": 5.3,
+        "w": 2,
+        "d": 1.5,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#79a8ba"
+      },
+      {
+        "x": 7.5,
+        "z": -5.3,
+        "w": 2,
+        "d": 1.5,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#79a8ba"
+      },
+      {
+        "x": 7.5,
+        "z": 5.3,
+        "w": 2,
+        "d": 1.5,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#79a8ba"
+      },
+      {
+        "x": -28.25,
+        "z": -20.5,
+        "w": 8.5,
+        "d": 9,
+        "h": 6.3,
+        "material": "concrete",
+        "color": "#a1b0b8"
+      },
+      {
+        "x": -28.25,
+        "z": 20.5,
+        "w": 8.5,
+        "d": 9,
+        "h": 6.3,
+        "material": "concrete",
+        "color": "#a1b0b8"
+      },
+      {
+        "x": 28.25,
+        "z": -20.5,
+        "w": 8.5,
+        "d": 9,
+        "h": 6.3,
+        "material": "concrete",
+        "color": "#a1b0b8"
+      },
+      {
+        "x": 28.25,
+        "z": 20.5,
+        "w": 8.5,
+        "d": 9,
+        "h": 6.3,
+        "material": "concrete",
+        "color": "#a1b0b8"
+      },
+      {
+        "x": -36.25,
+        "z": 0,
+        "w": 7.5,
+        "d": 14,
+        "h": 7,
+        "material": "metal",
+        "color": "#526a7c"
+      },
+      {
+        "x": 36.25,
+        "z": 0,
+        "w": 7.5,
+        "d": 14,
+        "h": 7,
+        "material": "metal",
+        "color": "#526a7c"
+      },
+      {
+        "x": 0,
+        "z": -28,
+        "w": 16,
+        "d": 8,
+        "h": 6,
+        "material": "concrete",
+        "color": "#7e929e"
+      },
+      {
+        "x": 0,
+        "z": 28,
+        "w": 16,
+        "d": 8,
+        "h": 6,
+        "material": "concrete",
+        "color": "#7e929e"
+      },
+      {
+        "x": -17,
+        "z": -23.25,
+        "w": 4,
+        "d": 4,
+        "h": 3.6,
+        "material": "metal",
+        "color": "#476a81"
+      },
+      {
+        "x": -17,
+        "z": 23.25,
+        "w": 4,
+        "d": 4,
+        "h": 3.6,
+        "material": "metal",
+        "color": "#476a81"
+      },
+      {
+        "x": 17,
+        "z": -23.25,
+        "w": 4,
+        "d": 4,
+        "h": 3.6,
+        "material": "metal",
+        "color": "#476a81"
+      },
+      {
+        "x": 17,
+        "z": 23.25,
+        "w": 4,
+        "d": 4,
+        "h": 3.6,
+        "material": "metal",
+        "color": "#476a81"
+      },
+      {
+        "x": -28,
+        "z": -10.5,
+        "w": 3,
+        "d": 2,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#8fafbb"
+      },
+      {
+        "x": -28,
+        "z": 10.5,
+        "w": 3,
+        "d": 2,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#8fafbb"
+      },
+      {
+        "x": 28,
+        "z": -10.5,
+        "w": 3,
+        "d": 2,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#8fafbb"
+      },
+      {
+        "x": 28,
+        "z": 10.5,
+        "w": 3,
+        "d": 2,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#8fafbb"
+      },
+      {
+        "x": -36.25,
+        "z": -25,
+        "w": 2.5,
+        "d": 2,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#aec1c5"
+      },
+      {
+        "x": -36.25,
+        "z": 25,
+        "w": 2.5,
+        "d": 2,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#aec1c5"
+      },
+      {
+        "x": 36.25,
+        "z": -25,
+        "w": 2.5,
+        "d": 2,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#aec1c5"
+      },
+      {
+        "x": 36.25,
+        "z": 25,
+        "w": 2.5,
+        "d": 2,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#aec1c5"
+      },
+      {
+        "x": -13,
+        "z": -29,
+        "w": 2,
+        "d": 2,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#7c9caa"
+      },
+      {
+        "x": -13,
+        "z": 29,
+        "w": 2,
+        "d": 2,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#7c9caa"
+      },
+      {
+        "x": 13,
+        "z": -29,
+        "w": 2,
+        "d": 2,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#7c9caa"
+      },
+      {
+        "x": 13,
+        "z": 29,
+        "w": 2,
+        "d": 2,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#7c9caa"
+      },
+      {
+        "x": -36,
+        "z": -13,
+        "w": 3,
         "d": 3,
-        "h": 1.1,
-        "material": "crate",
-        "color": "#819ba9"
-      },
-      {
-        "x": -19.5,
-        "z": 0,
-        "w": 3,
-        "d": 5,
         "h": 3.2,
         "material": "metal",
-        "color": "#3b596e"
+        "color": "#637e90"
       },
       {
-        "x": 19.5,
-        "z": 0,
+        "x": -36,
+        "z": 13,
         "w": 3,
-        "d": 5,
+        "d": 3,
         "h": 3.2,
         "material": "metal",
-        "color": "#3b596e"
+        "color": "#637e90"
+      },
+      {
+        "x": 36,
+        "z": -13,
+        "w": 3,
+        "d": 3,
+        "h": 3.2,
+        "material": "metal",
+        "color": "#637e90"
+      },
+      {
+        "x": 36,
+        "z": 13,
+        "w": 3,
+        "d": 3,
+        "h": 3.2,
+        "material": "metal",
+        "color": "#637e90"
       },
       {
         "x": -7.5,
-        "z": -5.3,
-        "w": 2,
-        "d": 1.5,
-        "h": 1.1,
-        "material": "crate",
-        "color": "#79a8ba"
+        "z": -18.5,
+        "w": 11,
+        "d": 3,
+        "h": 3.4,
+        "material": "metal",
+        "color": "#6f8999"
       },
       {
         "x": -7.5,
-        "z": 5.3,
-        "w": 2,
-        "d": 1.5,
-        "h": 1.1,
-        "material": "crate",
-        "color": "#79a8ba"
+        "z": 18.5,
+        "w": 11,
+        "d": 3,
+        "h": 3.4,
+        "material": "metal",
+        "color": "#6f8999"
       },
       {
         "x": 7.5,
-        "z": -5.3,
-        "w": 2,
-        "d": 1.5,
-        "h": 1.1,
-        "material": "crate",
-        "color": "#79a8ba"
+        "z": -18.5,
+        "w": 11,
+        "d": 3,
+        "h": 3.4,
+        "material": "metal",
+        "color": "#6f8999"
       },
       {
         "x": 7.5,
-        "z": 5.3,
-        "w": 2,
-        "d": 1.5,
-        "h": 1.1,
-        "material": "crate",
-        "color": "#79a8ba"
+        "z": 18.5,
+        "w": 11,
+        "d": 3,
+        "h": 3.4,
+        "material": "metal",
+        "color": "#6f8999"
       }
     ],
     "spawns": [
@@ -596,6 +1206,56 @@
         "x": 10,
         "z": 0,
         "yaw": 1.5708
+      },
+      {
+        "x": -35,
+        "z": -19,
+        "yaw": -2.0681
+      },
+      {
+        "x": -35,
+        "z": 19,
+        "yaw": -1.0735
+      },
+      {
+        "x": 35,
+        "z": -19,
+        "yaw": 2.0681
+      },
+      {
+        "x": 35,
+        "z": 19,
+        "yaw": 1.0735
+      },
+      {
+        "x": -20,
+        "z": -28,
+        "yaw": -2.5213
+      },
+      {
+        "x": -20,
+        "z": 28,
+        "yaw": -0.6202
+      },
+      {
+        "x": 20,
+        "z": -28,
+        "yaw": 2.5213
+      },
+      {
+        "x": 20,
+        "z": 28,
+        "yaw": 0.6202
+      },
+      {
+        "x": -30,
+        "z": 0,
+        "yaw": -1.5708
+      },
+      {
+        "x": 30,
+        "z": 0,
+        "yaw": 1.5708
       }
     ],
     "landmarks": [
@@ -623,6 +1283,26 @@
         "x": 0,
         "z": 15,
         "label": "Power Hall"
+      },
+      {
+        "x": -30,
+        "z": 0,
+        "label": "Research Court"
+      },
+      {
+        "x": 30,
+        "z": 0,
+        "label": "Antenna Court"
+      },
+      {
+        "x": -20,
+        "z": -27,
+        "label": "Cooling Loop"
+      },
+      {
+        "x": 20,
+        "z": 27,
+        "label": "Service Loop"
       }
     ],
     "decorations": [
@@ -667,6 +1347,54 @@
         "x": 5,
         "z": -11,
         "h": 4.4
+      },
+      {
+        "kind": "tower",
+        "x": -36.5,
+        "z": 0,
+        "h": 11
+      },
+      {
+        "kind": "tower",
+        "x": 36.5,
+        "z": 0,
+        "h": 11
+      },
+      {
+        "kind": "vent",
+        "x": -28,
+        "z": -20.5,
+        "h": 6.7
+      },
+      {
+        "kind": "vent",
+        "x": 28,
+        "z": 20.5,
+        "h": 6.7
+      },
+      {
+        "kind": "pipe",
+        "x": 0,
+        "z": -28,
+        "h": 6.8
+      },
+      {
+        "kind": "pipe",
+        "x": 0,
+        "z": 28,
+        "h": 6.8
+      },
+      {
+        "kind": "light",
+        "x": -7,
+        "z": 18.5,
+        "h": 3.8
+      },
+      {
+        "kind": "light",
+        "x": 7,
+        "z": -18.5,
+        "h": 3.8
       }
     ]
   },
@@ -674,17 +1402,17 @@
     "id": "drydock",
     "name": "Drydock",
     "tagline": "Read the lanes. Break the line.",
-    "description": "A sunlit cargo yard with rust-red and sea-green containers, open loading aprons, and a low central cache. Long outer containers and short inner stacks create connected loops with frequent changes in firing angle.",
-    "width": 48,
-    "depth": 40,
-    "sky": "#b7d9e8",
-    "fog": "#c3d6d9",
-    "ground": "#9c9a85",
-    "accent": "#f4b54a",
+    "description": "A broad working port, with the original cargo maze connected to warehouse aprons, inspection lanes, and service yards. Freight screens break long shooting angles, while depot buildings frame wide flanks and a chain of sheltered loading bays.",
+    "width": 80,
+    "depth": 64,
+    "sky": "#c1e0e9",
+    "fog": "#c0d5d7",
+    "ground": "#a0a290",
+    "accent": "#f5be55",
     "walls": [
       {
         "x": -14,
-        "z": -11.5,
+        "z": -10,
         "w": 10,
         "d": 3,
         "h": 3,
@@ -693,7 +1421,7 @@
       },
       {
         "x": -14,
-        "z": 11.5,
+        "z": 10,
         "w": 10,
         "d": 3,
         "h": 3,
@@ -702,7 +1430,7 @@
       },
       {
         "x": 14,
-        "z": -11.5,
+        "z": -10,
         "w": 10,
         "d": 3,
         "h": 3,
@@ -711,7 +1439,7 @@
       },
       {
         "x": 14,
-        "z": 11.5,
+        "z": 10,
         "w": 10,
         "d": 3,
         "h": 3,
@@ -738,18 +1466,18 @@
       },
       {
         "x": 0,
-        "z": -7,
+        "z": -6.75,
         "w": 5.5,
-        "d": 3,
+        "d": 3.5,
         "h": 3,
         "material": "container",
         "color": "#667f6b"
       },
       {
         "x": 0,
-        "z": 7,
+        "z": 6.75,
         "w": 5.5,
-        "d": 3,
+        "d": 3.5,
         "h": 3,
         "material": "container",
         "color": "#b48744"
@@ -785,73 +1513,73 @@
         "x": -3.3,
         "z": -13.5,
         "w": 2,
-        "d": 2,
-        "h": 1.1,
-        "material": "crate",
-        "color": "#b39361"
+        "d": 4.5,
+        "h": 3.2,
+        "material": "metal",
+        "color": "#7b887a"
       },
       {
         "x": -3.3,
         "z": 13.5,
         "w": 2,
-        "d": 2,
-        "h": 1.1,
-        "material": "crate",
-        "color": "#b39361"
+        "d": 4.5,
+        "h": 3.2,
+        "material": "metal",
+        "color": "#7b887a"
       },
       {
         "x": 3.3,
         "z": -13.5,
         "w": 2,
-        "d": 2,
-        "h": 1.1,
-        "material": "crate",
-        "color": "#b39361"
+        "d": 4.5,
+        "h": 3.2,
+        "material": "metal",
+        "color": "#7b887a"
       },
       {
         "x": 3.3,
         "z": 13.5,
         "w": 2,
+        "d": 4.5,
+        "h": 3.2,
+        "material": "metal",
+        "color": "#7b887a"
+      },
+      {
+        "x": -20,
+        "z": -16,
+        "w": 9,
         "d": 2,
-        "h": 1.1,
-        "material": "crate",
-        "color": "#b39361"
+        "h": 3.2,
+        "material": "metal",
+        "color": "#a18d66"
       },
       {
         "x": -20,
-        "z": -16.25,
-        "w": 2,
-        "d": 1.5,
-        "h": 1.1,
-        "material": "crate",
-        "color": "#918468"
-      },
-      {
-        "x": -20,
-        "z": 16.25,
-        "w": 2,
-        "d": 1.5,
-        "h": 1.1,
-        "material": "crate",
-        "color": "#918468"
+        "z": 16,
+        "w": 9,
+        "d": 2,
+        "h": 3.2,
+        "material": "metal",
+        "color": "#a18d66"
       },
       {
         "x": 20,
-        "z": -16.25,
-        "w": 2,
-        "d": 1.5,
-        "h": 1.1,
-        "material": "crate",
-        "color": "#918468"
+        "z": -16,
+        "w": 9,
+        "d": 2,
+        "h": 3.2,
+        "material": "metal",
+        "color": "#a18d66"
       },
       {
         "x": 20,
-        "z": 16.25,
-        "w": 2,
-        "d": 1.5,
-        "h": 1.1,
-        "material": "crate",
-        "color": "#918468"
+        "z": 16,
+        "w": 9,
+        "d": 2,
+        "h": 3.2,
+        "material": "metal",
+        "color": "#a18d66"
       },
       {
         "x": -14,
@@ -888,6 +1616,294 @@
         "h": 1.1,
         "material": "crate",
         "color": "#a68c5e"
+      },
+      {
+        "x": -29,
+        "z": -23.75,
+        "w": 9,
+        "d": 8.5,
+        "h": 6.6,
+        "material": "concrete",
+        "color": "#a6a79c"
+      },
+      {
+        "x": -29,
+        "z": 23.75,
+        "w": 9,
+        "d": 8.5,
+        "h": 6.6,
+        "material": "concrete",
+        "color": "#a6a79c"
+      },
+      {
+        "x": 29,
+        "z": -23.75,
+        "w": 9,
+        "d": 8.5,
+        "h": 6.6,
+        "material": "concrete",
+        "color": "#a6a79c"
+      },
+      {
+        "x": 29,
+        "z": 23.75,
+        "w": 9,
+        "d": 8.5,
+        "h": 6.6,
+        "material": "concrete",
+        "color": "#a6a79c"
+      },
+      {
+        "x": -37,
+        "z": -9,
+        "w": 6,
+        "d": 14,
+        "h": 5.4,
+        "material": "metal",
+        "color": "#6d8683"
+      },
+      {
+        "x": -37,
+        "z": 9,
+        "w": 6,
+        "d": 14,
+        "h": 5.4,
+        "material": "metal",
+        "color": "#6d8683"
+      },
+      {
+        "x": 37,
+        "z": -9,
+        "w": 6,
+        "d": 14,
+        "h": 5.4,
+        "material": "metal",
+        "color": "#6d8683"
+      },
+      {
+        "x": 37,
+        "z": 9,
+        "w": 6,
+        "d": 14,
+        "h": 5.4,
+        "material": "metal",
+        "color": "#6d8683"
+      },
+      {
+        "x": 0,
+        "z": -28,
+        "w": 12,
+        "d": 8,
+        "h": 5,
+        "material": "concrete",
+        "color": "#b8b3a0"
+      },
+      {
+        "x": 0,
+        "z": 28,
+        "w": 12,
+        "d": 8,
+        "h": 5,
+        "material": "concrete",
+        "color": "#b8b3a0"
+      },
+      {
+        "x": -13.5,
+        "z": -23.5,
+        "w": 9,
+        "d": 3,
+        "h": 3,
+        "material": "container",
+        "color": "#568b87"
+      },
+      {
+        "x": -13.5,
+        "z": 23.5,
+        "w": 9,
+        "d": 3,
+        "h": 3,
+        "material": "container",
+        "color": "#b67750"
+      },
+      {
+        "x": 13.5,
+        "z": -23.5,
+        "w": 9,
+        "d": 3,
+        "h": 3,
+        "material": "container",
+        "color": "#b67750"
+      },
+      {
+        "x": 13.5,
+        "z": 23.5,
+        "w": 9,
+        "d": 3,
+        "h": 3,
+        "material": "container",
+        "color": "#568b87"
+      },
+      {
+        "x": -28,
+        "z": 0,
+        "w": 4,
+        "d": 6,
+        "h": 3,
+        "material": "container",
+        "color": "#a56d51"
+      },
+      {
+        "x": 28,
+        "z": 0,
+        "w": 4,
+        "d": 6,
+        "h": 3,
+        "material": "container",
+        "color": "#5c8583"
+      },
+      {
+        "x": -27,
+        "z": -11,
+        "w": 3,
+        "d": 2,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#b39662"
+      },
+      {
+        "x": -27,
+        "z": 11,
+        "w": 3,
+        "d": 2,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#b39662"
+      },
+      {
+        "x": 27,
+        "z": -11,
+        "w": 3,
+        "d": 2,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#b39662"
+      },
+      {
+        "x": 27,
+        "z": 11,
+        "w": 3,
+        "d": 2,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#b39662"
+      },
+      {
+        "x": -36.8,
+        "z": -22,
+        "w": 1.6,
+        "d": 3,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#a4916a"
+      },
+      {
+        "x": -36.8,
+        "z": 22,
+        "w": 1.6,
+        "d": 3,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#a4916a"
+      },
+      {
+        "x": 36.8,
+        "z": -22,
+        "w": 1.6,
+        "d": 3,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#a4916a"
+      },
+      {
+        "x": 36.8,
+        "z": 22,
+        "w": 1.6,
+        "d": 3,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#a4916a"
+      },
+      {
+        "x": -19.5,
+        "z": -29,
+        "w": 2,
+        "d": 2,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#bd9f6b"
+      },
+      {
+        "x": -19.5,
+        "z": 29,
+        "w": 2,
+        "d": 2,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#bd9f6b"
+      },
+      {
+        "x": 19.5,
+        "z": -29,
+        "w": 2,
+        "d": 2,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#bd9f6b"
+      },
+      {
+        "x": 19.5,
+        "z": 29,
+        "w": 2,
+        "d": 2,
+        "h": 1.1,
+        "material": "crate",
+        "color": "#bd9f6b"
+      },
+      {
+        "x": -7.5,
+        "z": -18.25,
+        "w": 2,
+        "d": 2.5,
+        "h": 3.2,
+        "material": "metal",
+        "color": "#b79865"
+      },
+      {
+        "x": -7.5,
+        "z": 18.25,
+        "w": 2,
+        "d": 2.5,
+        "h": 3.2,
+        "material": "metal",
+        "color": "#b79865"
+      },
+      {
+        "x": 7.5,
+        "z": -18.25,
+        "w": 2,
+        "d": 2.5,
+        "h": 3.2,
+        "material": "metal",
+        "color": "#b79865"
+      },
+      {
+        "x": 7.5,
+        "z": 18.25,
+        "w": 2,
+        "d": 2.5,
+        "h": 3.2,
+        "material": "metal",
+        "color": "#b79865"
       }
     ],
     "spawns": [
@@ -970,6 +1986,56 @@
         "x": 4,
         "z": 2.2,
         "yaw": 1.068
+      },
+      {
+        "x": -34.8,
+        "z": -17.5,
+        "yaw": -2.0367
+      },
+      {
+        "x": -34.8,
+        "z": 17.5,
+        "yaw": -1.1049
+      },
+      {
+        "x": 34.8,
+        "z": -17.5,
+        "yaw": 2.0367
+      },
+      {
+        "x": 34.8,
+        "z": 17.5,
+        "yaw": 1.1049
+      },
+      {
+        "x": -20,
+        "z": -25,
+        "yaw": -2.4669
+      },
+      {
+        "x": -20,
+        "z": 25,
+        "yaw": -0.6747
+      },
+      {
+        "x": 20,
+        "z": -25,
+        "yaw": 2.4669
+      },
+      {
+        "x": 20,
+        "z": 25,
+        "yaw": 0.6747
+      },
+      {
+        "x": -31,
+        "z": 0,
+        "yaw": -1.5708
+      },
+      {
+        "x": 31,
+        "z": 0,
+        "yaw": 1.5708
       }
     ],
     "landmarks": [
@@ -990,26 +2056,46 @@
       },
       {
         "x": 0,
-        "z": -17,
+        "z": -16.5,
         "label": "Crane Apron"
       },
       {
         "x": 0,
-        "z": 17,
+        "z": 16.5,
         "label": "Dock Apron"
+      },
+      {
+        "x": -23,
+        "z": 0,
+        "label": "Cargo Yard"
+      },
+      {
+        "x": 23,
+        "z": 0,
+        "label": "Freight Yard"
+      },
+      {
+        "x": 0,
+        "z": -22.5,
+        "label": "Dispatch Office"
+      },
+      {
+        "x": 0,
+        "z": 22.5,
+        "label": "Harbor Office"
       }
     ],
     "decorations": [
       {
         "kind": "tower",
         "x": -14,
-        "z": -11.5,
+        "z": -11,
         "h": 8.2
       },
       {
         "kind": "tower",
         "x": 14,
-        "z": 11.5,
+        "z": 11,
         "h": 8.2
       },
       {
@@ -1047,6 +2133,42 @@
         "x": 14,
         "z": -4,
         "h": 1.7
+      },
+      {
+        "kind": "tower",
+        "x": -37,
+        "z": -9,
+        "h": 9.4
+      },
+      {
+        "kind": "tower",
+        "x": 37,
+        "z": 9,
+        "h": 9.4
+      },
+      {
+        "kind": "vent",
+        "x": -29,
+        "z": 23.75,
+        "h": 7
+      },
+      {
+        "kind": "vent",
+        "x": 29,
+        "z": -23.75,
+        "h": 7
+      },
+      {
+        "kind": "light",
+        "x": 0,
+        "z": -28,
+        "h": 5.4
+      },
+      {
+        "kind": "light",
+        "x": 0,
+        "z": 28,
+        "h": 5.4
       }
     ]
   }

@@ -36,7 +36,7 @@ export class Navigation{
  constructor(map:ArenaMap){this.map=map;this.boxes=collisionBoxes(map);this.cols=map.width;this.rows=map.depth;this.walk=new Uint8Array(this.cols*this.rows);for(let n=0;n<this.walk.length;n++){const p=this.point(n);this.walk[n]=clearAt(this.boxes,p.x,p.z,.55)?1:0;}}
  point(n:number){return {x:n%this.cols-this.cols/2+.5,z:Math.floor(n/this.cols)-this.rows/2+.5};}
  index(x:number,z:number){return clamp(Math.floor(z+this.rows/2),0,this.rows-1)*this.cols+clamp(Math.floor(x+this.cols/2),0,this.cols-1);}
- nearest(x:number,z:number){let best=-1,distance=Infinity;for(let i=0;i<this.walk.length;i++)if(this.walk[i]){const p=this.point(i),d=(x-p.x)**2+(z-p.z)**2;if(d<distance){distance=d;best=i;}}return best;}
+ nearest(x:number,z:number){const cell=this.index(x,z);if(this.walk[cell])return cell;let best=-1,distance=Infinity;for(let i=0;i<this.walk.length;i++)if(this.walk[i]){const p=this.point(i),d=(x-p.x)**2+(z-p.z)**2;if(d<distance){distance=d;best=i;}}return best;}
  route(a:{x:number;z:number},b:{x:number;z:number}){
   const start=this.nearest(a.x,a.z),end=this.nearest(b.x,b.z);if(start<0||end<0)return [];
   const prev=new Int32Array(this.walk.length).fill(-1),queue=[start];prev[start]=start;
@@ -51,7 +51,15 @@ export class Simulation{
  constructor(config:MatchConfig,rng:()=>number=Math.random){
   this.config=config;this.rng=rng;this.map=getMap(config.mapId);this.boxes=collisionBoxes(this.map);this.nav=new Navigation(this.map);this.balance=config.balance;
   const count=config.mode==='duel'?(config.team==='2v2'?4:2):10;
-  for(let id=0;id<count;id++){const spawn=this.map.spawns[Math.floor(id*this.map.spawns.length/count)];this.actors.push({id,name:id===0?'You':names[id-1],team:config.mode==='duel'?(id===0||id===3?0:1):id,x:spawn.x,z:spawn.z,y:0,vy:0,yaw:spawn.yaw,hp:100,kills:0,deaths:0,respawn:0,shield:2,cooldown:1+this.rng(),crouch:false,moving:0,path:[],repath:0,target:-1,reaction:.5,lastDamage:-99});}
+  let starts=this.map.spawns.filter((_,i)=>Array.from({length:count},(_,id)=>Math.floor(id*this.map.spawns.length/count)).includes(i));
+  if(config.mode==='duel'){
+   const options=[...this.map.spawns].sort((a,b)=>Math.hypot(a.x,a.z)-Math.hypot(b.x,b.z)),home=options[0];
+   const distance=(a:{x:number;z:number},b:{x:number;z:number})=>Math.hypot(a.x-b.x,a.z-b.z);
+   const rival=options.filter(s=>s!==home).sort((a,b)=>Math.abs(distance(a,home)-25)-Math.abs(distance(b,home)-25))[0];
+   const buddies=options.filter(s=>s!==home&&s!==rival),ally=[...buddies].sort((a,b)=>distance(a,home)-distance(b,home))[0],enemyBuddy=buddies.filter(s=>s!==ally).sort((a,b)=>distance(a,rival)-distance(b,rival))[0];
+   starts=[home,rival,enemyBuddy,ally];
+  }
+  for(let id=0;id<count;id++){const spawn=starts[id];this.actors.push({id,name:id===0?'You':names[id-1],team:config.mode==='duel'?(id===0||id===3?0:1):id,x:spawn.x,z:spawn.z,y:0,vy:0,yaw:spawn.yaw,hp:100,kills:0,deaths:0,respawn:0,shield:2,cooldown:1+this.rng(),crouch:false,moving:0,path:[],repath:0,target:-1,reaction:.5,lastDamage:-99});}
   this.yaw=this.player.yaw;this.pickups=this.map.landmarks.map((p,i)=>({x:p.x,z:p.z,kind:i%2?'ammo':'health',ready:0}));
  }
  stepSound=0;
@@ -66,7 +74,7 @@ export class Simulation{
  reload(){if(this.reloadLeft||this.ammo[this.weapon]>=this.gun.mag||this.reserve[this.weapon]<=0||this.player.hp<=0)return;this.reloadLeft=this.gun.reload;this.events.push({kind:'reload'});}
  respawn(a:Actor){
   const enemies=this.actors.filter(b=>b.id!==a.id&&b.team!==a.team&&b.hp>0);
-  const ranked=this.map.spawns.map(s=>({s,value:Math.min(50,...enemies.map(e=>Math.hypot(e.x-s.x,e.z-s.z)-(visible(this.boxes,{x:s.x,y:1.6,z:s.z},this.eye(e))?9:0)))-this.actors.filter(b=>b.id!==a.id&&b.hp>0&&Math.hypot(b.x-s.x,b.z-s.z)<2).length*20+this.rng()*2})).sort((a,b)=>b.value-a.value);
+  const ranked=this.map.spawns.map(s=>{const distance=Math.min(80,...enemies.map(e=>Math.hypot(e.x-s.x,e.z-s.z))),exposure=enemies.some(e=>Math.hypot(e.x-s.x,e.z-s.z)<28&&visible(this.boxes,{x:s.x,y:1.6,z:s.z},this.eye(e)))?9:0;return {s,value:Math.min(25,distance)-Math.max(0,distance-32)*.7-exposure-this.actors.filter(b=>b.id!==a.id&&b.hp>0&&Math.hypot(b.x-s.x,b.z-s.z)<2).length*20+this.rng()*2};}).sort((a,b)=>b.value-a.value);
   const s=ranked[0].s;Object.assign(a,{x:s.x,z:s.z,y:0,vy:0,yaw:s.yaw,hp:100,shield:1.8,respawn:0,path:[],repath:0,cooldown:.8,reaction:.6});
   if(a.id===0){this.yaw=s.yaw;this.pitch=0;this.vx=this.vz=0;this.reloadLeft=0;this.ammo={rifle:30,smg:36,marksman:10};this.reserve={rifle:120,smg:180,marksman:40};this.stamina=100;this.events.push({kind:'spawn'});}
  }
