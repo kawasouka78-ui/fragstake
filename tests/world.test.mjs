@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {ArenaWorld,worldThemes} from '../lib/fps/world.ts';
-import {maps,citadelEdges,collisionBoxes,overheadBoxes} from '../lib/fps/maps.ts';
+import {maps,getMapLayout,collisionBoxes,overheadBoxes} from '../lib/fps/maps.ts';
 import {Simulation,Navigation,clearAt,wallDistance} from '../lib/fps/simulation.ts';
 
 // Build actual world geometry without a GPU. The canvas stub supplies text-label
@@ -22,7 +22,14 @@ for(const map of maps){
    world.buildGround();world.buildCover();world.buildInfrastructure();world.buildSurroundings();world.buildWayfinding();const pieces=[...world.batches.values()].reduce((n,b)=>n+b.geometries.length,0);world.merge();world.root.updateMatrixWorld(true);
    assert.ok(world.staticMeshCount<pieces*.5,'static detail should be batched');assert.ok(world.staticMeshCount<500,'draw batches must stay bounded');
    world.root.traverse(mesh=>{if(mesh instanceof THREE.Mesh){assert.ok(mesh.geometry.attributes.position.count>0);for(const n of mesh.geometry.attributes.position.array)assert.ok(Number.isFinite(n));}});
-   const ray=new THREE.Raycaster();for(const e of citadelEdges){const dx=e.axis==='z'?e.normal:0,dz=e.axis==='x'?e.normal:0,from=new THREE.Vector3(e.x+dx*.8,1.6,e.z+dz*.8),dir=new THREE.Vector3(-dx,0,-dz);ray.set(from,dir);const rendered=ray.intersectObject(world.root,true)[0]?.distance,solid=wallDistance(collisionBoxes(map),from,dir);assert.ok(rendered!==undefined);assert.ok(Math.abs(rendered-solid)<.18,'visible corridor wall and shot collision disagree');}
+   const boxes=collisionBoxes(map),ray=new THREE.Raycaster();for(const e of getMapLayout(map).edges){
+    const dx=e.axis==='z'?e.normal:0,dz=e.axis==='x'?e.normal:0,dir=new THREE.Vector3(-dx,0,-dz);
+    // A flush equipment cabinet may occupy the first sample. Cast from the
+    // nearest clear approach point, never from inside a solid mesh.
+    const from=[.8,1.6,2.4,3.2].map(offset=>new THREE.Vector3(e.x+dx*offset,1.6,e.z+dz*offset)).find(p=>clearAt(boxes,p.x,p.z,.05));
+    assert.ok(from,'wall face needs an accessible approach');ray.set(from,dir);
+    const rendered=ray.intersectObject(world.root,true)[0]?.distance,solid=wallDistance(boxes,from,dir);assert.ok(rendered!==undefined);assert.ok(Math.abs(rendered-solid)<.18,'visible corridor wall and shot collision disagree');
+   }
    for(const b of overheadBoxes(map)){assert.ok((b.y??0)>3,'all roofs must clear jumping player heads');const hit=wallDistance([b],{x:b.x,y:1.6,z:b.z},{x:0,y:1,z:0});assert.ok(Math.abs(hit-((b.y??0)-1.6))<.001);}
    world.root.traverse(mesh=>{if(mesh instanceof THREE.Mesh)mesh.geometry.dispose();});world.materials.forEach(m=>m.dispose());world.textures.forEach(t=>t.dispose());
   }finally{globalThis.document=original;}

@@ -29,7 +29,7 @@ test('every room plaque is backed by a continuous wall across its full width',()
 });
 
 test('portal signs name the room ahead from each approach direction',()=>{
- const signs=[],world=Object.create(ArenaWorld.prototype);world.sign=(...args)=>signs.push(args);world.buildWayfinding();
+ const signs=[],world=Object.create(ArenaWorld.prototype);world.map=maps[0];world.sign=(...args)=>signs.push(args);world.buildWayfinding();
  for(const door of citadelDoors){
   const ax=door.axis==='x',labels=signs.filter(s=>s[2]===3.83&&Math.abs(s[1]-door.x)<.2&&Math.abs(s[3]-door.z)<.2);
   assert.equal(labels.length,2);

@@ -11,7 +11,7 @@ export async function lobbyMutation(db:D1Database,id:string,b:Record<string,unkn
  const action=String(b.action),now=Date.now();
  if(!['lobby_create','lobby_join','lobby_leave','lobby_ready','lobby_close'].includes(action))return false;
  if(action==='lobby_create'){
-  const rules=matchSetup({...b,mode:'duel',rate:2,mapId:'citadel'}),key=id+':'+textValue(b.key,'Lobby key',8,80);
+  const rules=matchSetup({...b,mode:'duel',rate:2,mapId:b.mapId??'citadel'}),key=id+':'+textValue(b.key,'Lobby key',8,80);
   if(await db.prepare('SELECT id FROM duel_lobbies WHERE id=? AND owner_id=?').bind(key,id).first())return true;
   const prior=await db.prepare("SELECT id FROM duel_lobbies WHERE owner_id=? AND status='open' AND expires_at>?").bind(id,now).first();if(prior)throw new InputError('Close your existing lobby before opening another.',409);
   await db.batch([
