@@ -5,7 +5,7 @@ export type Box={x:number;z:number;w:number;d:number;h:number;y?:number;material
 export type ArenaMap={id:MapId;name:string;tagline:string;description:string;width:number;depth:number;sky:string;fog:string;ground:string;accent:string;walls:Box[];spawns:{x:number;z:number;yaw:number}[];landmarks:{x:number;z:number;label:string}[];decorations:{kind:string;x:number;z:number;h?:number}[]};
 export type Rect={x1:number;z1:number;x2:number;z2:number};
 export type ArenaRoom=Rect&{name:string;code:string;color:string};
-export type ArenaDoor={x:number;z:number;width:number;axis:'x'|'z';label:string;color:string;room:ArenaRoom;destination:ArenaRoom;roomNormal:number};
+export type ArenaDoor={x:number;z:number;width:number;axis:'x'|'z';label:string;color:string;room:ArenaRoom;destination:ArenaRoom;roomNormal:number;clearance?:number};
 export type ArenaEdge={x:number;z:number;length:number;axis:'x'|'z';normal:number};
 export type ArenaRoomSign=ArenaEdge&{room:ArenaRoom};
 export type CitadelRoom=ArenaRoom;
@@ -13,7 +13,7 @@ export type CitadelDoor=ArenaDoor;
 export type CitadelEdge=ArenaEdge;
 export type CitadelRoomSign=ArenaRoomSign;
 export type MapLayout={width:number;depth:number;height:number;cell:number;rooms:ArenaRoom[];passages:Rect[];floor:boolean[][];doors:ArenaDoor[];edges:ArenaEdge[];roomSigns:ArenaRoomSign[];walls:Box[];frameColor:string;beamColor:string;walkable:(x:number,z:number)=>boolean};
-type LayoutDesign={width:number;depth:number;height:number;rooms:ArenaRoom[];passages:Rect[];cover:Box[];frameColor?:string;beamColor?:string};
+type LayoutDesign={width:number;depth:number;height:number;rooms:ArenaRoom[];passages:Rect[];cover:Box[];frameColor?:string;beamColor?:string;doorWidths?:number[];largeDoorHeight?:number};
 const contains=(r:Rect,x:number,z:number)=>x>r.x1&&x<r.x2&&z>r.z1&&z<r.z2;
 const cover=(x:number,z:number,w:number,d:number,h:number,material:string,color?:string):Box=>({x,z,w,d,h,material,color});
 const spawn=(x:number,z:number,yaw:number)=>({x,z,yaw});
@@ -51,9 +51,9 @@ function buildLayout(design:LayoutDesign):MapLayout{
     const outside=point(along+cell/2,-roomNormal*.25),open=along<last&&walkable(outside.x,outside.z);
     if(open){start??=along;continue;}if(start===undefined)continue;
     const openingWidth=along-start,centre=(start+along)/2,ends=[point(start-.2,-roomNormal*.2),point(along+.2,-roomNormal*.2)];
-    if((openingWidth===4||openingWidth===6)&&ends.every(p=>!walkable(p.x,p.z))){
+    if((design.doorWidths??[4,6]).includes(openingWidth)&&ends.every(p=>!walkable(p.x,p.z))){
      const entry=point(centre,-roomNormal*.25),destination=hallwayDestination(room,entry.x,entry.z),position=point(centre,0);
-     if(destination)doors.push({...position,width:openingWidth,axis,label:destination.name.toUpperCase(),color:room.color,room,destination,roomNormal});
+     if(destination){const door:ArenaDoor={...position,width:openingWidth,axis,label:destination.name.toUpperCase(),color:room.color,room,destination,roomNormal};if(design.largeDoorHeight&&openingWidth>=8)door.clearance=design.largeDoorHeight;doors.push(door);}
     }start=undefined;
    }
   }
@@ -67,7 +67,7 @@ function buildLayout(design:LayoutDesign):MapLayout{
   walls.push({x:(col+w/2)*cell-width/2,z:(row+d/2)*cell-depth/2,w:w*cell,d:d*cell,h:height,material:'concrete'});
  }
  walls.push(...design.cover);
- for(const p of doors)for(const side of [-1,1])walls.push(cover(p.x+(p.axis==='x'?side*p.width/2:0),p.z+(p.axis==='z'?side*p.width/2:0),p.axis==='x'?.18:.28,p.axis==='x'?.28:.18,3.45,'frame',frameColor));
+ for(const p of doors)for(const side of [-1,1])walls.push(cover(p.x+(p.axis==='x'?side*p.width/2:0),p.z+(p.axis==='z'?side*p.width/2:0),p.axis==='x'?.18:.28,p.axis==='x'?.28:.18,(p.clearance??3.2)+.25,'frame',frameColor));
  // Only exposed wall faces receive architectural trim and sign mounting.
  const edgeCells=new Map<string,number[]>(),edges:ArenaEdge[]=[];
  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)if(floor[r][c])for(const [dx,dz]of [[-1,0],[1,0],[0,-1],[0,1]]){
@@ -116,85 +116,137 @@ export const citadelPassages:Rect[]=[
  {x1:10,z1:-4,x2:16,z2:0},{x1:10,z1:-2,x2:14,z2:12},{x1:10,z1:10,x2:20,z2:14},
 ];
 
-// Depot: a broad sorting hall links separate receiving and dispatch yards.
-// The packing gallery and switch room provide two protected flanking loops.
+// Depot is one tall freight warehouse with staggered container rows. Narrow
+// north/south service lanes loop around its machinery and loading apron.
 const depotRooms:ArenaRoom[]=[
- {x1:-32,z1:-18,x2:-18,z2:-4,name:'Receiving',code:'D1',color:'#ecc17a'},
- {x1:-32,z1:6,x2:-18,z2:20,name:'Dispatch',code:'D2',color:'#de9360'},
- {x1:-10,z1:-8,x2:12,z2:8,name:'Sorting hall',code:'D3',color:'#f0c46d'},
- {x1:-12,z1:-20,x2:6,z2:-14,name:'Packing gallery',code:'D4',color:'#c7b291'},
- {x1:20,z1:-18,x2:32,z2:4,name:'Transfer bay',code:'D5',color:'#f0b263'},
- {x1:20,z1:10,x2:32,z2:20,name:'Loading dock',code:'D6',color:'#e6a473'},
- {x1:-2,z1:14,x2:12,z2:20,name:'Switch room',code:'D7',color:'#a5b9a0'},
+ {x1:-32,z1:-18,x2:20,z2:18,name:'Transfer warehouse',code:'D1',color:'#efbd69'},
+ {x1:26,z1:-22,x2:36,z2:12,name:'Loading apron',code:'D2',color:'#e7b770'},
+ {x1:-28,z1:-28,x2:12,z2:-24,name:'North service lane',code:'D3',color:'#b7c09e'},
+ {x1:-28,z1:24,x2:6,z2:30,name:'Packing lane',code:'D4',color:'#e2c492'},
+ {x1:14,z1:24,x2:34,z2:30,name:'Dispatch lane',code:'D5',color:'#df9f61'},
 ];
 const depotPassages:Rect[]=[
- {x1:-28,z1:-4,x2:-24,z2:6},
- {x1:-18,z1:-8,x2:-10,z2:-4},
- {x1:-18,z1:12,x2:-4,z2:16},{x1:-8,z1:8,x2:-4,z2:12},
- {x1:-18,z1:-18,x2:-12,z2:-14},{x1:-4,z1:-14,x2:0,z2:-8},
- {x1:6,z1:-20,x2:16,z2:-16},{x1:12,z1:-16,x2:16,z2:-8},{x1:16,z1:-12,x2:20,z2:-8},
- {x1:12,z1:-2,x2:20,z2:4},
- {x1:26,z1:4,x2:30,z2:10},
- {x1:4,z1:8,x2:8,z2:14},{x1:12,z1:16,x2:20,z2:20},
+ {x1:20,z1:-12,x2:26,z2:-4},{x1:20,z1:4,x2:26,z2:12},
+ {x1:-26,z1:-24,x2:-22,z2:-18},{x1:6,z1:-24,x2:10,z2:-18},
+ {x1:-24,z1:18,x2:-20,z2:24},{x1:-2,z1:18,x2:2,z2:24},
+ {x1:14,z1:18,x2:18,z2:24},{x1:30,z1:12,x2:34,z2:24},
+ {x1:6,z1:26,x2:14,z2:30},
 ];
-const depotLayout=buildLayout({width:72,depth:48,height:5.25,rooms:depotRooms,passages:depotPassages,frameColor:'#6c5c46',beamColor:'#756750',cover:[
- cover(-26,-12,3,4,2.6,'cargo','#b28048'),cover(-21,-16,2.4,2,1.65,'cargo','#ad8b5d'),
- cover(-25,13,4,2.4,2.2,'cargo','#b17b4b'),cover(-21,18,2.2,2.2,1.4,'cargo','#bf9b63'),
- cover(-4,-2,3.2,4.6,2.6,'cargo','#a87a47'),cover(5,2,4.4,2.6,2.1,'cargo','#b3925c'),
- cover(5,-4,2.5,2.6,2.15,'machine','#8b8d75'),cover(-5,5,2.4,1.4,1.1,'console','#7d816a'),
- cover(-3,-18,3.2,1.8,2,'machine','#999880'),
- cover(26,-10,3.6,5,2.65,'cargo','#a77544'),cover(23,-1,2.4,2.8,2.15,'cargo','#b89b65'),
- cover(26,15,3.2,3,2.4,'cargo','#af8051'),
- cover(10.8,15,1.5,1.2,2.5,'server','#535e51'),cover(2.5,18.6,3,1.5,1.8,'terminal','#767c64'),
-]});
+const depotCover:Box[]=[
+ cover(-24,-9,12,5,6.2,'container-stack','#a45e3b'),
+ cover(4,-10,14,4.8,3.2,'container','#a4a28b'),
+ cover(-15,9,14,5,3.2,'container','#ae7143'),
+ cover(11,9,12,5,3.2,'container','#526b70'),
+ cover(-28,8,3.2,3.2,1.2,'pallet-stack','#aa8558'),
+ cover(-6,-12,3.2,3,1.65,'pallet-stack','#b99866'),
+ cover(14,-1,3.6,3,1.3,'pallet-stack','#ae8857'),
+ cover(-5,14,3,2.6,1.1,'pallet-stack','#a68050'),
+ // The transfer press is a real composite obstacle, including its overhead head.
+ cover(-6,0,6.8,5.2,2.65,'freight-press','#b79a50'),
+ cover(-8.95,0,.65,5.2,5.5,'press-upright','#6f7970'),
+ cover(-3.05,0,.65,5.2,5.5,'press-upright','#6f7970'),
+ cover(31,-15,3,5,2.7,'cargo','#a88958'),cover(31,6,3.2,4,2.2,'pallet-stack','#b49365'),
+ cover(-13,26.9,3.2,1.5,1.35,'pallet-stack','#b69465'),cover(24,27,3.2,1.4,1.4,'cargo','#b28c58'),
+ // Closed loading shutters are shallow skins against the actual east wall.
+ cover(35.9,-15,.18,8,4.9,'loading-shutter','#73786f'),
+ cover(35.9,-3,.18,8,4.9,'loading-shutter','#7e8176'),
+ cover(35.9,8,.18,6,4.9,'loading-shutter','#6e766f'),
+];
+for(const z of [-12,0,12])for(const x of [-31.5,19.5])depotCover.push(cover(x,z,.8,.8,z===0?8.25:7.3,'steel-column','#5c6864'));
+const depotLayout=buildLayout({width:80,depth:64,height:8.25,rooms:depotRooms,passages:depotPassages,cover:depotCover,doorWidths:[4,6,8],largeDoorHeight:4.8,frameColor:'#666d60',beamColor:'#5f6b66'});
+const roofBox=(x:number,z:number,w:number,d:number,y:number,h:number,material:string,color?:string):Box=>({x,z,w,d,y,h,material,color});
+const depotRoof:Box[]=[
+ roofBox(0,0,80,64,8.25,.35,'ceiling'),
+ roofBox(-6,-14,52,8,7.3,.95,'warehouse-roof','#9ea38e'),roofBox(-6,14,52,8,7.3,.95,'warehouse-roof','#9ea38e'),
+ roofBox(-6,-7,52,6,7.8,.45,'warehouse-roof','#a8ac97'),roofBox(-6,7,52,6,7.8,.45,'warehouse-roof','#a8ac97'),
+ roofBox(31,-5,10,34,6.5,1.75,'warehouse-roof','#929d92'),
+ roofBox(-8,-26,40,4,3.75,4.5,'service-ceiling','#94998c'),
+ roofBox(-11,27,34,6,4.25,4,'service-ceiling','#a4a28e'),roofBox(24,27,20,6,4.25,4,'service-ceiling','#a4a28e'),
+ roofBox(-6,0,7.45,1.1,5.45,.7,'press-head','#c0a052'),
+];
+for(const p of depotPassages){const wide=p.z2-p.z1>=8,y=wide?6.5:3.75;depotRoof.push(roofBox((p.x1+p.x2)/2,(p.z1+p.z2)/2,p.x2-p.x1,p.z2-p.z1,y,8.25-y,'service-ceiling','#92998b'));}
+// Open rectangular steel trusses: both chords and every web member collide.
+for(const z of [-12,0,12]){const top=z===0?7.98:7.03;
+ depotRoof.push(roofBox(-6,z,52,.34,6,.24,'truss-member','#5c6964'),roofBox(-6,z,52,.34,top,.22,'truss-member','#5c6964'));
+ for(let x=-31.5;x<=19.5;x+=6.375)depotRoof.push(roofBox(x,z,.18,.34,6.24,top-6.24,'truss-member','#697771'));
+}
 const depotMap:ArenaMap={
- id:'depot',name:'Depot',tagline:'Cut through cargo. Control the transfer.',
- description:'A warm freight depot built around a covered sorting hall, staggered cargo lanes, a packing gallery and two protected flanking loops.',
- width:72,depth:48,sky:'#302c23',fog:'#555044',ground:'#968978',accent:'#edb461',walls:depotLayout.walls,
- spawns:[spawn(-30,-16,Math.PI),spawn(-20,-7,0),spawn(-29,-6,-Math.PI/2),spawn(-30,9,Math.PI),spawn(-20,9,Math.PI/2),spawn(-29,18,0),spawn(-7,-5,-Math.PI/2),spawn(9,6,Math.PI/2),spawn(0,5,0),spawn(9,-5,Math.PI/2),spawn(-9,-17,-Math.PI/2),spawn(3,-17,Math.PI/2),spawn(29,-15,Math.PI),spawn(29,1,0),spawn(22,12,Math.PI),spawn(30,18,0),spawn(0,16,-Math.PI/2),spawn(8,16,Math.PI/2)],
- landmarks:[{x:-29,z:-10,label:'Receiving'},{x:-29,z:15,label:'Dispatch'},{x:0,z:2,label:'Sorting hall'},{x:-8,z:-17,label:'Packing gallery'},{x:23,z:-15,label:'Transfer bay'},{x:22,z:17,label:'Loading dock'},{x:6,z:17,label:'Switch room'}],decorations:[],
+ id:'depot',name:'Depot',tagline:'Work the container lanes. Seize the press.',
+ description:'A tall freight warehouse with stacked containers, a giant transfer press, closed loading shutters, exposed steel trusses and compressed service lanes.',
+ width:80,depth:64,sky:'#36392f',fog:'#555a4e',ground:'#918c79',accent:'#efbd69',walls:depotLayout.walls,
+ spawns:[spawn(-29,-15,-Math.PI/2),spawn(-17,-15,-Math.PI/2),spawn(-28,0,-Math.PI/2),spawn(-22,15,0),spawn(-12,14,0),spawn(-15,0,-Math.PI/2),spawn(0,0,Math.PI/2),spawn(15,-15,Math.PI),spawn(17,15,0),spawn(8,3,Math.PI/2),spawn(29,-20,Math.PI),spawn(29,10,0),spawn(-25,-26,-Math.PI/2),spawn(9,-26,Math.PI/2),spawn(-25,27,-Math.PI/2),spawn(3,27,Math.PI/2),spawn(17,27,-Math.PI/2),spawn(32,27,Math.PI/2)],
+ landmarks:[{x:-13,z:0,label:'Transfer press'},{x:-27,z:14,label:'Container bays'},{x:14,z:-15,label:'Warehouse north'},{x:29,z:-7,label:'Loading apron'},{x:-8,z:-26,label:'North service lane'},{x:-20,z:27,label:'Packing lane'},{x:30,z:27,label:'Dispatch lane'}],decorations:[],
 };
 
-// Underpass: offset platform chambers surround a central crossing. The main
-// tunnel turns south of the crossing; pump and generator loops bend around it.
+// Underpass is a single long underground station. A wide island platform and
+// two rail channels dominate the room; end crossings and a central crosswalk
+// join its side walks. Pump and signal loops sit outside that station volume.
 const underpassRooms:ArenaRoom[]=[
- {x1:-10,z1:-6,x2:10,z2:6,name:'Crossing',code:'U1',color:'#a4d6da'},
- {x1:-6,z1:-26,x2:6,z2:-14,name:'North platform',code:'U2',color:'#7cc9db'},
- {x1:-6,z1:16,x2:6,z2:28,name:'South platform',code:'U3',color:'#83afce'},
- {x1:-24,z1:-18,x2:-14,z2:-4,name:'Pump station',code:'U4',color:'#89c9bb'},
- {x1:14,z1:0,x2:24,z2:18,name:'Generator',code:'U5',color:'#96b9de'},
- {x1:-24,z1:14,x2:-14,z2:26,name:'Sump vault',code:'U6',color:'#82b8ba'},
- {x1:14,z1:-28,x2:24,z2:-16,name:'Signal room',code:'U7',color:'#7ec2d9'},
+ {x1:-16,z1:-32,x2:16,z2:32,name:'Central line',code:'U1',color:'#aad4d8'},
+ {x1:-28,z1:-6,x2:-20,z2:8,name:'West concourse',code:'U2',color:'#e5d9ab'},
+ {x1:22,z1:-10,x2:30,z2:6,name:'Ticket hall',code:'U3',color:'#b3d3d8'},
+ {x1:-28,z1:-28,x2:-20,z2:-16,name:'Pump chamber',code:'U4',color:'#9dbda9'},
+ {x1:-28,z1:18,x2:-20,z2:30,name:'South utility',code:'U5',color:'#9bb5ca'},
+ {x1:22,z1:18,x2:30,z2:30,name:'Signal south',code:'U6',color:'#b4cbd6'},
+ {x1:22,z1:-30,x2:30,z2:-18,name:'Signal north',code:'U7',color:'#a6c8c9'},
 ];
 const underpassPassages:Rect[]=[
- {x1:-2,z1:-14,x2:2,z2:-6},
- {x1:-2,z1:6,x2:2,z2:12},{x1:2,z1:8,x2:6,z2:12},{x1:2,z1:12,x2:6,z2:16},
- {x1:-18,z1:-24,x2:-6,z2:-20},{x1:-18,z1:-20,x2:-14,z2:-18},
- {x1:-22,z1:-4,x2:-18,z2:14},{x1:-18,z1:0,x2:-10,z2:4},
- {x1:-14,z1:22,x2:-6,z2:26},
- {x1:6,z1:-24,x2:14,z2:-20},
- {x1:18,z1:-16,x2:22,z2:-8},{x1:14,z1:-12,x2:18,z2:-8},{x1:14,z1:-8,x2:18,z2:0},
- {x1:10,z1:0,x2:14,z2:4},
- {x1:18,z1:18,x2:22,z2:24},{x1:6,z1:20,x2:18,z2:24},
+ {x1:-20,z1:-4,x2:-16,z2:4},{x1:16,z1:-4,x2:22,z2:2},
+ {x1:-20,z1:-26,x2:-16,z2:-22},{x1:-26,z1:-16,x2:-22,z2:-6},
+ {x1:-20,z1:22,x2:-16,z2:26},{x1:-26,z1:8,x2:-22,z2:18},
+ {x1:16,z1:22,x2:22,z2:26},{x1:24,z1:6,x2:28,z2:18},
+ {x1:16,z1:-26,x2:22,z2:-22},{x1:24,z1:-18,x2:28,z2:-10},
 ];
-const underpassLayout=buildLayout({width:56,depth:64,height:4.5,rooms:underpassRooms,passages:underpassPassages,frameColor:'#365166',beamColor:'#416274',cover:[
- cover(-5,-1,1.3,1.3,4.5,'pillar','#859aa2'),cover(5,1,1.3,1.3,4.5,'pillar','#859aa2'),
- cover(0,-1.5,3.6,1.4,1.05,'console','#526e7a'),cover(6,-4,2.4,1.8,2,'machine','#6e858c'),
- cover(-2,-19,2.8,2.2,1.7,'terminal','#5e7e89'),cover(3,-22,1.3,1.3,4.5,'pillar','#879ca6'),
- cover(0,23,2.8,3,2.1,'machine','#7f9096'),cover(-3.5,19,2,1,1.05,'console','#597585'),
- cover(-19,-12,3,3.8,2.35,'machine','#7f999b'),
- cover(22.8,9,1.6,7,2.4,'server','#435c70'),cover(18,11,2.5,3.5,2.3,'machine','#6c8998'),
- cover(-19,20,3,3,2.2,'machine','#718d96'),cover(-22.4,24,1.8,1.2,1,'console','#4f6b78'),
- cover(18,-22,2.8,2.2,1.8,'terminal','#526f7c'),cover(22.8,-25,1.2,3.4,2.4,'locker','#6b8a96'),
-]});
+const underpassCover:Box[]=[
+ cover(-24,-22,3.2,3.4,2.3,'pump-unit','#6b8b8b'),
+ cover(-24,24,2.8,3.2,2.1,'pump-unit','#70888e'),
+ cover(27.8,-2,2.4,2,1.65,'ticket-machine','#657f83'),
+ cover(27,24,2.5,3,2.35,'signal-cabinet','#566d7e'),
+ cover(26,-24,2.6,2.8,2.3,'signal-cabinet','#58777f'),
+];
+for(const x of [-5,5])for(const z of [-24,-12,12,24])underpassCover.push(cover(x,z,1.2,1.2,7.4,'metro-column','#b5c5c7'));
+// Rails and curb/guard members are separate exact collision boxes. The dark
+// ballast beds stay at floor level and are not navigable; crossings stay flat.
+for(const x of [-10,10])for(const z of [-16,16]){
+ underpassCover.push(cover(x,z,4,24,.065,'track-bed','#28363a'));
+ for(const side of [-1,1]){
+  underpassCover.push(cover(x+side*2,z,.18,24,.22,'track-curb','#7c8a8a'));
+  underpassCover.push({...cover(x+side*2,z,.13,24,.12,'track-guard','#688089'),y:.9});
+  for(let p=z-11;p<=z+11;p+=4)underpassCover.push(cover(x+side*2,p,.14,.14,1.02,'track-guard','#688089'));
+  underpassCover.push({...cover(x+side*.9,z,.1,24,.12,'rail','#aab7b7'),y:.065});
+ }
+ for(let p=z-11.5;p<z+12;p+=1.2)underpassCover.push({...cover(x,p,3.5,.28,.065,'sleeper','#6a675e'),y:.065});
+}
+for(const z of [-18,-8,8,18]){const x=z<0?-2.2:2.2;
+ underpassCover.push({...cover(x,z,3.2,1,.18,'bench-seat','#777f78'),y:.42});
+ underpassCover.push({...cover(x,z+.45,3.2,.14,.75,'bench-back','#73908f'),y:.6});
+ for(const side of [-1,1])underpassCover.push(cover(x+side*1.2,z,.14,.75,.42,'bench-leg','#405b66'));
+}
+const underpassLayout=buildLayout({width:64,depth:80,height:8.1,rooms:underpassRooms,passages:underpassPassages,cover:underpassCover,frameColor:'#526c78',beamColor:'#6d858c'});
+const vaultLevel=(x:number)=>4.55+3.5*Math.sqrt(Math.max(0,1-(x/16)**2));
+const underpassRoof:Box[]=[roofBox(0,0,64,80,8.1,.35,'ceiling')];
+// One-metre faceted vault segments form a real curved ceiling silhouette.
+for(let x=-15.5;x<16;x+=1){const level=vaultLevel(x);underpassRoof.push(roofBox(x,0,1,64,level,8.1-level,'vault-shell','#8b9a99'));
+ for(const z of [-28,-20,-12,-4,4,12,20,28]){
+  underpassRoof.push(roofBox(x,z,1,.3,level-.28,.28,'vault-rib','#b6c4bb'));
+  if(x<15.5){const next=vaultLevel(x+1),low=Math.min(level,next),high=Math.max(level,next);underpassRoof.push(roofBox(x+.5,z,.13,.3,low-.28,high-low+.28,'vault-rib','#b6c4bb'));}
+ }
+}
+for(const x of [-5,5])underpassRoof.push(roofBox(x,0,.8,64,7.4,.4,'platform-beam','#657c80'));
+for(const room of underpassRooms.slice(1))underpassRoof.push(roofBox((room.x1+room.x2)/2,(room.z1+room.z2)/2,room.x2-room.x1,room.z2-room.z1,3.85,4.25,'utility-ceiling','#738b90'));
+for(const p of underpassPassages)underpassRoof.push(roofBox((p.x1+p.x2)/2,(p.z1+p.z2)/2,p.x2-p.x1,p.z2-p.z1,3.7,4.4,'utility-ceiling','#69858c'));
+// Suspended platform information boards, with real support rods to the vault.
+for(const z of [-16,16]){
+ underpassRoof.push(roofBox(0,z,6,.2,3.7,1,'platform-board','#344f60'));
+ for(const x of [-2.5,2.5])underpassRoof.push(roofBox(x,z,.075,.075,4.7,vaultLevel(x)-4.7,'sign-hanger','#758b91'));
+}
 const underpassMap:ArenaMap={
- id:'underpass',name:'Underpass',tagline:'Hold the crossing. Break the tunnel line.',
- description:'A cool subterranean route through offset platforms, pump chambers and a central crossing, with bent tunnels and two service loops.',
- width:56,depth:64,sky:'#172632',fog:'#334c5c',ground:'#718994',accent:'#82cddd',walls:underpassLayout.walls,
- spawns:[spawn(-7,-3,-Math.PI/2),spawn(7,3,Math.PI/2),spawn(-2,4,0),spawn(2,-4,Math.PI),spawn(-4,-24,Math.PI),spawn(4,-16,0),spawn(-4,26,0),spawn(4,18,Math.PI),spawn(4,26,0),spawn(-22,-16,Math.PI),spawn(-16,-6,0),spawn(-22,-6,-Math.PI/2),spawn(16,2,Math.PI),spawn(22,16,0),spawn(-22,16,Math.PI),spawn(-16,24,0),spawn(16,-26,Math.PI),spawn(22,-18,0)],
- landmarks:[{x:0,z:4,label:'Crossing'},{x:0,z:-24,label:'North platform'},{x:-3,z:22,label:'South platform'},{x:-22,z:-10,label:'Pump station'},{x:16,z:14,label:'Generator'},{x:-16,z:17,label:'Sump vault'},{x:16,z:-20,label:'Signal room'}],decorations:[],
+ id:'underpass',name:'Underpass',tagline:'Own the platform. Cross between the rails.',
+ description:'A vaulted underground station with twin rail channels, a long island platform, tiled crossing halls, platform columns and pump/signal side loops.',
+ width:64,depth:80,sky:'#1e323c',fog:'#48616a',ground:'#818f8e',accent:'#a7d0d6',walls:underpassLayout.walls,
+ spawns:[spawn(-3,-27,Math.PI),spawn(3,-18,Math.PI),spawn(0,-10,Math.PI),spawn(0,10,0),spawn(-3,18,0),spawn(3,27,0),spawn(-14,-14,Math.PI),spawn(14,14,0),spawn(-26,-3,-Math.PI/2),spawn(-22,5,Math.PI/2),spawn(-26,-25,Math.PI),spawn(-22,-18,0),spawn(-26,21,Math.PI),spawn(-22,28,0),spawn(24,-7,Math.PI),spawn(28,3,0),spawn(24,20,Math.PI),spawn(28,-28,Math.PI)],
+ landmarks:[{x:0,z:0,label:'Central crossing'},{x:0,z:-25,label:'Platform north'},{x:0,z:25,label:'Platform south'},{x:-26,z:3,label:'West concourse'},{x:24,z:3,label:'Ticket hall'},{x:-26,z:-18,label:'Pump chamber'},{x:-22,z:20,label:'South utility'},{x:24,z:28,label:'Signal south'},{x:28,z:-20,label:'Signal north'}],decorations:[],
 };
-
 const citadelLayout=buildLayout({width:CITADEL_WIDTH,depth:CITADEL_DEPTH,height:CITADEL_HEIGHT,rooms:citadelRooms,passages:citadelPassages,cover:[
 cover(-23,-18,2.6,2.6,2.25,'cargo','#ad7854'),
 cover(-1,-20,2,2.4,2.25,'terminal','#476d72'),
@@ -220,8 +272,12 @@ export const maps:ArenaMap[]=[{
 },depotMap,underpassMap];
 // Old saved arenas and unknown identifiers retain the original Citadel fallback.
 export function getMap(id?:string){return maps.find(map=>map.id===id)??maps[0];}
-export function getMapLayout(map:ArenaMap|string):MapLayout{const id=typeof map==='string'?map:map.id;return layouts[id as keyof typeof layouts]??citadelLayout;}
-export function overheadBoxes(map:ArenaMap):Box[]{const layout=getMapLayout(map);return [
+export function getMapLayout(map:ArenaMap|string):MapLayout{const id=typeof map==='string'?map:map.id;return Object.hasOwn(layouts,id)?layouts[id as keyof typeof layouts]:citadelLayout;}
+export function overheadBoxes(map:ArenaMap):Box[]{const layout=getMapLayout(map);
+ const portals=layout.doors.map(p=>({x:p.x,z:p.z,w:p.axis==='x'?p.width+.24:.28,d:p.axis==='x'?.28:p.width+.24,y:p.clearance??3.2,h:layout.height-(p.clearance??3.2),material:'overhead',color:layout.frameColor}));
+ if(map.id==='depot')return [...depotRoof,...portals];
+ if(map.id==='underpass')return [...underpassRoof,...portals];
+ return [
  {x:0,z:0,w:layout.width,d:layout.depth,y:layout.height,h:.3,material:'ceiling'},
  ...layout.doors.map(p=>({x:p.x,z:p.z,w:p.axis==='x'?p.width+.24:.28,d:p.axis==='x'?.28:p.width+.24,y:3.2,h:layout.height-3.2,material:'overhead',color:layout.frameColor})),
  ...layout.rooms.flatMap(r=>[-1,1].map(side=>({x:(r.x1+r.x2)/2,z:(r.z1+r.z2)/2+side*Math.min(3,(r.z2-r.z1)/2-1),w:r.x2-r.x1,d:.28,y:layout.height-.6,h:.3,material:'overhead',color:layout.beamColor}))),

@@ -1,4 +1,5 @@
 import {collisionBoxes,getMap,type ArenaMap,type Box} from './maps.ts';
+import {matchOutcome} from '../match-summary.ts';
 import {duelPayout,type MatchConfig,type Result} from '../game-rules.ts';
 
 export type Vec={x:number;y:number;z:number};
@@ -69,6 +70,7 @@ export class Simulation{
   for(let id=0;id<count;id++){const spawn=starts[id];this.actors.push({id,name:id===0?'You':names[id-1],team:config.mode==='duel'?(id===0||id===3?0:1):id,x:spawn.x,z:spawn.z,y:0,vy:0,yaw:spawn.yaw,hp:100,kills:0,deaths:0,respawn:0,shield:2,cooldown:1+this.rng(),crouch:false,moving:0,path:[],repath:0,target:-1,reaction:.5,lastDamage:-99});}
   this.yaw=this.player.yaw;this.pickups=this.map.landmarks.map((p,i)=>({x:p.x,z:p.z,kind:i%2?'ammo':'health',ready:0}));
  }
+ lastDeathLoss=0;
  killConfirm:{id:number;victim:string;head:boolean;age:number}|null=null;
  stepSound=0;slideQueued=false;slideLeft=0;slideCooldown=0;slideSpeed=0;slideX=0;slideZ=0;crouchHeld=false;slideHeld=false;playerEyeHeight=1.62;
  get sliding(){return this.slideLeft>0;}
@@ -76,12 +78,12 @@ export class Simulation{
  get gun(){return weapons[this.weapon];}
  get allowedWeapons(){return weaponIds.filter(id=>this.config.weaponRule==='sniper'?id==='marksman':this.config.weaponRule==='rifle'?['rifle','carbine'].includes(id):true);}
  get cashOutWait(){return Math.max(0,8-(this.elapsed-this.combatAt));}
- cashOut(){if(this.config.mode==='ffa'&&this.player.hp>0&&this.cashOutWait===0)this.finish('Arena cash-out');}
+ cashOut(){if(this.started&&!this.ended&&this.config.mode==='ffa'&&this.player.hp>0&&this.cashOutWait===0)this.finish('Arena cash-out');}
  completeRound(){if(this.roundScore===this.roundEnemyScore){this.finish();return;}if(this.roundScore>this.roundEnemyScore)this.score++;else this.enemyScore++;if(this.score>=2||this.enemyScore>=2){this.finish();return;}this.roundScore=0;this.roundEnemyScore=0;this.time=180;for(const actor of this.actors)this.respawn(actor);}
  eye(a:Actor):Vec{return {x:a.x,y:a.y+(a.id===0?this.playerEyeHeight:a.crouch?1.05:1.62),z:a.z};}
  look(dx:number,dy:number){this.yaw-=dx;this.pitch=clamp(this.pitch-dy,-1.35,1.35);}
  start(){this.started=true;}
- finish(reason?:string){if(this.ended)return;this.ended=true;const won=this.config.mode==='duel'?this.score>this.enemyScore:this.player.kills>this.player.deaths;const draw=this.score===this.enemyScore;const cancel=reason==='Match cancelled';const forfeit=reason==='Duel forfeited';if(this.config.mode==='duel')this.balance+=cancel?(this.config.stake??10):forfeit?0:(won?2*(this.config.stake??10):draw?(this.config.stake??10):0);this.result={kills:this.player.kills,deaths:this.player.deaths,balance:this.balance,reason:reason??(this.config.mode==='duel'?(won?'Duel won':draw?'Draw — stake returned':'Duel lost'):'Round complete'),won:!cancel&&!forfeit&&reason!=='Left the arena'&&won,score:this.score,enemyScore:this.enemyScore,headshots:this.headshots,maxStreak:this.maxStreak};}
+ finish(reason?:string){if(this.ended)return;this.ended=true;const won=this.config.mode==='duel'?this.score>this.enemyScore:this.player.kills>this.player.deaths;const draw=this.score===this.enemyScore;const cancel=reason==='Match cancelled';const forfeit=reason==='Duel forfeited';if(this.config.mode==='duel')this.balance+=cancel?(this.config.stake??10):forfeit?0:(won?2*(this.config.stake??10):draw?(this.config.stake??10):0);this.result={kills:this.player.kills,deaths:this.player.deaths,balance:this.balance,reason:reason??(this.config.mode==='duel'?(won?'Duel won':draw?'Draw — stake returned':'Duel lost'):'Round complete'),won:!cancel&&!forfeit&&reason!=='Left the arena'&&won,score:this.score,enemyScore:this.enemyScore,headshots:this.headshots,maxStreak:this.maxStreak,elapsed:this.elapsed,mode:this.config.mode,mapId:this.map.id,rate:this.config.rate,entry:this.config.entry,lastDeathLoss:this.lastDeathLoss};Object.assign(this.result,matchOutcome(this.config,this.result,cancel?'cancel':forfeit||reason==='Left the arena'?'leave':reason==='Arena cash-out'?'cashout':'complete'));}
  leave(){this.finish(!this.started?'Match cancelled':this.config.mode==='duel'?'Duel forfeited':'Left the arena');}
  switchWeapon(id:WeaponId){if(this.weapon===id||!this.allowedWeapons.includes(id))return;this.weapon=id;this.reloadLeft=0;this.switchLeft=.25;this.fireHeld=true;this.bloom=0;}
  reload(){if(this.reloadLeft||this.ammo[this.weapon]>=this.gun.mag||this.reserve[this.weapon]<=0||this.player.hp<=0)return;this.reloadLeft=this.gun.reload;this.events.push({kind:'reload'});}
@@ -89,7 +91,7 @@ export class Simulation{
   const enemies=this.actors.filter(b=>b.id!==a.id&&b.team!==a.team&&b.hp>0);
   const ranked=this.map.spawns.map(s=>{const distance=Math.min(80,...enemies.map(e=>Math.hypot(e.x-s.x,e.z-s.z))),exposure=enemies.some(e=>Math.hypot(e.x-s.x,e.z-s.z)<28&&visible(this.boxes,{x:s.x,y:1.6,z:s.z},this.eye(e)))?9:0;return {s,value:Math.min(25,distance)-Math.max(0,distance-32)*.7-exposure-this.actors.filter(b=>b.id!==a.id&&b.hp>0&&Math.hypot(b.x-s.x,b.z-s.z)<2).length*20+this.rng()*2};}).sort((a,b)=>b.value-a.value);
   const s=ranked[0].s;Object.assign(a,{x:s.x,z:s.z,y:0,vy:0,yaw:s.yaw,hp:100,shield:1.8,respawn:0,path:[],repath:0,cooldown:.8,reaction:.6});
-  if(a.id===0){this.yaw=s.yaw;this.pitch=0;this.vx=this.vz=0;this.slideLeft=this.slideCooldown=this.slideSpeed=0;this.slideQueued=false;this.sprinting=false;this.playerEyeHeight=1.62;a.crouch=false;a.moving=0;this.reloadLeft=0;this.ammo=ammoFor();this.reserve=reserveFor();this.stamina=100;this.events.push({kind:'spawn'});}
+  if(a.id===0){this.lastDeathLoss=0;this.yaw=s.yaw;this.pitch=0;this.vx=this.vz=0;this.slideLeft=this.slideCooldown=this.slideSpeed=0;this.slideQueued=false;this.sprinting=false;this.playerEyeHeight=1.62;a.crouch=false;a.moving=0;this.reloadLeft=0;this.ammo=ammoFor();this.reserve=reserveFor();this.stamina=100;this.events.push({kind:'spawn'});}
  }
  damage(victim:Actor,attacker:Actor,amount:number,head=false){
   if(this.ended||victim.hp<=0||victim.shield>0||victim.team===attacker.team||(this.config.weaponRule==='headshots'&&!head))return;if(victim.id===0||attacker.id===0)this.combatAt=this.elapsed;
@@ -100,7 +102,7 @@ export class Simulation{
   victim.deaths++;attacker.kills++;victim.respawn=2.4;victim.path=[];
   this.feed.unshift({id:++this.feedId,killer:attacker.name,victim:victim.name,head,you:attacker.id===0||victim.id===0,age:0});this.feed=this.feed.slice(0,5);
   if(attacker.id===0){this.combo++;this.maxStreak=Math.max(this.maxStreak,this.combo);if(head)this.headshots++;this.killConfirm={id:this.feedId,victim:victim.name,head,age:0};this.events.push({kind:'kill',head});if(this.config.mode==='ffa')this.balance+=this.config.rate;}
-  if(victim.id===0){this.combo=0;this.slideQueued=false;this.slideLeft=this.slideSpeed=0;this.sprinting=false;if(this.config.mode==='ffa')this.balance=Math.max(0,this.balance-this.config.rate);}
+  if(victim.id===0){this.combo=0;this.slideQueued=false;this.slideLeft=this.slideSpeed=0;this.sprinting=false;if(this.config.mode==='ffa'){this.lastDeathLoss=Math.min(this.balance,this.config.rate);this.balance=Math.max(0,this.balance-this.config.rate);}}
   if(this.config.mode==='duel'){const target=this.config.target??5;if(this.config.bestOf===3){if(attacker.team===0)this.roundScore++;else this.roundEnemyScore++;if(this.roundScore>=target||this.roundEnemyScore>=target)this.completeRound();}else{if(attacker.team===0)this.score++;else this.enemyScore++;if(this.score>=target||this.enemyScore>=target){this.finish();return;}}}
   if(this.config.mode==='ffa'&&this.balance<this.config.rate)this.finish('Round complete');
  }
@@ -141,7 +143,7 @@ export class Simulation{
    if(slidePressed)this.slideQueued=true;
    if(this.slideQueued&&p.y===0){
     const f=input.forward,r=input.right,length=Math.hypot(f,r);
-    this.slideLeft=.8;this.slideCooldown=0;this.slideSpeed=Math.min(10.5,Math.max(8,momentum+2));
+    this.slideLeft=.8;this.slideCooldown=0;this.slideSpeed=Math.min(14,Math.max(11,momentum+3.5));
     this.slideX=length?(-Math.sin(this.yaw)*f+Math.cos(this.yaw)*r)/length:momentum>.5?this.vx/momentum:-Math.sin(this.yaw);
     this.slideZ=length?(-Math.cos(this.yaw)*f-Math.sin(this.yaw)*r)/length:momentum>.5?this.vz/momentum:-Math.cos(this.yaw);
     this.slideQueued=false;

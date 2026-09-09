@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {maps,getMap,getMapLayout,citadelFloor,citadelDoors,citadelEdges,citadelRooms,citadelWalkable,collisionBoxes} from '../lib/fps/maps.ts';
-import {ArenaWorld} from '../lib/fps/world.ts';
+import {maps,getMap,getMapLayout,citadelFloor,citadelDoors,citadelEdges,citadelRooms,citadelWalkable,collisionBoxes,overheadBoxes} from '../lib/fps/maps.ts';
+import {ArenaWorld,worldThemes} from '../lib/fps/world.ts';
 import {Simulation,Navigation,clearAt} from '../lib/fps/simulation.ts';
 
 test('three authored maps select distinct footprints; legacy names retain Citadel',()=>{
@@ -35,6 +35,30 @@ for(const map of maps){const layout=getMapLayout(map);
  test(map.name+': the renderer uses only selected-room labels with correct portal destinations',()=>{
   const signs=[],world=Object.create(ArenaWorld.prototype);world.map=map;world.sign=(...args)=>signs.push(args);world.buildWayfinding();
   assert.equal(signs.length,layout.rooms.length*2+layout.doors.length*2);
-  for(const door of layout.doors){const ax=door.axis==='x',labels=signs.filter(s=>s[2]===3.83&&Math.abs(s[1]-door.x)<.2&&Math.abs(s[3]-door.z)<.2);assert.equal(labels.length,2);for(const [text,x,,z,,rotation]of labels){const normal=ax?Math.cos(rotation.y):Math.sin(rotation.y),side=Math.sign(ax?z-door.z:x-door.x);assert.equal(Math.round(normal),side);assert.equal(text,side===door.roomNormal?'TO '+door.label:door.room.code+'  /  '+door.room.name.toUpperCase());}}
+  for(const door of layout.doors){const ax=door.axis==='x',labels=signs.filter(s=>Math.abs(s[2]-((door.clearance??3.2)+.63))<.001&&Math.abs(s[1]-door.x)<.2&&Math.abs(s[3]-door.z)<.2);assert.equal(labels.length,2);for(const [text,x,,z,,rotation]of labels){const normal=ax?Math.cos(rotation.y):Math.sin(rotation.y),side=Math.sign(ax?z-door.z:x-door.x);assert.equal(Math.round(normal),side);assert.equal(text,side===door.roomNormal?'TO '+door.label:door.room.code+'  /  '+door.room.name.toUpperCase());}}
+ });
+ test(map.name+': every physical obstacle and roof member is rendered at its exact collision dimensions',()=>{
+  const rendered=[],world=Object.create(ArenaWorld.prototype);Object.assign(world,{map,theme:worldThemes[map.id]});
+  world.box=(x,y,z,w,h,d)=>rendered.push({x,y,z,w,h,d});world.cylinder=()=>{};world.sign=()=>{};
+  world.buildCover();world.buildInfrastructure();
+  for(const b of collisionBoxes(map))assert.ok(rendered.some(r=>Math.abs(r.x-b.x)<.000001&&Math.abs(r.z-b.z)<.000001&&Math.abs(r.y-((b.y??0)+b.h/2))<.000001&&r.w===b.w&&r.d===b.d&&r.h===b.h),JSON.stringify(b));
  });
 }
+
+test('Depot is a dominant container warehouse with a mechanical landmark and supported loading shutters',()=>{
+ const map=getMap('depot'),layout=getMapLayout(map),warehouse=layout.rooms.find(r=>r.code==='D1');
+ assert.ok((warehouse.x2-warehouse.x1)*(warehouse.z2-warehouse.z1)>1800);assert.ok(layout.height>8);
+ for(const material of ['container-stack','container','pallet-stack','freight-press','press-upright','loading-shutter','steel-column'])assert.ok(map.walls.some(b=>b.material===material),material);
+ assert.ok(overheadBoxes(map).filter(b=>b.material==='truss-member').length>=30);
+ assert.ok(overheadBoxes(map).some(b=>b.material==='press-head'));
+ for(const b of map.walls.filter(b=>b.material==='loading-shutter'))for(let z=b.z-b.d/2+.1;z<b.z+b.d/2;z+=.2){assert.equal(layout.walkable(36.05,z),false);assert.equal(layout.walkable(35.75,z),true);}
+});
+
+test('Underpass is a vaulted station with twin protected rail beds and connected level crossings',()=>{
+ const map=getMap('underpass'),layout=getMapLayout(map),station=layout.rooms.find(r=>r.code==='U1'),boxes=collisionBoxes(map);
+ assert.equal(station.z2-station.z1,64);assert.equal(station.x2-station.x1,32);
+ assert.deepEqual([...new Set(map.walls.filter(b=>b.material==='track-bed').map(b=>b.x))],[-10,10]);
+ for(const material of ['track-bed','rail','sleeper','track-guard','metro-column','bench-seat'])assert.ok(map.walls.some(b=>b.material===material),material);
+ const vault=overheadBoxes(map).filter(b=>b.material==='vault-shell'),ribs=overheadBoxes(map).filter(b=>b.material==='vault-rib');assert.ok(vault.length>=16&&ribs.length>100);assert.ok(Math.max(...vault.map(b=>b.y))-Math.min(...vault.map(b=>b.y))>2);
+ for(const x of [-10,10]){for(const z of [-16,16])assert.equal(clearAt(boxes,x,z,.4),false);for(const z of [-30,0,30])assert.equal(clearAt(boxes,x,z,.55),true);}
+});

@@ -8,9 +8,10 @@ import type {LoadoutRenderer} from '@/lib/fps/loadout-renderer';
 import type {MatchConfig} from '@/lib/game-rules';
 import type {ArenaMap} from '@/lib/fps/maps';
 import './arena-menu.css';
+import MatchExit from './match-exit';
 
 type Preferences={sensitivity:number;fov:number;quality:string;muted:boolean};
-type Props={game:Simulation|undefined;config:MatchConfig;map:ArenaMap;ready:boolean;error:string;settings:boolean;prefs:Preferences;confirmLeave:boolean;setSettings:(value:boolean)=>void;preference:(value:Partial<Preferences>)=>void;select:(id:WeaponId)=>void;resume:()=>void;leave:()=>void;setConfirmLeave:(value:boolean)=>void};
+type Props={game:Simulation|undefined;config:MatchConfig;map:ArenaMap;ready:boolean;error:string;settings:boolean;prefs:Preferences;confirmLeave:boolean;setSettings:(value:boolean)=>void;preference:(value:Partial<Preferences>)=>void;select:(id:WeaponId)=>void;resume:()=>void;leave:()=>void;cashOut:()=>void;setConfirmLeave:(value:boolean)=>void};
 
 function WeaponPreview({id,skin}:{id:WeaponId;skin?:string}){
   const canvas=useRef<HTMLCanvasElement>(null),view=useRef<LoadoutRenderer|null>(null),selection=useRef({id,skin});
@@ -31,7 +32,7 @@ function WeaponPreview({id,skin}:{id:WeaponId;skin?:string}){
   return <div className="loadout-model"><canvas ref={canvas} aria-label={`${weapons[id].name} weapon preview`} role="img"/>{failed&&<p className="loadout-preview-error">Weapon preview unavailable. You can still choose your loadout.</p>}</div>;
 }
 
-export default function ArenaMenu({game,config,map,ready,error,settings,prefs,confirmLeave,setSettings,preference,select,resume,leave,setConfirmLeave}:Props){
+export default function ArenaMenu({game,config,map,ready,error,settings,prefs,confirmLeave,setSettings,preference,select,resume,leave,cashOut,setConfirmLeave}:Props){
   const selected=game?.weapon??(config.weaponRule==='sniper'?'marksman':'rifle');
   const gun=weapons[selected],mode=config.mode==='duel'?`${config.team} Duel`:config.mode==='ffa'?'Cash FFA':'Practice';
   const round=config.mode==='duel'?(config.bestOf===3?`Best of 3 · First to ${config.target??5}`:`First to ${config.target??5}`):'3 minutes';
@@ -56,9 +57,9 @@ export default function ArenaMenu({game,config,map,ready,error,settings,prefs,co
           </div>:<><div className="loadout-grid">{game?.allowedWeapons.map((id,i)=><button type="button" key={id} disabled={!ready} aria-pressed={selected===id} aria-label={`Select ${weapons[id].name}`} className={'loadout-card '+(selected===id?'selected':'')} onClick={()=>select(id)}><span className="loadout-card-number">{String(i+1).padStart(2,'0')}</span><span><b>{weapons[id].name}</b><small>{weapons[id].type}</small></span>{selected===id&&<Check size={16} aria-hidden="true"/>}</button>)}</div>{!ready&&<p role="status" className="loadout-rule">Preparing your loadout…</p>}<p className="loadout-rule">{config.weaponRule==='headshots'?'Headshots only. Body shots deal no damage.':game&&game.allowedWeapons.length<6?'This match uses a restricted weapon pool.':'Switch weapons at any time during the match.'}</p></>}
         </section>
       </div>
-      <details className="deployment-controls"><summary><Keyboard size={17}/><span>Controls & tips</span><span className="deployment-key-hint">WASD to move · Mouse to aim</span><ChevronDown size={15}/></summary><div className="deployment-controls-body"><div className="deployment-key-grid">{[['Move','W A S D'],['Look / aim','Mouse / Arrow keys'],['Fire / aim down sights','LMB / RMB'],['Sprint / crouch','Shift / Ctrl'],['Slide','C'],['Jump / reload','Space / R'],['Switch weapons',helpKeys===1?'1':`1 – ${helpKeys}`],['Scoreboard / pause','Tab / P']].map(([label,keys])=><div key={label}><span>{label}</span><kbd>{keys}</kbd></div>)}</div><p>Press C to slide in your movement direction. No sprint or stamina required. Press C in the air to slide on landing. Press Space to jump out of a slide. Health regenerates after 7 seconds without damage. Pick up health and ammo at marked stations. Touch controls appear on touch devices. Press F for keyboard firing.</p></div></details>
+      <details className="deployment-controls"><summary><Keyboard size={17}/><span>Controls & tips</span><span className="deployment-key-hint">WASD to move · Mouse to aim</span><ChevronDown size={15}/></summary><div className="deployment-controls-body"><div className="deployment-key-grid">{[['Move','W A S D'],['Look / aim','Mouse / Arrow keys'],['Fire / aim down sights','LMB / RMB'],['Sprint / crouch','Shift / Ctrl'],['Slide','C'],['Jump / reload','Space / R'],['Switch weapons',helpKeys===1?'1':`1 – ${helpKeys}`],['Scoreboard / pause','Tab / P'],['Exit / FFA cash-out','Esc']].map(([label,keys])=><div key={label}><span>{label}</span><kbd>{keys}</kbd></div>)}</div><p>Press C to slide in your movement direction. No sprint or stamina required. Press C in the air to slide on landing. Press Space to jump out of a slide. Health regenerates after 7 seconds without damage. Pick up health and ammo at marked stations. Touch controls appear on touch devices. Press F for keyboard firing.</p></div></details>
       <footer className="deployment-actions"><button className="deployment-back" onClick={()=>{if(game?.started)setConfirmLeave(true);else leave();}}><ArrowLeft size={16}/>{game?.started?'Leave match':'Back to Play'}</button><div><button className="secondary" onClick={()=>setSettings(!settings)}>{settings?<Crosshair size={17}/>:<Settings2 size={17}/>} {settings?'Loadout':'Settings'}</button><button className="primary deployment-start" disabled={!ready} onClick={resume}>{ready?(game?.started?'RESUME MATCH':'ENTER MATCH'):'LOADING ARENA…'}<ArrowRight size={19}/></button></div></footer>
-      {confirmLeave&&<div className="deployment-leave" role="alert"><p>{config.mode==='duel'?'Leaving this duel forfeits your €'+(config.stake??10)+' demo stake.':config.entry?'Leaving forfeits the remaining session credits. Resume and use Cash Out to keep them.':'Leave this practice match?'}</p><div><button className="secondary" onClick={()=>setConfirmLeave(false)}>Stay in match</button><button className="secondary" onClick={leave}>Leave match</button></div></div>}
+      {game&&<MatchExit open={confirmLeave} onOpenChange={setConfirmLeave} game={game} config={config} resume={resume} leave={leave} cashOut={cashOut}/>}
     </>}
   </section></div>;
 }
