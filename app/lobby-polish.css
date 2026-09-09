@@ -7,3 +7,46 @@
 @media(max-width:650px){.site-shell .lobby-layout{display:grid;grid-template-columns:1fr;gap:18px}.site-shell .play-main .feature{grid-column:1;grid-row:2;min-height:295px}.site-shell .play-main .match-panel{grid-column:1;grid-row:3}.site-shell .play-main .feature-copy{padding:80px 23px 89px}.site-shell .play-main .feature-copy h2{font-size:59px}.site-shell .feature-copy p{display:none}.site-shell .feature-copy h2 em{font-size:18px;margin-top:8px}.site-shell .feature-bottom{bottom:19px}.site-shell .map-stamp small{max-width:none}.site-shell .play-main .mode-card{min-height:131px;padding:12px 10px}.site-shell .mode-content{display:block;padding-top:18px}.site-shell .mode-content h3{font-size:23px;white-space:nowrap}.site-shell .mode-content .mode-icon,.site-shell .mode-content p{display:none}.site-shell .mode-index{font-size:8px;letter-spacing:0}.site-shell .mode-check{display:none}.site-shell .card-bottom strong{font-size:8px}.site-shell .modes-section .section-heading>span{display:none}.site-shell .section-heading h2{font-size:12px}.site-shell .mode-grid{gap:8px}.site-shell .quick-duels{padding:0 17px 17px}.site-shell .quick-duels article{padding:17px;gap:10px;flex-wrap:wrap}.site-shell .open-duels>.section-heading{padding:20px 18px;gap:12px}.site-shell .open-duels>.section-heading .secondary{padding:9px 11px;font-size:11px}.site-shell .lobby-toolbar{padding:13px 17px}.site-shell .quick-duels button{font-size:12px!important}.site-shell .tier-grid{display:grid;grid-template-columns:1fr 1fr}.site-shell .tier-icon{display:none}.site-shell .tier-name small{font-size:9px}.site-shell .radio-dot{display:none}.site-shell .demo-version{display:none}}
 .site-shell .mode-content{margin-top:0}.site-shell .mode-content .mode-icon{position:static;inset:auto}.site-shell .mode-card .card-bottom{margin:0;min-height:0}.site-shell .mode-card.selected .mode-check{background:#ffa97116;border:1px solid #eaa46c44;color:#ffc398;border-radius:4px;padding:4px 6px}.site-shell .practice-detail{flex-direction:row}.site-shell .feature-copy h2,.site-shell .match-title h2,.site-shell .mode-content h3,.site-shell .page-heading h1,.site-shell .open-duels h2,.site-shell .quick-duels h3{font-family:var(--font-display),'Arial Narrow',sans-serif}.site-shell .mode-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.site-shell .mode-content p{min-height:0}.site-shell .mode-card{display:flex;flex-direction:column}.site-shell .practice-detail>svg{flex-shrink:0}
 @media(max-width:650px){.site-shell .play-main .match-panel{grid-row:2}.site-shell .play-main .feature{grid-row:3}}
+
+/* A compact match browser, with playable bot duels and player lobbies distinct. */
+.site-shell .duel-browser{background:#10171f;border-color:#2b3541;border-radius:12px;box-shadow:0 12px 30px #0002}
+.site-shell .duel-browser>.section-heading{padding:24px 26px 19px;border:0;align-items:center}
+.site-shell .duel-browser h2{margin:0;font-size:29px;letter-spacing:.5px;color:#edf1f5;gap:12px}
+.site-shell .duel-browser h2 svg{color:#ff945f}
+.site-shell .duel-browser>.section-heading p{font-size:14px;color:#96a4b4;margin:6px 0 0}
+.site-shell .duel-browser .secondary{background:#1c2530;border-color:#39434f;color:#e0e5eb;font-size:14px}
+.site-shell .duel-browser .lobby-toolbar{padding:0 26px 18px;gap:15px}
+.site-shell .duel-browser .lobby-toolbar [role=group]{background:transparent;border:0;border-radius:0;padding:0;gap:8px}
+.site-shell .duel-browser .lobby-toolbar [role=group] button{font-size:14px;padding:8px 15px;color:#9ba8b8;border:1px solid transparent;border-radius:6px}
+.site-shell .duel-browser .lobby-toolbar button.active{background:#ff915414;color:#ffae83;border-color:#ff91543a}
+.site-shell .duel-browser .lobby-toolbar .text-button{font-size:13px;color:#a3aebc;display:flex;gap:7px;align-items:center}
+.site-shell .duel-list-caption{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 26px;background:#0c1219;border-block:1px solid #26303b;font-size:11px;letter-spacing:1px;color:#b0bac6;font-weight:600}
+.site-shell .duel-list-caption span:last-child{color:#778795;font-size:10px;letter-spacing:.6px}
+.site-shell .duel-browser .quick-duels{display:flex;flex-direction:column;padding:0;gap:0;margin:0}
+.site-shell .duel-browser .quick-duels article{display:grid;grid-template-columns:54px minmax(0,1fr) 90px 118px;gap:20px;align-items:center;margin:0;border:0;border-bottom:1px solid #26303b;border-radius:0;padding:20px 26px;background:linear-gradient(90deg,#1c242e55,transparent);transition:background .18s}
+.site-shell .duel-browser .quick-duels article:last-child{border-bottom:0}
+.site-shell .duel-browser .quick-duels article:hover{background:#1c2530}
+.site-shell .quick-duel-format{width:54px;height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;border:1px solid #48505b;border-radius:7px;background:#242c36;color:#cbd3df}
+.site-shell .quick-duel-format span{font-size:12px;font-weight:700;color:#ffaf85}
+.site-shell .duel-browser .quick-duels h3{display:flex;align-items:center;gap:10px;margin:0 0 6px;font-size:25px;line-height:1.1;letter-spacing:.2px;color:#eef1f5}
+.site-shell .duel-bot-tag{font:600 10px var(--font-geist-sans),sans-serif;letter-spacing:.7px;padding:4px 6px;background:#7bbdae10;border:1px solid #7bbdae29;border-radius:4px;color:#a0c6bc}
+.site-shell .duel-browser .quick-duels p{display:flex;align-items:center;flex-wrap:wrap;gap:7px;font-size:13px;line-height:1.5;color:#94a1b2;margin:0}
+.site-shell .quick-duel-details{min-width:0}
+.site-shell .quick-duel-stake{text-align:right}
+.site-shell .quick-duel-stake b{display:block;color:#e8edf3;font-size:22px;font-variant-numeric:tabular-nums;font-weight:600}
+.site-shell .quick-duel-stake>span{display:block;font-size:10px;letter-spacing:.7px;color:#8593a4;margin-top:5px}
+.site-shell .duel-browser .quick-duels .primary{font-size:14px;min-height:42px;justify-content:center;gap:9px;padding:10px 13px}
+.site-shell .duel-browser .lobby-empty{display:flex;align-items:center;text-align:left;gap:17px;padding:22px 26px;border:0;color:#9caaba;margin:0}
+.site-shell .duel-browser .lobby-empty>svg{flex-shrink:0;margin:0;width:24px;height:24px;color:#778795}
+.site-shell .duel-browser .lobby-empty>div{flex:1}
+.site-shell .duel-browser .lobby-empty h3{font:600 14px var(--font-geist-sans),sans-serif;color:#cbd3df;letter-spacing:0;margin:0 0 5px}
+.site-shell .duel-browser .lobby-empty p{font-size:13px;color:#8796a8;line-height:1.6;margin:0}
+.site-shell .duel-browser .lobby-footnote{font-size:12px;letter-spacing:0;background:#0d141c;border-top:1px solid #26303b;color:#7e8fa2;padding:13px 26px}
+.site-shell .duel-browser .room-main{background:#141d27;gap:18px}
+.site-shell .duel-browser button:focus-visible,.site-shell .duel-browser a:focus-visible{outline:2px solid #ffab7d;outline-offset:3px}
+@media(max-width:650px){
+ .site-shell .duel-browser>.section-heading{padding:20px 16px 16px;gap:12px}.site-shell .duel-browser h2{font-size:25px;gap:8px}.site-shell .duel-browser>.section-heading p{font-size:12px;max-width:180px}.site-shell .duel-browser>.section-heading .secondary{font-size:12px;padding:10px;white-space:nowrap}.site-shell .duel-browser>.section-heading .secondary svg{display:none}
+ .site-shell .duel-browser .lobby-toolbar{padding:0 16px 16px}.site-shell .duel-browser .lobby-toolbar [role=group] button{font-size:13px;padding:7px 11px}.site-shell .duel-list-caption{padding:11px 16px;font-size:10px}.site-shell .duel-list-caption span:last-child{font-size:9px;letter-spacing:0}
+ .site-shell .duel-browser .quick-duels article{grid-template-columns:44px minmax(0,1fr) 64px;gap:12px;padding:17px 16px}.site-shell .quick-duel-format{width:44px;height:54px}.site-shell .duel-browser .quick-duels h3{font-size:23px;gap:7px}.site-shell .duel-browser .quick-duels p{font-size:12px;gap:4px}.site-shell .quick-duel-stake b{font-size:21px}.site-shell .quick-duel-stake>span{font-size:9px;letter-spacing:0}.site-shell .duel-browser .quick-duels .primary{grid-column:2/4;width:100%;font-size:14px!important;min-height:40px}
+ .site-shell .duel-browser .lobby-empty{padding:18px 16px;gap:12px;flex-wrap:wrap}.site-shell .duel-browser .lobby-empty>div{min-width:200px}.site-shell .duel-browser .lobby-empty>a{margin-left:36px}.site-shell .duel-browser .lobby-footnote{padding:12px 16px;font-size:11px}
+}
