@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-import {type ArenaMap,type Box,citadelRooms,citadelPassages,citadelDoors,citadelEdges,CITADEL_HEIGHT,overheadBoxes} from './maps.ts';
+import {type ArenaMap,type Box,citadelRooms,citadelPassages,citadelDoors,citadelEdges,citadelRoomSigns,overheadBoxes} from './maps.ts';
 
 type Surface='ground'|'concrete'|'metal'|'paint'|'glass'|'light';
 type Batch={material:THREE.Material;geometries:THREE.BufferGeometry[];shadow:boolean};
@@ -40,7 +40,7 @@ export class ArenaWorld{
  sign(text:string,x:number,y:number,z:number,width:number,rotation=new THREE.Euler(),color='#e9e5d4',background='#253c42'){
   const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=256;const ctx=canvas.getContext('2d')!;ctx.fillStyle=background;ctx.fillRect(0,0,1024,256);ctx.fillStyle=color;ctx.fillRect(0,0,10,256);ctx.font='700 78px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(text,512,132,940);
   const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.anisotropy=4;this.textures.push(texture);
-  const material=new THREE.MeshStandardMaterial({map:texture,roughness:.75,metalness:.02,side:THREE.DoubleSide});this.add(new THREE.PlaneGeometry(width,width/4),material,x,y,z,false,rotation);
+  const material=new THREE.MeshStandardMaterial({map:texture,roughness:.75,metalness:.02,side:THREE.FrontSide});this.add(new THREE.PlaneGeometry(width,width/4),material,x,y,z,false,rotation);
  }
  buildGround(){
   this.box(0,-.16,0,this.map.width,.32,this.map.depth,'#788682','ground');
@@ -55,7 +55,7 @@ export class ArenaWorld{
    if(w>d){this.box(x,.019,z-.95,w-.4,.006,.045,'#abbbac','paint',false);this.box(x,.019,z+.95,w-.4,.006,.045,'#abbbac','paint',false);}
    else{this.box(x-.95,.019,z,.045,.006,d-.4,'#abbbac','paint',false);this.box(x+.95,.019,z,.045,.006,d-.4,'#abbbac','paint',false);}
   }
-  for(const d of citadelDoors){const alongX=d.axis==='x';this.box(d.x,.025,d.z,alongX?3.75:.34,.016,alongX?.34:3.75,'#374f54','metal',false);
+  for(const d of citadelDoors){const alongX=d.axis==='x';this.box(d.x,.025,d.z,alongX?d.width-.2:.34,.016,alongX?.34:d.width-.2,'#374f54','metal',false);
    for(let i=-3;i<=3;i++)this.box(d.x+(alongX?i*.48:0),.036,d.z+(alongX?0:i*.48),alongX?.22:.3,.008,alongX?.3:.22,d.color,'paint',false);
   }
  }
@@ -107,29 +107,32 @@ export class ArenaWorld{
    this.box(x,4.55,z,longX?w:.5,.25,longX?.5:d,'#82948a');
    if(i<12){this.box(x,4.4,z,longX?1.8:.5,.08,longX?.5:1.8,'#2b464c');this.box(x,4.35,z,longX?1.6:.32,.025,longX?.32:1.6,'#c5e9df','light',false);}
   }
-  // Framed openings are readable, with light on the side that leads into a room.
-  for(const d of citadelDoors){const ax=d.axis==='x';for(const side of [-1,1]){this.box(d.x+(ax?side*1.87:0),2.15,d.z+(ax?0:side*1.87),ax?.028:.255,1.55,ax?.255:.028,d.color,'light',false);}
-   this.box(d.x,3.23,d.z,ax?3.9:.3,.055,ax?.3:3.9,'#b7c6b5','metal');
+  // Jamb lights are fixed to validated, wall-supported portal frames.
+  for(const d of citadelDoors){const ax=d.axis==='x';for(const side of [-1,1]){this.box(d.x+(ax?side*(d.width/2-.105):0),2.15,d.z+(ax?0:side*(d.width/2-.105)),ax?.025:.285,1.55,ax?.285:.025,d.color,'light',false);}
+   this.box(d.x,3.23,d.z,ax?d.width-.18:.3,.055,ax?.3:d.width-.18,'#b7c6b5','metal');
   }
  }
  buildSurroundings(){
-  // Enclosed equipment alcoves add depth inside the playable rooms.
-  // These remain within the solid wall volume; they cannot obstruct a passage.
-  for(const r of citadelRooms){const x=(r.x1+r.x2)/2,z=r.z1+.04;
-   this.box(x,2.4,z,2.6,1.2,.04,'#455e64');this.box(x,2.4,z+.026,2.32,.94,.016,'#677f7d','glass',false);
-   for(let n=-1;n<=1;n++)this.box(x+n*.8,2.4,z+.055,.045,1.1,.035,'#bfd0bf');
-   this.box(x,1.76,z+.035,2.8,.08,.08,'#344b4e');
+  // Room identity plaques attach to continuous wall faces. There are no
+  // decorative window panes pretending to be openings in the solid shell.
+  for(const p of citadelRoomSigns){const ax=p.axis==='x',offset=p.normal*.035;
+   this.box(p.x+(ax?0:offset),3.1,p.z+(ax?offset:0),ax?4.16:.08,1.12,ax?.08:4.16,'#40595d','metal',false);
   }
  }
  buildWayfinding(){
+  for(const p of citadelRoomSigns){const ax=p.axis==='x',offset=p.normal*.081,rotation=new THREE.Euler(0,ax?(p.normal===1?0:Math.PI):p.normal*Math.PI/2,0);
+   this.sign(p.room.code+'  /  '+p.room.name.toUpperCase(),p.x+(ax?0:offset),3.1,p.z+(ax?offset:0),3.96,rotation,p.room.color);
+  }
   for(const r of citadelRooms){const x=(r.x1+r.x2)/2,z=(r.z1+r.z2)/2;
-   // Room labels sit on the wall; floor numbers remain clear around centre cover.
-   this.sign(r.code+'  /  '+r.name.toUpperCase(),x,3.58,r.z1+.065,4,new THREE.Euler(),r.color);
    this.sign(r.code,x-2.5,.026,z+3.5,1.45,new THREE.Euler(-Math.PI/2,0,0),'#ddd7bd','#6a7c78');
   }
-  for(const d of citadelDoors){const ax=d.axis==='x',rotation=new THREE.Euler(0,ax?0:Math.PI/2,0),offset=.158;
-   this.sign(d.label,d.x+(ax?0:offset),3.76,d.z+(ax?offset:0),2.75,rotation,d.color);
-   this.sign(d.label,d.x+(ax?0:-offset),3.76,d.z+(ax?-offset:0),2.75,new THREE.Euler(0,ax?Math.PI:-Math.PI/2,0),d.color);
+  for(const d of citadelDoors){const ax=d.axis==='x';for(const side of [-1,1]){
+   const offset=side*.151,rotation=new THREE.Euler(0,ax?(side===1?0:Math.PI):side*Math.PI/2,0);
+   // The room-facing side directs you down the hallway; the hallway-facing
+   // side identifies the room you are entering. Each face has its own text.
+   const label=side===d.roomNormal?'TO '+d.label:d.room.code+'  /  '+d.room.name.toUpperCase();
+   this.sign(label,d.x+(ax?0:offset),3.83,d.z+(ax?offset:0),3.2,rotation,d.color);
+  }
   }
  }
  merge(){

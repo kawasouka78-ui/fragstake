@@ -5,7 +5,7 @@ export type Box = {x:number;z:number;w:number;d:number;h:number;y?:number;materi
 export type ArenaMap = {id:MapId;name:string;tagline:string;description:string;width:number;depth:number;sky:string;fog:string;ground:string;accent:string;walls:Box[];spawns:{x:number;z:number;yaw:number}[];landmarks:{x:number;z:number;label:string}[];decorations:{kind:string;x:number;z:number;h?:number}[]};
 type Rect = {x1:number;z1:number;x2:number;z2:number};
 export type CitadelRoom = Rect & {name:string;code:string;color:string};
-export type CitadelDoor = {x:number;z:number;width:number;axis:'x'|'z';label:string;color:string};
+export type CitadelDoor = {x:number;z:number;width:number;axis:'x'|'z';label:string;color:string;room:CitadelRoom;destination:CitadelRoom;roomNormal:number};
 export const CITADEL_WIDTH=64,CITADEL_DEPTH=56,CITADEL_HEIGHT=4.75,CITADEL_CELL=2;
 export const citadelRooms:CitadelRoom[]=[
  {x1:-28,z1:-24,x2:-16,z2:-12,name:'Freight',code:'01',color:'#eba164'},
@@ -30,23 +30,56 @@ export const citadelPassages:Rect[]=[
  {x1:12,z1:-14,x2:20,z2:-10},{x1:12,z1:-12,x2:16,z2:-2},
  {x1:10,z1:-4,x2:16,z2:0},{x1:10,z1:-2,x2:14,z2:12},{x1:10,z1:10,x2:20,z2:14},
 ];
-const door=(x:number,z:number,axis:'x'|'z',label:string,color='#e5b67a'):CitadelDoor=>({x,z,axis,width:4,label,color});
-export const citadelDoors:CitadelDoor[]=[
- door(-16,-20,'z','SECURITY'),door(-6,-20,'z','FREIGHT'),door(6,-14,'z','WORKSHOP'),door(16,-14,'z','SECURITY'),
- door(-26,-12,'x','WEST  /  04'),door(-26,-6,'x','FREIGHT'),door(4,-12,'x','CONCOURSE'),door(4,-6,'x','SECURITY'),
- door(26,-12,'x','SERVER  /  06'),door(26,-6,'x','WORKSHOP'),door(-20,2,'z','CONCOURSE'),door(-8,2,'z','WEST  /  04'),
- door(8,-2,'z','SERVER  /  06'),door(20,-2,'z','CONCOURSE'),door(-22,6,'x','DISPATCH'),door(-22,12,'x','WEST  /  04'),
- door(-4,6,'x','CONTROL'),door(-4,12,'x','CONCOURSE'),door(22,6,'x','LOADING'),door(22,12,'x','SERVER  /  06'),
- door(-16,20,'z','CONTROL'),door(-6,20,'z','DISPATCH'),door(6,14,'z','LOADING'),door(16,14,'z','CONTROL'),
- door(-18,-12,'x','SERVICE  /  A','#79c7c6'),door(-18,12,'x','SERVICE  /  A','#79c7c6'),
- door(18,-12,'x','SERVICE  /  B','#79c7c6'),door(18,12,'x','SERVICE  /  B','#79c7c6'),
-];
 const cols=CITADEL_WIDTH/CITADEL_CELL,rows=CITADEL_DEPTH/CITADEL_CELL;
 export const citadelFloor=Array.from({length:rows},(_,row)=>Array.from({length:cols},(_,col)=>{
  const x=col*CITADEL_CELL-CITADEL_WIDTH/2+1,z=row*CITADEL_CELL-CITADEL_DEPTH/2+1;
  return [...citadelRooms,...citadelPassages].some(r=>x>r.x1&&x<r.x2&&z>r.z1&&z<r.z2);
 }));
 export function citadelWalkable(x:number,z:number){return citadelFloor[Math.floor((z+CITADEL_DEPTH/2)/2)]?.[Math.floor((x+CITADEL_WIDTH/2)/2)]??false;}
+
+const contains=(r:Rect,x:number,z:number)=>x>r.x1&&x<r.x2&&z>r.z1&&z<r.z2;
+// Follow the hallway from its entrance to the first other room. This keeps
+// destination names tied to the route even when the corridor bends or branches.
+function hallwayDestination(room:CitadelRoom,x:number,z:number):CitadelRoom|undefined{
+ const queue=[{col:Math.floor((x+CITADEL_WIDTH/2)/CITADEL_CELL),row:Math.floor((z+CITADEL_DEPTH/2)/CITADEL_CELL)}],seen=new Set<number>();
+ for(let i=0;i<queue.length;i++){
+  const {col,row}=queue[i],key=row*cols+col;
+  if(col<0||col>=cols||row<0||row>=rows||seen.has(key)||!citadelFloor[row][col])continue;
+  seen.add(key);const cx=(col+.5)*CITADEL_CELL-CITADEL_WIDTH/2,cz=(row+.5)*CITADEL_CELL-CITADEL_DEPTH/2;
+  if(contains(room,cx,cz))continue;
+  const destination=citadelRooms.find(r=>r!==room&&contains(r,cx,cz));if(destination)return destination;
+  for(const [dx,dz]of [[-1,0],[1,0],[0,-1],[0,1]])queue.push({col:col+dx,row:row+dz});
+ }
+}
+
+// A door belongs to one complete, four-metre opening in a room perimeter.
+// The hallway-side wall must support BOTH jambs. Open service junctions remain
+// open junctions; a partial boundary never receives freestanding posts/lintels.
+export const citadelDoors:CitadelDoor[]=[];
+for(const room of citadelRooms){
+ const sides:{axis:'x'|'z';constant:number;first:number;last:number;roomNormal:number}[]=[
+  {axis:'x',constant:room.z1,first:room.x1,last:room.x2,roomNormal:1},
+  {axis:'x',constant:room.z2,first:room.x1,last:room.x2,roomNormal:-1},
+  {axis:'z',constant:room.x1,first:room.z1,last:room.z2,roomNormal:1},
+  {axis:'z',constant:room.x2,first:room.z1,last:room.z2,roomNormal:-1},
+ ];
+ for(const side of sides){
+  const {axis,constant,first,last,roomNormal}=side;
+  const point=(along:number,offset:number)=>({x:axis==='x'?along:constant+offset,z:axis==='x'?constant+offset:along});
+  let start:number|undefined;
+  for(let along=first;along<=last;along+=CITADEL_CELL){
+   const outside=point(along+CITADEL_CELL/2,-roomNormal*.25),open=along<last&&citadelWalkable(outside.x,outside.z);
+   if(open){start??=along;continue;}
+   if(start===undefined)continue;
+   const width=along-start,centre=(start+along)/2,ends=[point(start-.2,-roomNormal*.2),point(along+.2,-roomNormal*.2)];
+   if(width===4&&ends.every(p=>!citadelWalkable(p.x,p.z))){
+    const entry=point(centre,-roomNormal*.25),destination=hallwayDestination(room,entry.x,entry.z),position=point(centre,0);
+    if(destination)citadelDoors.push({...position,width,axis,label:destination.name.toUpperCase(),color:room.color,room,destination,roomNormal});
+   }
+   start=undefined;
+  }
+ }
+}
 
 // Greedy rectangles compact the solid grid without approximating its outline.
 const used=citadelFloor.map(row=>row.map(Boolean));
@@ -69,7 +102,7 @@ cover(26.8,1,1.6,4,2.5,'server','#344f58');
 cover(-21,18,3.2,2,1.8,'cargo','#ad7854');
 cover(1,19,3,2.4,2,'terminal','#506b6c');
 cover(22,20,3,2.4,2.6,'cargo','#b28b61');
-for(const p of citadelDoors)for(const side of [-1,1])cover(p.x+(p.axis==='x'?side*1.94:0),p.z+(p.axis==='z'?side*1.94:0),p.axis==='x'?.12:.24,p.axis==='x'?.24:.12,3.45,'frame','#40575c');
+for(const p of citadelDoors)for(const side of [-1,1])cover(p.x+(p.axis==='x'?side*p.width/2:0),p.z+(p.axis==='z'?side*p.width/2:0),p.axis==='x'?.18:.28,p.axis==='x'?.28:.18,3.45,'frame','#40575c');
 
 export type CitadelEdge={x:number;z:number;length:number;axis:'x'|'z';normal:number};
 // Only exposed faces receive architectural trim, never hidden block interiors.
@@ -84,6 +117,20 @@ for(const [key,values]of edgeCells){const [axis,constant,normal]=key.split(':');
  const commit=()=>citadelEdges.push({x:axis==='x'?(first+last+2)/2:Number(constant),z:axis==='z'?(first+last+2)/2:Number(constant),length:last-first+2,axis:axis as 'x'|'z',normal:Number(normal)});
  for(const v of values.slice(1)){if(v===last+2)last=v;else{commit();first=last=v;}}commit();
 }
+export type CitadelRoomSign=CitadelEdge&{room:CitadelRoom};
+// Clip exposed wall faces to each room, then use its longest unbroken span.
+// Every plaque has solid backing and clear margins from corners and openings.
+export const citadelRoomSigns:CitadelRoomSign[]=citadelRooms.flatMap(room=>{
+ const candidates=citadelEdges.flatMap(edge=>{
+  const alongX=edge.axis==='x';
+  const onWall=alongX?(edge.z===room.z1&&edge.normal===1)||(edge.z===room.z2&&edge.normal===-1):(edge.x===room.x1&&edge.normal===1)||(edge.x===room.x2&&edge.normal===-1);
+  if(!onWall)return [];
+  const middle=alongX?edge.x:edge.z,first=Math.max(middle-edge.length/2,alongX?room.x1:room.z1),last=Math.min(middle+edge.length/2,alongX?room.x2:room.z2);
+  if(last-first<5)return [];
+  return [{...edge,room,x:alongX?(first+last)/2:edge.x,z:alongX?edge.z:(first+last)/2,length:last-first}];
+ });
+ candidates.sort((a,b)=>b.length-a.length);return candidates.slice(0,1);
+});
 const spawn=(x:number,z:number,yaw:number)=>({x,z,yaw});
 export const maps:ArenaMap[]=[{
  id:'citadel',name:'Citadel',tagline:'Own the corner. Take the next room.',
@@ -96,7 +143,7 @@ export const maps:ArenaMap[]=[{
 export function getMap(_id?:string){return maps[0];}
 export function overheadBoxes(_map:ArenaMap):Box[]{return [
  {x:0,z:0,w:CITADEL_WIDTH,d:CITADEL_DEPTH,y:CITADEL_HEIGHT,h:.3,material:'ceiling'},
- ...citadelDoors.map(p=>({x:p.x,z:p.z,w:p.axis==='x'?4.2:.28,d:p.axis==='x'?.28:4.2,y:3.2,h:1.55,material:'overhead',color:'#40575c'})),
+ ...citadelDoors.map(p=>({x:p.x,z:p.z,w:p.axis==='x'?p.width+.24:.28,d:p.axis==='x'?.28:p.width+.24,y:3.2,h:1.55,material:'overhead',color:'#40575c'})),
  ...citadelRooms.flatMap(r=>[-1,1].map(side=>({x:(r.x1+r.x2)/2,z:(r.z1+r.z2)/2+side*3,w:r.x2-r.x1,d:.28,y:4.15,h:.3,material:'overhead',color:'#52686b'}))),
 ];}
 export function collisionBoxes(map:ArenaMap):Box[]{return [...map.walls,...overheadBoxes(map)];}

@@ -60,3 +60,6 @@ Play now contains match setup and real-account-created open Duel lobbies; duplic
 Citadel is the only playable map. It replaces the three old outdoor layouts with nine connected indoor rooms, turning 4 m passages, collidable ceilings/lintels, doorframes, visible wayfinding and cover. Historical map IDs resolve to the current map for reopening old sessions. Eight first-person weapon models have distinct silhouettes, sight heights, muzzle positions and moving magazine/slide/pump parts.
 
 Open lobbies support create/join/leave/ready/close with capacity and ownership checks, automatic one-hour expiration, and no fabricated listings. Membership is persistent; shared human gameplay and cash settlement are not connected. Bot warm-up launches a separate match with the selected rules. Joining a lobby does not reserve demo funds.
+
+
+Movement update: sprint forward with Shift + W, then press C to slide. Slides use momentum and stamina, stop at solid walls, and have a cooldown; Space jumps out. Touch players can use the Slide button while sprinting. Weapon poses ease between sprint, air, landing and sliding. Citadel door frames are derived from supported room openings, with directional destination signs and no decorative fake windows.

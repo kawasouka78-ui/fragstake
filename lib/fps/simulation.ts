@@ -17,8 +17,8 @@ export const weaponIds:WeaponId[]=['rifle','smg','marksman','carbine','vector','
 const ammoFor=()=>Object.fromEntries(weaponIds.map(id=>[id,weapons[id].mag])) as Record<WeaponId,number>;
 const reserveFor=()=>Object.fromEntries(weaponIds.map(id=>[id,weapons[id].mag*4])) as Record<WeaponId,number>;
 export type Actor={id:number;name:string;team:number;x:number;z:number;y:number;vy:number;yaw:number;hp:number;kills:number;deaths:number;respawn:number;shield:number;cooldown:number;crouch:boolean;moving:number;path:{x:number;z:number}[];repath:number;target:number;reaction:number;lastDamage:number};
-export type Controls={forward:number;right:number;fire:boolean;aim:boolean;sprint:boolean;crouch:boolean;jump:boolean;reload:boolean;weapon?:WeaponId};
-export const idleInput=():Controls=>({forward:0,right:0,fire:false,aim:false,sprint:false,crouch:false,jump:false,reload:false});
+export type Controls={forward:number;right:number;fire:boolean;aim:boolean;sprint:boolean;crouch:boolean;jump:boolean;reload:boolean;slide?:boolean;weapon?:WeaponId};
+export const idleInput=():Controls=>({forward:0,right:0,fire:false,aim:false,sprint:false,crouch:false,jump:false,reload:false,slide:false});
 export type Shot={from:Vec;to:Vec;friendly:boolean;age:number};
 export type GameEvent={kind:'shot'|'enemyShot'|'footstep'|'hit'|'kill'|'hurt'|'reload'|'pickup'|'spawn';head?:boolean;weapon?:WeaponId;angle?:number;distance?:number};
 export type Feed={id:number;killer:string;victim:string;head:boolean;you:boolean;age:number};
@@ -69,14 +69,15 @@ export class Simulation{
   for(let id=0;id<count;id++){const spawn=starts[id];this.actors.push({id,name:id===0?'You':names[id-1],team:config.mode==='duel'?(id===0||id===3?0:1):id,x:spawn.x,z:spawn.z,y:0,vy:0,yaw:spawn.yaw,hp:100,kills:0,deaths:0,respawn:0,shield:2,cooldown:1+this.rng(),crouch:false,moving:0,path:[],repath:0,target:-1,reaction:.5,lastDamage:-99});}
   this.yaw=this.player.yaw;this.pickups=this.map.landmarks.map((p,i)=>({x:p.x,z:p.z,kind:i%2?'ammo':'health',ready:0}));
  }
- stepSound=0;
+ stepSound=0;slideLeft=0;slideCooldown=0;slideSpeed=0;slideX=0;slideZ=0;crouchHeld=false;slideHeld=false;playerEyeHeight=1.62;
+ get sliding(){return this.slideLeft>0;}
  get player(){return this.actors[0];}
  get gun(){return weapons[this.weapon];}
  get allowedWeapons(){return weaponIds.filter(id=>this.config.weaponRule==='sniper'?id==='marksman':this.config.weaponRule==='pistol'?['pistol','handcannon'].includes(id):this.config.weaponRule==='rifle'?['rifle','carbine'].includes(id):true);}
  get cashOutWait(){return Math.max(0,8-(this.elapsed-this.combatAt));}
  cashOut(){if(this.config.mode==='ffa'&&this.player.hp>0&&this.cashOutWait===0)this.finish('Arena cash-out');}
  completeRound(){if(this.roundScore===this.roundEnemyScore){this.finish();return;}if(this.roundScore>this.roundEnemyScore)this.score++;else this.enemyScore++;if(this.score>=2||this.enemyScore>=2){this.finish();return;}this.roundScore=0;this.roundEnemyScore=0;this.time=180;for(const actor of this.actors)this.respawn(actor);}
- eye(a:Actor):Vec{return {x:a.x,y:a.y+(a.crouch?1.05:1.62),z:a.z};}
+ eye(a:Actor):Vec{return {x:a.x,y:a.y+(a.id===0?this.playerEyeHeight:a.crouch?1.05:1.62),z:a.z};}
  look(dx:number,dy:number){this.yaw-=dx;this.pitch=clamp(this.pitch-dy,-1.35,1.35);}
  start(){this.started=true;}
  finish(reason?:string){if(this.ended)return;this.ended=true;const won=this.config.mode==='duel'?this.score>this.enemyScore:this.player.kills>this.player.deaths;const draw=this.score===this.enemyScore;const cancel=reason==='Match cancelled';const forfeit=reason==='Duel forfeited';if(this.config.mode==='duel')this.balance+=cancel?(this.config.stake??10):forfeit?0:(won?2*(this.config.stake??10):draw?(this.config.stake??10):0);this.result={kills:this.player.kills,deaths:this.player.deaths,balance:this.balance,reason:reason??(this.config.mode==='duel'?(won?'Duel won':draw?'Draw — stake returned':'Duel lost'):'Round complete'),won:!cancel&&!forfeit&&reason!=='Left the arena'&&won,score:this.score,enemyScore:this.enemyScore,headshots:this.headshots,maxStreak:this.maxStreak};}
@@ -87,7 +88,7 @@ export class Simulation{
   const enemies=this.actors.filter(b=>b.id!==a.id&&b.team!==a.team&&b.hp>0);
   const ranked=this.map.spawns.map(s=>{const distance=Math.min(80,...enemies.map(e=>Math.hypot(e.x-s.x,e.z-s.z))),exposure=enemies.some(e=>Math.hypot(e.x-s.x,e.z-s.z)<28&&visible(this.boxes,{x:s.x,y:1.6,z:s.z},this.eye(e)))?9:0;return {s,value:Math.min(25,distance)-Math.max(0,distance-32)*.7-exposure-this.actors.filter(b=>b.id!==a.id&&b.hp>0&&Math.hypot(b.x-s.x,b.z-s.z)<2).length*20+this.rng()*2};}).sort((a,b)=>b.value-a.value);
   const s=ranked[0].s;Object.assign(a,{x:s.x,z:s.z,y:0,vy:0,yaw:s.yaw,hp:100,shield:1.8,respawn:0,path:[],repath:0,cooldown:.8,reaction:.6});
-  if(a.id===0){this.yaw=s.yaw;this.pitch=0;this.vx=this.vz=0;this.reloadLeft=0;this.ammo=ammoFor();this.reserve=reserveFor();this.stamina=100;this.events.push({kind:'spawn'});}
+  if(a.id===0){this.yaw=s.yaw;this.pitch=0;this.vx=this.vz=0;this.slideLeft=this.slideCooldown=this.slideSpeed=0;this.sprinting=false;this.playerEyeHeight=1.62;a.crouch=false;a.moving=0;this.reloadLeft=0;this.ammo=ammoFor();this.reserve=reserveFor();this.stamina=100;this.events.push({kind:'spawn'});}
  }
  damage(victim:Actor,attacker:Actor,amount:number,head=false){
   if(this.ended||victim.hp<=0||victim.shield>0||victim.team===attacker.team||(this.config.weaponRule==='headshots'&&!head))return;if(victim.id===0||attacker.id===0)this.combatAt=this.elapsed;
@@ -98,7 +99,7 @@ export class Simulation{
   victim.deaths++;attacker.kills++;victim.respawn=2.4;victim.path=[];
   this.feed.unshift({id:++this.feedId,killer:attacker.name,victim:victim.name,head,you:attacker.id===0||victim.id===0,age:0});this.feed=this.feed.slice(0,5);
   if(attacker.id===0){this.combo++;this.maxStreak=Math.max(this.maxStreak,this.combo);if(head)this.headshots++;this.events.push({kind:'kill',head});if(this.config.mode==='ffa')this.balance+=this.config.rate;}
-  if(victim.id===0){this.combo=0;if(this.config.mode==='ffa')this.balance=Math.max(0,this.balance-this.config.rate);}
+  if(victim.id===0){this.combo=0;this.slideLeft=this.slideSpeed=0;this.sprinting=false;if(this.config.mode==='ffa')this.balance=Math.max(0,this.balance-this.config.rate);}
   if(this.config.mode==='duel'){const target=this.config.target??5;if(this.config.bestOf===3){if(attacker.team===0)this.roundScore++;else this.roundEnemyScore++;if(this.roundScore>=target||this.roundEnemyScore>=target)this.completeRound();}else{if(attacker.team===0)this.score++;else this.enemyScore++;if(this.score>=target||this.enemyScore>=target){this.finish();return;}}}
   if(this.config.mode==='ffa'&&this.balance<this.config.rate)this.finish('Round complete');
  }
@@ -129,17 +130,28 @@ export class Simulation{
   this.shots=this.shots.filter(s=>(s.age+=dt)<.08);this.feed=this.feed.filter(f=>(f.age+=dt)<5);
   for(const p of this.pickups)p.ready=Math.max(0,p.ready-dt);
   for(const a of this.actors){a.shield=Math.max(0,a.shield-dt);if(a.hp<=0){a.respawn-=dt;if(a.respawn<=0)this.respawn(a);}else if(a.hp<100&&this.elapsed-a.lastDamage>7)a.hp=Math.min(100,a.hp+dt*7);}
+  this.slideCooldown=Math.max(0,this.slideCooldown-dt);
   const p=this.player;
   if(p.hp>0){
    if(input.weapon)this.switchWeapon(input.weapon);if(input.reload)this.reload();
    if(this.reloadLeft>0){this.reloadLeft=Math.max(0,this.reloadLeft-dt);if(this.reloadLeft===0){const n=Math.min(this.gun.mag-this.ammo[this.weapon],this.reserve[this.weapon]);this.ammo[this.weapon]+=n;this.reserve[this.weapon]-=n;}}
-   p.crouch=input.crouch;this.sprinting=input.sprint&&input.forward>0&&!input.aim&&!input.fire&&!p.crouch&&this.stamina>2;
-   this.stamina=clamp(this.stamina+(this.sprinting?-24:18)*dt,0,100);this.aim+=(Number(input.aim&&!this.sprinting)-this.aim)*Math.min(1,dt*14);
+   const momentum=Math.hypot(this.vx,this.vz),slidePressed=(input.crouch&&!this.crouchHeld)||(!!input.slide&&!this.slideHeld);
+   if(slidePressed&&!this.sliding&&this.slideCooldown===0&&p.y===0&&momentum>=5.4&&p.moving>=5.4&&(this.sprinting||input.sprint)&&this.stamina>=20&&!input.aim){
+    this.slideLeft=.8;this.slideCooldown=1.35;this.slideSpeed=Math.min(10.5,momentum+3);
+    this.slideX=this.vx/momentum;this.slideZ=this.vz/momentum;this.stamina-=20;
+   }
+   const slideJump=this.sliding&&input.jump&&!this.jumpHeld;
+   if(slideJump){this.slideLeft=0;p.vy=5.4;}
+   p.crouch=!slideJump&&(input.crouch||this.sliding);this.sprinting=!this.sliding&&input.sprint&&input.forward>0&&!input.aim&&!input.fire&&!p.crouch&&this.stamina>2;
+   this.playerEyeHeight+=((p.crouch?1.05:1.62)-this.playerEyeHeight)*(1-Math.exp(-dt*14));
+   this.stamina=clamp(this.stamina+(this.sliding?0:this.sprinting?-24:18)*dt,0,100);this.aim+=(Number(input.aim&&!this.sprinting&&!this.sliding)-this.aim)*Math.min(1,dt*14);
    const speed=p.crouch?2.35:this.sprinting?7.5:input.aim?3.15:4.7;
    const length=Math.max(1,Math.hypot(input.forward,input.right)),f=input.forward/length,r=input.right/length;
    const tx=(-Math.sin(this.yaw)*f+Math.cos(this.yaw)*r)*speed,tz=(-Math.cos(this.yaw)*f-Math.sin(this.yaw)*r)*speed;
-   const response=1-Math.exp(-dt*(p.y>0?5:18));this.vx+=(tx-this.vx)*response;this.vz+=(tz-this.vz)*response;
-   moveActor(p,this.vx*dt,this.vz*dt,this.boxes);p.moving=Math.hypot(this.vx,this.vz);p.yaw=this.yaw;
+   if(this.sliding){this.slideSpeed=Math.max(0,this.slideSpeed-7.2*dt);this.vx=this.slideX*this.slideSpeed;this.vz=this.slideZ*this.slideSpeed;}
+   else{const response=1-Math.exp(-dt*(p.y>0||slideJump?5:18));this.vx+=(tx-this.vx)*response;this.vz+=(tz-this.vz)*response;}
+   const oldX=p.x,oldZ=p.z;moveActor(p,this.vx*dt,this.vz*dt,this.boxes);p.moving=dt>0?Math.hypot(p.x-oldX,p.z-oldZ)/dt:0;p.yaw=this.yaw;
+   if(this.sliding){this.slideLeft=Math.max(0,this.slideLeft-dt);if(p.moving<this.slideSpeed*.35||p.y>0)this.slideLeft=0;}
    this.stepSound-=dt;if(p.y===0&&p.moving>1&&!p.crouch&&this.stepSound<=0){this.events.push({kind:'footstep'});this.stepSound=this.sprinting?.28:.4;}
    if(input.jump&&!this.jumpHeld&&p.y===0&&!p.crouch){p.vy=5.4;}p.vy-=20*dt;p.y=Math.max(0,p.y+p.vy*dt);if(p.y===0)p.vy=0;
    if(input.fire&&(this.gun.auto||!this.fireHeld))this.fire();
@@ -147,8 +159,8 @@ export class Simulation{
     if(pickup.kind==='health'&&p.hp<100){p.hp=Math.min(100,p.hp+45);pickup.ready=18;this.events.push({kind:'pickup'});}
     else if(pickup.kind==='ammo'&&weaponIds.some(id=>this.reserve[id]<(id==='marksman'?40:180))){for(const id of weaponIds)this.reserve[id]=Math.min(id==='marksman'?40:180,this.reserve[id]+weapons[id].mag*2);pickup.ready=15;this.events.push({kind:'pickup'});}
    }
-  }else{this.sprinting=false;this.vx=this.vz=0;this.reloadLeft=0;}
-  this.fireHeld=input.fire;this.jumpHeld=input.jump;
+  }else{this.sprinting=false;this.slideLeft=this.slideSpeed=0;this.vx=this.vz=0;this.reloadLeft=0;}
+  this.fireHeld=input.fire;this.jumpHeld=input.jump;this.crouchHeld=input.crouch;this.slideHeld=!!input.slide;
   if(this.ended)return;
   for(const bot of this.actors.slice(1)){if(bot.hp>0)this.botStep(bot,dt);if(this.ended)return;}
  }
