@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {type Simulation,type Actor,weapons,weaponIds,type WeaponId} from './simulation.ts';
-import {buildWeapon,animateWeapon,type WeaponModel} from './weapon-models.ts';
+import {buildWeapon,animateWeapon,updateWeaponFinish,type WeaponModel} from './weapon-models.ts';
 import {ArenaWorld} from './world.ts';
 import {ArenaPipeline} from './pipeline.ts';
 import {ViewMotion} from './view-motion.ts';
@@ -56,6 +56,7 @@ export class ArenaRenderer{
   for(let i=0;i<this.tracers.length;i++){const shot=g.shots[i],line=this.tracers[i],impact=this.impacts[i];line.visible=!!shot;impact.visible=!!shot;if(!shot)continue;const from=shot.from;const positions=line.geometry.attributes.position as THREE.BufferAttribute;positions.setXYZ(0,from.x,from.y-.08,from.z);positions.setXYZ(1,shot.to.x,shot.to.y,shot.to.z);positions.needsUpdate=true;(line.material as THREE.LineBasicMaterial).opacity=(1-shot.age/.08)*.75;impact.position.set(shot.to.x,shot.to.y,shot.to.z);}
   for(const [id,mesh]of this.gunModels)mesh.visible=id===g.weapon;
   animateWeapon(model,this.kick,g.reloadLeft>0?1-g.reloadLeft/weapons[g.weapon].reload:0);
+  updateWeaponFinish(model,g.elapsed);
   this.gunRoot.visible=p.hp>0;this.gunRoot.position.set(pose.x,pose.y,pose.z);
   this.gunRoot.rotation.set(pose.rx,pose.ry,pose.rz);this.flash.scale.setScalar(['pistol','handcannon','smg','vector'].includes(g.weapon)?.6:1);this.flash.position.copy(model.rig.muzzle);this.flash.position.z-=.06;this.flash.visible=this.kick>.6;this.flash.rotation.z=g.elapsed*200;
   this.sun.shadow.needsUpdate=true;this.pipeline.render(dt);

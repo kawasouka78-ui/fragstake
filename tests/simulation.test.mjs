@@ -16,7 +16,7 @@ test('rendered camera direction matches shot rays for all look angles',()=>{
 
 // Pure gameplay regression tests; no browser or live account is required.
 const fixedDt = 1 / 60;
-test('Citadel ceiling and door lintels stop bullets while doorways remain traversable',()=>{const boxes=collisionBoxes(maps[0]);assert.ok(wallDistance(boxes,{x:-26,y:1.62,z:-12},{x:0,y:1,z:0})<2);assert.ok(clearAt(boxes,-26,-12,.4));assert.ok(wallDistance(boxes,{x:-25,y:1.62,z:-15},{x:0,y:1,z:0})<4);});
+test('Citadel ceiling and door lintels stop bullets while doorways remain traversable',()=>{const boxes=collisionBoxes(maps[0]);assert.ok(wallDistance(boxes,{x:-5,y:1.62,z:-12},{x:0,y:1,z:0})<2);assert.ok(clearAt(boxes,-5,-12,.4));const ceiling=wallDistance(boxes,{x:-10,y:1.62,z:-4},{x:0,y:1,z:0});assert.ok(ceiling>3&&ceiling<=7.4-1.62);});
 const config = (extra = {}) => ({ mode: 'practice', rate: 5, team: '1v1', balance: 90, mapId: 'foundry', ...extra });
 const create = (extra = {}) => new Simulation(config(extra), () => 0.5);
 const box = (extra = {}) => ({ x: 0, z: -5, w: 3, d: 1, h: 4, material: 'concrete', ...extra });

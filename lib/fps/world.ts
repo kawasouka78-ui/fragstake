@@ -33,7 +33,8 @@ export class ArenaWorld{
  }return this.materials.get(key)!;}
  add(geometry:THREE.BufferGeometry,material:THREE.Material,x:number,y:number,z:number,shadow=true,rotation?:THREE.Euler){
   geometry.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(x,y,z),new THREE.Quaternion().setFromEuler(rotation??new THREE.Euler()),new THREE.Vector3(1,1,1)));
-  const key=material.uuid+':'+Math.floor((x+this.map.width/2)/24)+':'+Math.floor((z+this.map.depth/2)/24)+':'+Number(shadow);let batch=this.batches.get(key);if(!batch){batch={material,geometries:[],shadow};this.batches.set(key,batch);}batch.geometries.push(geometry);
+  const sector=this.map.id==='citadel'?32:24;
+  const key=material.uuid+':'+Math.floor((x+this.map.width/2)/sector)+':'+Math.floor((z+this.map.depth/2)/sector)+':'+Number(shadow);let batch=this.batches.get(key);if(!batch){batch={material,geometries:[],shadow};this.batches.set(key,batch);}batch.geometries.push(geometry);
  }
  box(x:number,y:number,z:number,w:number,h:number,d:number,color:string,surface:Surface='metal',shadow=true){
   const geometry=new THREE.BoxGeometry(w,h,d),position=geometry.attributes.position,normal=geometry.attributes.normal,uv=geometry.attributes.uv;
@@ -81,6 +82,25 @@ export class ArenaWorld{
   }
  }
  cover(b:Box){
+  if(this.map.id==='citadel'&&['turbine','vault-core','archive-stack'].includes(b.material)){
+   const color=b.color??this.theme.metal;
+   this.box(b.x,b.h/2,b.z,b.w,b.h,b.d,color,'metal');
+   if(b.material==='turbine'){
+    // The rotor is recessed inside its collision housing; the face never protrudes into a lane.
+    for(const side of [-1,1]){const z=b.z+side*(b.d/2+.015);this.box(b.x,b.h/2,z,b.w-.35,b.h-.35,.025,'#273b40');
+     this.cylinder(b.x,b.h/2,z-side*.09,1.38,.2,'#83978d',new THREE.Euler(Math.PI/2,0,0));
+     this.cylinder(b.x,b.h/2,z+side*.005,.48,.06,'#e5bb70',new THREE.Euler(Math.PI/2,0,0));
+     for(let i=-1;i<=1;i++)this.box(b.x+i*1.1,b.h-.22,z,.13,.13,.03,'#86d3be','light',false);
+    }
+    for(const side of [-1,1])for(let z=-b.d/2+.4;z<b.d/2;z+=.6)this.box(b.x+side*(b.w/2+.012),b.h/2,b.z+z,.025,b.h-.35,.055,'#a1b2a3','metal',false);
+   }else if(b.material==='vault-core'){
+    for(const side of [-1,1]){const z=b.z+side*(b.d/2+.015);this.box(b.x,b.h/2,z,b.w-.35,b.h-.3,.025,'#4b514b');
+     this.cylinder(b.x,b.h/2,z-side*.06,1.05,.15,'#b0a57c',new THREE.Euler(Math.PI/2,0,0));
+     this.box(b.x,b.h/2,z+side*.025,1.1,.1,.035,'#424f51');this.box(b.x,b.h/2,z+side*.027,.1,1.1,.035,'#424f51');
+    }
+   }else for(const side of [-1,1])for(let y=.45;y<b.h-.2;y+=.55){const x=b.x+side*(b.w/2+.012);this.box(x,y,b.z,.025,.045,b.d-.18,'#c0ae83');for(let z=-b.d/2+.4;z<b.d/2;z+=.4)this.box(x+side*.008,y+.22,b.z+z,.028,.36,.16,z<0?'#697d78':'#ab8d65','paint',false);}
+   return;
+  }
   if(this.map.id!=='citadel'&&this.nativeCover(b))return;
   const color=b.color??this.theme.metal;this.box(b.x,b.h/2,b.z,b.w,b.h,b.d,color,b.material==='pillar'?'concrete':'metal');
   this.box(b.x,.08,b.z,b.w+.025,.16,b.d+.025,'#34494e');this.box(b.x,b.h-.05,b.z,b.w+.025,.1,b.d+.025,'#40555a');
@@ -251,7 +271,7 @@ export class ArenaWorld{
  }
  buildDepotInfrastructure(){
   for(const z of [-12,0,12])for(const x of [-24,-6,12])this.box(x,5.997,z,7.2,.014,.18,'#ffe5a7','light',false);
-  for(const r of this.layout.rooms.slice(2)){const x=(r.x1+r.x2)/2,z=(r.z1+r.z2)/2,y=r.code==='D3'?3.744:4.244;for(const side of [-1,1])this.box(x+side*8,y,z,4,.014,.25,'#e3eccd','light',false);}
+  for(const r of this.layout.rooms.slice(2)){const x=(r.x1+r.x2)/2,z=(r.z1+r.z2)/2,y=r.code==='D3'?3.744:4.244,offset=Math.min(8,(r.x2-r.x1-6)/2);for(const side of [-1,1])this.box(x+side*offset,y,z,4,.014,.25,'#e3eccd','light',false);}
   this.sign('TRANSFER 04',-6,5.8,.565,2.7,new THREE.Euler(),'#fff0b7','#4a6058');
   let n=1;for(const b of this.map.walls.filter(b=>b.material==='loading-shutter'))this.sign('DOCK 0'+n++,35.978,5.4,b.z,3.6,new THREE.Euler(0,-Math.PI/2,0),'#e8d49c','#4c6058');
   this.buildNativePortalTrim();

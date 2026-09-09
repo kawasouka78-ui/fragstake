@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import type {WeaponId} from './simulation.ts';
+import {createWeaponFinish} from './weapon-finish.ts';
 
 /** Metres; the bore points down -Z. Named groups are independent animation channels. */
 export type WeaponRig = {
@@ -35,8 +36,10 @@ class ModelBuilder {
   constructor(id: WeaponId, skin?: string, showHands = true) {
     this.id=id;this.showHands=showHands;
     const material = (color: string, metalness: number, roughness: number) => new THREE.MeshStandardMaterial({color, metalness, roughness});
+    const finish=createWeaponFinish(skin??defaultFinish);
+    this.root.userData.finish=finish;
     this.finishes = {
-      shell: material(skin ?? defaultFinish, .42, .48),
+      shell: finish.material,
       polymer: material('#0e1012', .06, .78),
       steel: material('#1c1f23', .72, .36),
       edge: material('#30343a', .65, .4),
@@ -512,3 +515,4 @@ export function animateWeapon(model: WeaponModel, kick: number, reloadFraction: 
     pump.position.z=travel;supportHand.position.z=travel;magazine.position.y=0;
   }
 }
+export function updateWeaponFinish(model:WeaponModel,time:number){model.userData.finish.time.value=Number.isFinite(time)?time:0;}

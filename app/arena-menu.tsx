@@ -13,22 +13,24 @@ import PausedSession from './paused-session';
 type Preferences={sensitivity:number;fov:number;quality:string;muted:boolean};
 type Props={game:Simulation|undefined;config:MatchConfig;map:ArenaMap;ready:boolean;error:string;settings:boolean;prefs:Preferences;setSettings:(value:boolean)=>void;preference:(value:Partial<Preferences>)=>void;select:(id:WeaponId)=>void;resume:()=>void;leave:()=>void;cashOut:()=>void;};
 
-export function WeaponPreview({id,skin}:{id:WeaponId;skin?:string}){
-  const canvas=useRef<HTMLCanvasElement>(null),view=useRef<LoadoutRenderer|null>(null),selection=useRef({id,skin});
+export function WeaponPreview({id,skin,angle=0}:{id:WeaponId;skin?:string;angle?:number}){
+  const canvas=useRef<HTMLCanvasElement>(null),view=useRef<LoadoutRenderer|null>(null),selection=useRef({id,skin,angle});
   const [failed,setFailed]=useState(false);
-  selection.current={id,skin};
+  selection.current={id,skin,angle};
   useEffect(()=>{
-    let cancelled=false,observer:ResizeObserver|undefined;
+    let cancelled=false,observer:ResizeObserver|undefined,visibility:IntersectionObserver|undefined;
     void import('@/lib/fps/loadout-renderer').then(({LoadoutRenderer})=>{
       if(cancelled||!canvas.current)return;
       const element=canvas.current,renderer=new LoadoutRenderer(element);view.current=renderer;
-      renderer.select(selection.current.id,selection.current.skin);
+      renderer.setAngle(selection.current.angle);renderer.select(selection.current.id,selection.current.skin);
       const resize=()=>{const rect=element.getBoundingClientRect();renderer.resize(Math.max(1,rect.width),Math.max(1,rect.height));};
       observer=new ResizeObserver(resize);observer.observe(element);resize();
+      visibility=new IntersectionObserver(entries=>renderer.setActive(entries.some(entry=>entry.isIntersecting)));visibility.observe(element);
     }).catch(()=>{if(!cancelled)setFailed(true);});
-    return()=>{cancelled=true;observer?.disconnect();view.current?.dispose();view.current=null;};
+    return()=>{cancelled=true;observer?.disconnect();visibility?.disconnect();view.current?.dispose();view.current=null;};
   },[]);
   useEffect(()=>{try{view.current?.select(id,skin);}catch{setFailed(true);}},[id,skin]);
+  useEffect(()=>{view.current?.setAngle(angle);},[angle]);
   return <div className="loadout-model"><canvas ref={canvas} aria-label={`${weapons[id].name} weapon preview`} role="img"/>{failed&&<p className="loadout-preview-error">Weapon preview unavailable. You can still choose your loadout.</p>}</div>;
 }
 
