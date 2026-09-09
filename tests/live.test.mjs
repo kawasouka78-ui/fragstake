@@ -93,6 +93,44 @@ test('2v2 waits for four ready humans and allocates two players per side', () =>
     [0, 1, 0, 1],
   );
 });
+test('roster reports real participants and readiness without exposing account or ticket claims', () => {
+  const r = new LiveRoom('1v1', 'citadel');
+  r.add(claims('a', '1v1'));
+  const b = r.add(claims('b', '1v1'));
+  r.ready('a');
+  let snapshot = r.snapshot('a');
+  assert.equal(snapshot.roster.length, 2);
+  assert.deepEqual(snapshot.roster[0], {
+    slot: 0,
+    name: 'a',
+    team: 0,
+    you: true,
+    ready: true,
+    connected: true,
+    left: false,
+  });
+  assert.equal(snapshot.roster[1].ready, false);
+  assert.equal(snapshot.roster[1].you, false);
+  assert.equal(r.snapshot('b').roster[1].you, true);
+  b.connected = false;
+  assert.equal(r.snapshot('a').roster[1].connected, false);
+  r.leave('b');
+  snapshot = r.snapshot('a');
+  assert.equal(snapshot.count, 1);
+  assert.equal(snapshot.roster[1].left, true);
+  for (const member of snapshot.roster) {
+    assert.deepEqual(Object.keys(member).sort(), [
+      'connected',
+      'left',
+      'name',
+      'ready',
+      'slot',
+      'team',
+      'you',
+    ]);
+  }
+});
+
 test('server movement uses fixed ticks, stops stale controls and cannot teleport from payloads', () => {
   const r = new LiveRoom('ffa', 'citadel');
   for (const id of ['a', 'b']) {

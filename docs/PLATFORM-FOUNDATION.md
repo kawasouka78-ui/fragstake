@@ -43,7 +43,7 @@ npm run live
 
 Setup adds only absent multiplayer settings to ignored `.env.local`, with a newly generated secret. Never commit or print that secret. The development Worker receives only the explicit multiplayer bindings; build configuration excludes their local values.
 
-The site runs on port 3000 and the game service on 3010. Open Play → Human Multiplayer in two browser tabs, join the same mode/map and enter both matches. Sign in through the existing site flow for saved XP. `npm test` includes both pure simulation tests and an isolated real WebSocket server test; `npx tsc --noEmit` and `npm run build` validate the site.
+The site runs on port 3000 and the game service on 3010. Open Play → FFA or Duels → Players in two browser tabs, select the same map, join, and ready up in both matches. Sign in through the existing site flow for saved XP. `npm test` includes both pure simulation tests and an isolated real WebSocket server test; `npx tsc --noEmit` and `npm run build` validate the site.
 
 New D1 schema is migration `0004_gifted_the_fury.sql`. Fresh databases apply all Drizzle migrations in order. This existing local database had earlier tables without Wrangler migration bookkeeping, so only the new migration was executed directly after inspecting it. Do not replay old CREATE TABLE statements against it. Production migration application remains a separate publishing step.
 
@@ -65,9 +65,11 @@ Before activating a market: obtain qualified local advice and any required appro
 
 ## Validation for this release
 
-- 130 tests passed, including isolated D1 persistence tests and a real WebSocket connection/reconnection/forfeit integration test.
+- 135 tests passed, including isolated D1 persistence tests, live entry and public-roster validation, and a real WebSocket connection/reconnection/forfeit integration test.
 - Type checking and the production build passed. Local signing/operator secrets and temporary QA files were absent from the build artifacts.
 - Two browser tabs joined the same free FFA round; the common clock, live connection, and Escape/loadout behavior were checked.
+- Live entry is now integrated into the main FFA/Duels setup through Players/Bots tabs. Two browser guests joined the same Depot 1v1, saw each other's readiness, started the shared round, opened the Escape menu and ended the match through forfeit. Play Again reopened the same format/map; free FFA entry was also checked. The duplicate Human Multiplayer panel and its styles were removed.
+- The integrated setup had zero horizontal overflow at 320, 390 and 768 pixels; FFA player and bot setups were also measured at 320 pixels. Funded demo entry was not exercised in these browser checks.
 - Phone/tablet layout checks found no horizontal page overflow in the new Play/Progression layouts.
 - An anonymous browser received the expected moderator-access rejection. Signed-in friend chat and XP persistence were checked with isolated database tests; a multi-account browser chat session was not tested.
 - The game-service SQLite backup passed its integrity check. This is not a restore drill or a production load test.

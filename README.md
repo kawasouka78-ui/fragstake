@@ -14,7 +14,7 @@ npm run dev -- --host 127.0.0.1
 npm run live
 ```
 
-Open http://localhost:3000. The game service runs on port 3010. For a live match, use Human Multiplayer in two browser tabs and enter both matches. FFA allows 2–10 humans; duels require 2 or 4. Live matches have no entry fee or cash prizes. Guests can play; sign in to save XP.
+Open http://localhost:3000. The game service runs on port 3010. For a live match, select FFA or Duels → Players in two browser tabs, join, and ready up in both matches. FFA allows 2–10 humans; duels require 2 or 4. Live matches have no entry fee or cash prizes. Guests can play; sign in to save XP.
 
 The existing SQLite database must have migrations from `drizzle/` applied. See the architecture document for fresh databases versus this local database’s existing schema.
 

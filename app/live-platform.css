@@ -1,51 +1,12 @@
-.live-matchmaking {
-  padding: 26px;
-  margin: 0 0 26px;
-  border: 1px solid #2c424b;
-  border-radius: 12px;
-  background:
-    radial-gradient(ellipse at 95% 0%, #20423d66, transparent 65%), #111c25;
-}
-.live-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 20px;
-}
-.live-heading h2,
 .progress-hero h2 {
   font: 700 30px var(--font-display);
   margin: 9px 0;
 }
-.live-heading p,
-.live-note,
 .progress-hero p {
   font-size: 13px;
   color: #8ca7ba;
   line-height: 1.7;
 }
-.live-heading .eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #8cdec4;
-}
-.live-connection {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  white-space: nowrap;
-  color: #a5b8c7;
-}
-.live-connection button {
-  background: none;
-  border: 0;
-  color: inherit;
-  cursor: pointer;
-  padding: 6px;
-}
-.live-connection i,
 .conversation-person i {
   display: inline-block;
   width: 6px;
@@ -54,48 +15,8 @@
   background: #687686;
   margin-right: 4px;
 }
-.live-connection i.online,
 .conversation-person i.online {
   background: #7ce3b6;
-}
-.live-queue-controls {
-  display: flex;
-  gap: 16px;
-  align-items: stretch;
-  margin-top: 22px;
-}
-.live-formats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 9px;
-  flex: 1;
-}
-.live-formats button {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 5px 10px;
-  text-align: left;
-  border: 1px solid #31414e;
-  background: #121d27;
-  padding: 16px;
-  border-radius: 7px;
-  color: #c7d6e2;
-  cursor: pointer;
-}
-.live-formats button.selected {
-  border-color: #7ce3b6;
-  background: #18302e;
-}
-.live-formats button small {
-  grid-column: 2;
-  font-size: 10px;
-  color: #93adbd;
-}
-.live-formats button b {
-  font-size: 14px;
-}
-.live-note {
-  margin: 14px 0 0;
 }
 .live-game-status {
   position: absolute;
@@ -345,42 +266,14 @@
   line-height: 1.7;
 }
 @media (max-width: 1100px) {
-  .live-queue-controls {
-    flex-direction: column;
-  }
-  .live-queue-controls > .primary {
-    align-self: flex-end;
-  }
   .achievement-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .progress-hero {
     flex-wrap: wrap;
   }
-  .live-heading {
-    flex-wrap: wrap;
-  }
 }
 @media (max-width: 600px) {
-  .live-matchmaking {
-    padding: 18px;
-  }
-  .live-formats {
-    grid-template-columns: 1fr;
-  }
-  .live-formats button {
-    grid-template-columns: auto 1fr auto;
-    padding: 12px;
-  }
-  .live-formats button small {
-    grid-column: 2 / -1;
-  }
-  .live-queue-controls > .primary {
-    width: 100%;
-  }
-  .live-heading h2 {
-    font-size: 27px;
-  }
   .challenge-grid {
     grid-template-columns: 1fr;
   }
@@ -415,45 +308,258 @@
   .message-list {
     height: 280px;
   }
-  .live-connection {
-    white-space: normal;
-  }
   .live-table-wrap th,
   .live-table-wrap td {
     padding: 10px;
   }
 }
-
-.live-map-select {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-top: 18px;
-  font-size: 10px;
-  letter-spacing: 1px;
-  color: #9ab7c2;
-}
-.live-map-select select {
-  padding: 9px 12px;
-  border: 1px solid #39515a;
-  background: #13242b;
-  color: #dae8ef;
-  border-radius: 5px;
-  max-width: 100%;
-  font: inherit;
-  font-size: 12px;
-  letter-spacing: 0;
-}
 @media (max-width: 600px) {
-  .live-map-select {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 7px;
-  }
-  .live-map-select select {
-    width: 100%;
-  }
   .arena-navigation a[href='/progression'] {
     display: none;
+  }
+}
+
+/* Unified match setup and actual room participants. */
+.opponent-tabs {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  height: auto !important;
+  padding: 4px !important;
+  margin: 8px 0 16px;
+  background: #101a25;
+  border: 1px solid #334754;
+}
+.opponent-tabs [role='tab'] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 7px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.opponent-tabs [data-state='active'],
+.opponent-tabs [aria-selected='true'] {
+  color: #ffad83 !important;
+  background: #342820 !important;
+}
+.live-mode-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 13px;
+  padding: 28px 14px;
+  border: 1px solid #344956;
+  border-radius: 7px;
+  background: radial-gradient(circle at top, #283c48, #14212c);
+  margin: 10px 0;
+}
+.live-mode-summary > svg {
+  color: #ff9a6c;
+}
+.live-mode-summary > b {
+  font: 700 24px var(--font-display);
+  max-width: 240px;
+}
+.live-mode-summary p {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #a0b9c9;
+  margin: 0;
+}
+.live-mode-summary > span {
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: #9addb6;
+}
+.live-mode-summary.duel {
+  padding: 22px 14px;
+}
+.live-review {
+  padding: 18px;
+  border: 1px solid #3c505c;
+  border-radius: 8px;
+  background: #12232c;
+}
+.live-review > div {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  color: #e0eeef;
+}
+.live-review p {
+  font-size: 14px;
+  line-height: 1.65;
+}
+.live-review > span {
+  font-size: 12px;
+  color: #a0c4bb;
+}
+.live-availability {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: #9eb7c6;
+}
+.live-roster {
+  margin: 18px 0 0;
+  padding: 16px;
+  background: #111e27;
+  border: 1px solid #304350;
+  border-radius: 7px;
+}
+.live-roster-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 13px;
+}
+.live-roster-heading h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font: 700 17px var(--font-display);
+  margin: 0;
+}
+.live-roster-heading h2 > span {
+  font: 500 12px var(--font-geist-sans);
+  color: #91b5c1;
+  margin-left: 4px;
+}
+.live-roster-heading > small {
+  font-size: 12px;
+  color: #94afbe;
+}
+.live-roster-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.live-player {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  background: #192a36;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  padding: 10px;
+}
+.live-player.is-you {
+  border-color: #73604c;
+}
+.live-player.has-left {
+  opacity: 0.45;
+}
+.live-player-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 33px;
+  height: 33px;
+  background: #2d434d;
+  color: #bad1d7;
+  border-radius: 5px;
+  font-size: 12px;
+}
+.live-player > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.live-player b {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+.live-player em {
+  font-style: normal;
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: #ffb58c;
+  margin-left: 7px;
+}
+.live-player small {
+  display: block;
+  margin-top: 4px;
+  color: #98b2bd;
+  font-size: 11px;
+}
+.live-player > svg {
+  color: #8ae5b6;
+  flex: none;
+}
+.live-player > i {
+  height: 6px;
+  width: 6px;
+  background: #9d967b;
+  border-radius: 50%;
+  flex: none;
+}
+.live-roster-spaces {
+  color: #869eae;
+  font-size: 12px;
+  margin: 12px 0 0;
+}
+.fps-waiting-room {
+  position: absolute;
+  z-index: 12;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(540px, calc(100% - 32px));
+  max-height: calc(100% - 120px);
+  overflow: auto;
+  padding: 25px;
+  background: #101d27ed;
+  border: 1px solid #3b5260;
+  border-radius: 10px;
+  box-shadow: 0 18px 60px #0008;
+}
+.fps-waiting-room h2 {
+  font: 700 30px var(--font-display);
+  margin: 9px 0;
+}
+.fps-waiting-room > p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #9fb7c4;
+}
+.fps-waiting-room .live-roster-heading {
+  display: block;
+}
+.fps-waiting-room .live-roster-heading > small {
+  display: block;
+  margin-top: 7px;
+}
+.fps-waiting-room > .secondary {
+  margin-top: 15px;
+}
+.fps-waiting-room .live-roster-grid {
+  grid-template-columns: 1fr;
+}
+.fps-scoreboard {
+  z-index: 20;
+}
+@media (max-width: 650px) {
+  .live-roster-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .live-roster-grid {
+    grid-template-columns: 1fr;
+  }
+  .fps-waiting-room {
+    padding: 18px;
+  }
+  .fps-waiting-room h2 {
+    font-size: 26px;
+  }
+  .opponent-tabs [role='tab'] {
+    font-size: 12px;
   }
 }

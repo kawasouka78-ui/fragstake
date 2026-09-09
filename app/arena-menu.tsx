@@ -9,6 +9,8 @@ import type {MatchConfig} from '@/lib/game-rules';
 import type {ArenaMap} from '@/lib/fps/maps';
 import './arena-menu.css';
 import PausedSession from './paused-session';
+import LiveRoster from './live-roster';
+import {NetworkSimulation} from '@/lib/live/client';
 
 type Preferences={sensitivity:number;fov:number;quality:string;muted:boolean};
 type Props={game:Simulation|undefined;config:MatchConfig;map:ArenaMap;ready:boolean;error:string;settings:boolean;prefs:Preferences;setSettings:(value:boolean)=>void;preference:(value:Partial<Preferences>)=>void;select:(id:WeaponId)=>void;resume:()=>void;leave:()=>void;cashOut:()=>void;};
@@ -60,8 +62,9 @@ export default function ArenaMenu({game,config,map,ready,error,settings,prefs,se
         </section>
       </div>
       {game?.started&&!config.live&&<PausedSession game={game} config={config}/>}
+      {game instanceof NetworkSimulation&&<LiveRoster game={game}/>}
       <details className="deployment-controls"><summary><Keyboard size={17}/><span>Controls & tips</span><span className="deployment-key-hint">WASD to move · Mouse to aim</span><ChevronDown size={15}/></summary><div className="deployment-controls-body"><div className="deployment-key-grid">{[['Move','W A S D'],['Look / aim','Mouse / Arrow keys'],['Fire / aim down sights','LMB / RMB'],['Sprint / crouch','Shift / Ctrl'],['Slide','C'],['Jump / reload','Space / R'],['Switch weapons',helpKeys===1?'1':`1 – ${helpKeys}`],['Scoreboard','Tab'],['Pause / loadout / cash-out','Esc / P']].map(([label,keys])=><div key={label}><span>{label}</span><kbd>{keys}</kbd></div>)}</div><p>Press C to slide in your movement direction. No sprint or stamina required. Press C in the air to slide on landing. Press Space to jump out of a slide. Health regenerates after 7 seconds without damage. Pick up health and ammo at marked stations. Touch controls appear on touch devices. Press F for keyboard firing.</p></div></details>
-      <footer className="deployment-actions"><button className={game?.started&&config.mode==='ffa'?'secondary deployment-cashout':'deployment-back'} disabled={!ready} onClick={game?.started&&config.mode==='ffa'?cashOut:leave}><ArrowLeft size={16}/>{!game?.started?'Back to Play':config.mode==='ffa'?'Cash out & leave':config.mode==='duel'?`Forfeit €${(config.stake??10).toFixed(2)} & leave`:'Leave match'}</button><div><button className="secondary" onClick={()=>setSettings(!settings)}>{settings?<Crosshair size={17}/>:<Settings2 size={17}/>} {settings?'Loadout':'Settings'}</button><button className="primary deployment-start" disabled={!ready} onClick={resume}>{ready?(game?.started?'RESUME MATCH':'ENTER MATCH'):'LOADING ARENA…'}<ArrowRight size={19}/></button></div></footer>
+      <footer className="deployment-actions"><button className={game?.started&&config.mode==='ffa'?'secondary deployment-cashout':'deployment-back'} disabled={!ready} onClick={game?.started&&config.mode==='ffa'?cashOut:leave}><ArrowLeft size={16}/>{!game?.started?'Back to Play':config.live&&config.live.mode!=='ffa'?'Forfeit & leave':config.mode==='ffa'?'Cash out & leave':config.mode==='duel'?`Forfeit €${(config.stake??10).toFixed(2)} & leave`:'Leave match'}</button><div><button className="secondary" onClick={()=>setSettings(!settings)}>{settings?<Crosshair size={17}/>:<Settings2 size={17}/>} {settings?'Loadout':'Settings'}</button><button className="primary deployment-start" disabled={!ready} onClick={resume}>{ready?(game?.started?'RESUME MATCH':config.live?'READY UP':'ENTER MATCH'):'LOADING ARENA…'}<ArrowRight size={19}/></button></div></footer>
     </>}
   </section></div>;
 }

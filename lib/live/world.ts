@@ -319,6 +319,15 @@ export class LiveRoom {
         (p) => p.ready && !p.left && p.connected,
       ).length,
       capacity: this.capacity,
+      roster: [...this.players.values()].map((member) => ({
+        slot: member.slot,
+        name: member.claims.name,
+        team: member.game.player.team,
+        you: member === p,
+        ready: member.ready,
+        connected: member.connected,
+        left: member.left,
+      })),
       actors: [
         actor(p, 0),
         ...[...this.players.values()]
