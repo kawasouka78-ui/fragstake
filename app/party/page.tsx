@@ -1,3 +1,2 @@
-import PlatformPage from '../platform-page';
-export const metadata={title:'Party | SkillClash'};
-export default function Page(){return <PlatformPage section='party'/>}
+import {redirect} from 'next/navigation';
+export default function Page(){redirect('/friends#party');}

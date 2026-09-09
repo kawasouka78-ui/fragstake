@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 import {type Simulation,type Actor,weapons,weaponIds,type WeaponId} from './simulation.ts';
+import {buildWeapon,animateWeapon,type WeaponModel} from './weapon-models.ts';
 import {ArenaWorld} from './world.ts';
 import {ArenaPipeline} from './pipeline.ts';
 
 type Rig={root:THREE.Group;legs:THREE.Group[];shield:THREE.Mesh;health:THREE.Mesh};
 export class ArenaRenderer{
  world:ArenaWorld;pipeline:ArenaPipeline;ready:Promise<void>;disposed=false;
- renderer:THREE.WebGLRenderer;scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(80,1,.08,500);weaponScene=new THREE.Scene();weaponCamera=new THREE.PerspectiveCamera(65,1,.02,10);gunRoot=new THREE.Group();gunModels=new Map<WeaponId,THREE.Group>();flash:THREE.Mesh;sun:THREE.DirectionalLight;rigs:Rig[]=[];pickupMeshes:THREE.Group[]=[];tracers:THREE.Line[]=[];impacts:THREE.Mesh[]=[];materials=new Map<string,THREE.MeshStandardMaterial>();disposables:THREE.Texture[]=[];game:Simulation;kick=0;lastShotCount=0;bob=0;fov=80;quality='high';
+ renderer:THREE.WebGLRenderer;scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(80,1,.08,500);weaponScene=new THREE.Scene();weaponCamera=new THREE.PerspectiveCamera(65,1,.02,10);gunRoot=new THREE.Group();gunModels=new Map<WeaponId,WeaponModel>();flash:THREE.Mesh;sun:THREE.DirectionalLight;rigs:Rig[]=[];pickupMeshes:THREE.Group[]=[];tracers:THREE.Line[]=[];impacts:THREE.Mesh[]=[];materials=new Map<string,THREE.MeshStandardMaterial>();disposables:THREE.Texture[]=[];game:Simulation;kick=0;lastShotCount=0;bob=0;fov=80;quality='high';
  constructor(canvas:HTMLCanvasElement,game:Simulation){
   this.game=game;this.renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});this.renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));this.renderer.shadowMap.enabled=true;this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;this.renderer.outputColorSpace=THREE.SRGBColorSpace;this.renderer.toneMapping=THREE.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.25;
   this.renderer.toneMappingExposure=.94;this.camera.rotation.order='YXZ';this.world=new ArenaWorld(this.scene,this.renderer,game.map);this.sun=this.world.sun;this.ready=this.world.ready;this.buildWorld();
@@ -37,21 +38,7 @@ export class ArenaRenderer{
   const shield=new THREE.Mesh(new THREE.CapsuleGeometry(.52,1.05,4,10),new THREE.MeshBasicMaterial({color:ally?0x63dffc:0xffbb75,transparent:true,opacity:.1,wireframe:true,depthWrite:false}));shield.position.y=.95;root.add(shield);
   const health=new THREE.Mesh(new THREE.PlaneGeometry(.65,.045),new THREE.MeshBasicMaterial({color:trim,side:THREE.DoubleSide,depthTest:true}));health.position.y=2.1;root.add(health);this.scene.add(root);return {root,legs,shield,health};
  }
- weapon(id:WeaponId){
-  const root=new THREE.Group(),short=id==='smg',long=id==='marksman',color=this.game.config.skin??(long?'#5c6659':short?'#475866':'#555b5a');
-  this.box(root,0,0,0,.095,.12,.32,color,.6);this.box(root,0,.072,-.04,.078,.025,.35,'#151e24',.7);
-  this.box(root,0,-.115,.05,.06,.19,.09,'#252d32');this.box(root,0,-.15,-.085,.063,.23,.12,'#242e34');
-  this.box(root,0,.004,-.3,.074,.09,short?.2:long?.43:.32,color,.5);const barrel=this.cylinder(root,0,.024,long?-.68:short?-.48:-.57,.021,long?.3:.2,'#222d32');barrel.rotation.x=Math.PI/2;
-  this.box(root,0,-.016,.22,.09,.1,.16,'#242c31');this.box(root,0,-.05,.34,.1,.18,.08,'#182328');
-  for(let i=0;i<5;i++)this.box(root,0,.026,-.18-i*.042,.083,.067,.012,'#1d282d');
-  // Reflex sight: its center lines up with the camera when aiming.
-  this.box(root,0,.106,-.01,.07,.05,.045,'#1c282f');for(const side of [-1,1])this.box(root,side*.038,.173,-.01,.01,.09,.025,'#1c282f');this.box(root,0,.218,-.01,.086,.012,.025,'#1c282f');
-  const glass=new THREE.Mesh(new THREE.PlaneGeometry(.064,.074),new THREE.MeshBasicMaterial({color:0x95d7f0,transparent:true,opacity:.1,side:THREE.DoubleSide,depthWrite:false}));glass.position.set(0,.172,-.012);root.add(glass);
-  this.box(root,.052,.03,.025,.006,.035,.09,this.game.map.accent);
-  // Gloved support hand and forearm, part of the first-person rig.
-  const hand=this.box(root,-.045,-.068,-.26,.11,.085,.14,'#525b54');hand.rotation.z=-.2;const arm=this.box(root,-.1,-.2,-.19,.11,.28,.12,'#2b3639');arm.rotation.z=-.35;
-  this.box(root,.01,-.16,.075,.09,.1,.13,'#525b54');if(id==='pistol'||id==='handcannon')root.scale.set(.9,.9,.58);if(id==='shotgun')root.scale.set(1.12,1,1.1);return root;
- }
+ weapon(id:WeaponId){return buildWeapon(id,this.game.config.skin);}
  resize(width:number,height:number){this.renderer.setSize(width,height,false);this.camera.aspect=width/height;this.camera.updateProjectionMatrix();this.weaponCamera.aspect=width/height;this.weaponCamera.updateProjectionMatrix();this.pipeline.resize(width,height);}
  setQuality(quality:string){if(this.quality===quality)return;this.quality=quality;this.renderer.setPixelRatio(Math.min(devicePixelRatio,quality==='high'?1.5:1));this.renderer.shadowMap.enabled=true;this.pipeline.setQuality(quality);}
  shot(){this.kick=1;}
@@ -64,9 +51,10 @@ export class ArenaRenderer{
   this.pickupMeshes.forEach((mesh,i)=>{mesh.visible=g.pickups[i].ready<=0;mesh.position.y=.45+Math.sin(g.elapsed*2+i)*.1;mesh.rotation.y=g.elapsed*.7;});
   for(let i=0;i<this.tracers.length;i++){const shot=g.shots[i],line=this.tracers[i],impact=this.impacts[i];line.visible=!!shot;impact.visible=!!shot;if(!shot)continue;const from=shot.from;const positions=line.geometry.attributes.position as THREE.BufferAttribute;positions.setXYZ(0,from.x,from.y-.08,from.z);positions.setXYZ(1,shot.to.x,shot.to.y,shot.to.z);positions.needsUpdate=true;(line.material as THREE.LineBasicMaterial).opacity=(1-shot.age/.08)*.75;impact.position.set(shot.to.x,shot.to.y,shot.to.z);}
   for(const [id,mesh]of this.gunModels)mesh.visible=id===g.weapon;
+  const model=this.gunModels.get(g.weapon)!;animateWeapon(model,this.kick,g.reloadLeft>0?1-g.reloadLeft/weapons[g.weapon].reload:0);
   const reload=g.reloadLeft>0?Math.sin(Math.PI*(1-g.reloadLeft/weapons[g.weapon].reload)):0;
-  this.gunRoot.visible=p.hp>0;this.gunRoot.position.set(.27*(1-g.aim)+Math.sin(this.bob*.5)*.008*(1-g.aim),-.25+g.aim*.078-Math.abs(bob)-reload*.25-(g.switchLeft>0?.16:0),-.43+this.kick*.04);
-  this.gunRoot.rotation.set(this.kick*.05-reload*.4,g.sprinting?-.28:0,-reload*.45+(g.sprinting?-.25:0));this.flash.visible=this.kick>.6;this.flash.rotation.z=g.elapsed*200;
+  this.gunRoot.visible=p.hp>0;this.gunRoot.position.set(.27*(1-g.aim)+Math.sin(this.bob*.5)*.008*(1-g.aim),-.25+g.aim*(.25-model.rig.sightHeight)-Math.abs(bob)-reload*.25-(g.switchLeft>0?.16:0),-.43+this.kick*.04);
+  this.gunRoot.rotation.set(this.kick*.05-reload*.4,g.sprinting?-.28:0,-reload*.45+(g.sprinting?-.25:0));this.flash.scale.setScalar(['pistol','handcannon','smg','vector'].includes(g.weapon)?.6:1);this.flash.position.copy(model.rig.muzzle);this.flash.position.z-=.06;this.flash.visible=this.kick>.6;this.flash.rotation.z=g.elapsed*200;
   this.sun.shadow.needsUpdate=true;this.pipeline.render(dt);
  }
  dispose(){if(this.disposed)return;this.disposed=true;const geometries=new Set<THREE.BufferGeometry>(),materials=new Set<THREE.Material>();for(const scene of [this.scene,this.weaponScene])scene.traverse(object=>{if(object instanceof THREE.Mesh||object instanceof THREE.Line||object instanceof THREE.Points){geometries.add(object.geometry);for(const m of Array.isArray(object.material)?object.material:[object.material])materials.add(m);}});geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());this.disposables.forEach(t=>t.dispose());this.world.dispose();this.pipeline.dispose();this.renderer.dispose();}

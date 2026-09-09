@@ -2,7 +2,7 @@
 import {requestAccount} from '@/lib/account-client';
 import {createContext,useContext,useEffect,useState,useCallback,type ReactNode} from 'react';
 import type {Player,MatchRow} from '@/db/service';
-export type Summary={matches:number;kills:number;deaths:number;wins:number;net:number};
+export type Summary={matches:number;kills:number;deaths:number;wins:number;net:number;headshots?:number;maxStreak?:number};
 export type Transaction={id:string;kind:string;amount:number;label:string;created_at:number;match_id:string|null};
 export type AccountData={player:Player;stats:Summary;transactions:Transaction[];matches:MatchRow[];active:MatchRow|null;pending:number};
 export async function accountApi<T=AccountData>(body?:Record<string,unknown>,query=''):Promise<T>{return requestAccount<T>(body,query);}

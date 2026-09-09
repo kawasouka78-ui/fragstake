@@ -1,3 +1,2 @@
-import PlatformPage from '../platform-page';
-export const metadata={title:'Duels | SkillClash'};
-export default function Page(){return <PlatformPage section='duels'/>}
+import {redirect} from 'next/navigation';
+export default function Page(){redirect('/?mode=duel#duels');}

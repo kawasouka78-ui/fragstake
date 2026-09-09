@@ -16,10 +16,7 @@ test('rendered camera direction matches shot rays for all look angles',()=>{
 
 // Pure gameplay regression tests; no browser or live account is required.
 const fixedDt = 1 / 60;
-test('raised barrels block bullets above their supporting crate',()=>{
- const drydock=maps.find(m=>m.id==='drydock'),boxes=collisionBoxes(drydock);
- assert.ok(wallDistance(boxes,{x:-14,y:1.62,z:2},{x:0,y:0,z:1})<2);
-});
+test('Citadel ceiling and door lintels stop bullets while doorways remain traversable',()=>{const boxes=collisionBoxes(maps[0]);assert.ok(wallDistance(boxes,{x:-26,y:1.62,z:-12},{x:0,y:1,z:0})<2);assert.ok(clearAt(boxes,-26,-12,.4));assert.ok(wallDistance(boxes,{x:-25,y:1.62,z:-15},{x:0,y:1,z:0})<4);});
 const config = (extra = {}) => ({ mode: 'practice', rate: 5, team: '1v1', balance: 90, mapId: 'foundry', ...extra });
 const create = (extra = {}) => new Simulation(config(extra), () => 0.5);
 const box = (extra = {}) => ({ x: 0, z: -5, w: 3, d: 1, h: 4, material: 'concrete', ...extra });
