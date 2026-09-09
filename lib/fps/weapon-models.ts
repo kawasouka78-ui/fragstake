@@ -33,8 +33,10 @@ class ModelBuilder {
   sightHeight = .172;
 
   id: WeaponId;
-  constructor(id: WeaponId, skin?: string) {
+  showHands = true;
+  constructor(id: WeaponId, skin?: string, showHands = true) {
     this.id=id;
+    this.showHands=showHands;
     const material = (color: string, metalness: number, roughness: number) => new THREE.MeshStandardMaterial({color, metalness, roughness});
     this.finishes = {
       shell: material(skin ?? defaults[id], .5, .39),
@@ -200,6 +202,7 @@ class ModelBuilder {
   }
 
   hands(supportZ: number, pistol = false, gripZ = .08) {
+    if (!this.showHands) return;
     const glove=(parent:THREE.Group,x:number,y:number,z:number,scale=1)=>{
       const palm=this.mesh(parent,new THREE.SphereGeometry(1,8,6),'glove',x,y,z);palm.scale.set(.053*scale,.041*scale,.064*scale);palm.rotation.z=-.2;
       const panel=this.box(parent,x,y+.025*scale,z,.063*scale,.023*scale,.067*scale,'fabric',.006);panel.rotation.z=-.18;
@@ -407,8 +410,8 @@ function shotgun(b:ModelBuilder) {
   b.irons(-.651,.082,.117);b.hands(-.368);
 }
 
-export function buildWeapon(id: WeaponId, skin?: string): WeaponModel {
-  const b=new ModelBuilder(id,skin);
+export function buildWeapon(id: WeaponId, skin?: string, showHands = true): WeaponModel {
+  const b=new ModelBuilder(id,skin,showHands);
   if(id==='rifle'||id==='carbine')assault(b);
   else if(id==='smg'||id==='vector')submachine(b);
   else if(id==='marksman')marksman(b);
