@@ -8,6 +8,18 @@
 .site-shell .mode-content{margin-top:0}.site-shell .mode-content .mode-icon{position:static;inset:auto}.site-shell .mode-card .card-bottom{margin:0;min-height:0}.site-shell .mode-card.selected .mode-check{background:#ffa97116;border:1px solid #eaa46c44;color:#ffc398;border-radius:4px;padding:4px 6px}.site-shell .practice-detail{flex-direction:row}.site-shell .feature-copy h2,.site-shell .match-title h2,.site-shell .mode-content h3,.site-shell .page-heading h1,.site-shell .open-duels h2,.site-shell .quick-duels h3{font-family:var(--font-display),'Arial Narrow',sans-serif}.site-shell .mode-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.site-shell .mode-content p{min-height:0}.site-shell .mode-card{display:flex;flex-direction:column}.site-shell .practice-detail>svg{flex-shrink:0}
 @media(max-width:650px){.site-shell .play-main .match-panel{grid-row:2}.site-shell .play-main .feature{grid-row:3}}
 
+@media(min-width:851px){
+ .site-shell .lobby-layout{grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:stretch}
+ .site-shell .modes-section{grid-column:1/-1;grid-row:1}
+ .site-shell .modes-section .section-heading{margin-bottom:12px}
+ .site-shell .play-main .mode-card{min-height:142px;padding:16px 18px}
+ .site-shell .mode-content{padding-top:13px}
+ .site-shell .mode-content p{font-size:13px;line-height:1.45;margin-top:9px}
+ .site-shell .mode-card .card-bottom{padding-top:10px}
+ .site-shell .play-main .feature{grid-column:1;grid-row:2;min-height:480px}
+ .site-shell .play-main .match-panel{grid-column:2;grid-row:2;min-height:480px;padding:25px 23px}
+}
+
 /* A compact match browser, with playable bot duels and player lobbies distinct. */
 .site-shell .duel-browser{background:#10171f;border-color:#2b3541;border-radius:12px;box-shadow:0 12px 30px #0002}
 .site-shell .duel-browser>.section-heading{padding:24px 26px 19px;border:0;align-items:center}

@@ -61,7 +61,6 @@ export default function Home(){
 
    </div>
    <OpenDuels mapId={mapId} onPractice={r=>{configureDuel(r);setMode('duel');setLaunch(true)}}/>
-   <div className="demo-note"><ShieldCheck size={17}/><p><b>PLAY THE PREVIEW</b><span>Bot opponents. Demo credits. Real multiplayer and payments are not connected.</span></p><span className="demo-version">SC / THREE MAPS</span></div>
    <footer><span className="footer-brand">SKILLCLASH</span><span>YOUR SKILL. YOUR GAME.</span><button onClick={()=>setInfo(true)}>Game rules <ArrowUpRight size={14}/></button></footer>
  </main>
  <Dialog open={info} onOpenChange={setInfo}><DialogContent className="sc-dialog"><DialogTitle>Know the rules</DialogTitle><DialogDescription>Three modes. Three connected indoor arenas. This prototype uses bots and demo credits.</DialogDescription><div className="rule"><Crosshair/><div><h3>Practice</h3><p>Free FFA. Warm up with nine bots. Kills and deaths do not change your balance.</p></div></div><div className="rule"><Zap/><div><h3>Cash FFA</h3><p>Rookie: €1, Beginner: €2, Contender: €5, Pro: €10 per kill or death. A kill credits your balance; a death deducts the same amount. A round ends if you cannot cover another death.</p></div></div><div className="rule"><Swords/><div><h3>Duels</h3><p>Choose a €5–€100 demo stake, first to 5 or 10, and a single round or best of three. Each winning player receives twice their stake. Choose weapon restrictions directly on Play. Leaving early forfeits the stake.</p></div></div></DialogContent></Dialog>
