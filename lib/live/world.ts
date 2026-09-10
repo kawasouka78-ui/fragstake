@@ -47,6 +47,8 @@ export type Participant = {
 export class LiveRoom {
   id = crypto.randomUUID();
   players = new Map<string, Participant>();
+  reservedSlots:Map<string,number>|null=null;
+  inviteExpiresAt=0;
   status: 'waiting' | 'playing' | 'finished' = 'waiting';
   elapsed = 0;
   tick = 0;
@@ -72,6 +74,7 @@ export class LiveRoom {
     this.capacity = mode === 'ffa' ? 10 : mode === '1v1' ? 2 : 4;
   }
   add(claims: Ticket) {
+    if(this.reservedSlots&&!this.reservedSlots.has(claims.sub))throw new Error('This rematch is reserved for its original players.');
     if (
       this.status === 'finished' ||
       this.players.size >= this.capacity ||
@@ -86,7 +89,7 @@ export class LiveRoom {
         rate: 0,
         balance: 0,
       }),
-      slot = this.players.size;
+      slot = this.reservedSlots?.get(claims.sub)??this.players.size;
     game.actors = game.actors.slice(0, 1);
     game.pickups = [];
     game.player.name = claims.name;
@@ -379,6 +382,7 @@ export class LiveRoom {
       room: this.id,
       status: this.status,
       cancelled: this.status === 'finished' && !this.hadOpponents,
+      rematch: undefined as {ticket:string;expiresAt:number}|undefined,
       mode: this.mode,
       tick: this.tick,
       ack: p.seq,
@@ -416,6 +420,8 @@ export class LiveRoom {
         recoil: g.recoil,
         bloom: g.bloom,
         stamina: g.stamina,
+        sprintExhausted: g.sprintExhausted,
+        sprintCooldown: g.sprintCooldown,
         sprinting: g.sprinting,
         slideLeft: g.slideLeft,
         playerEyeHeight: g.playerEyeHeight,

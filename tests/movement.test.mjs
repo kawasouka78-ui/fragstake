@@ -6,6 +6,34 @@ const dt=1/60,run={...idleInput(),forward:1,sprint:true};
 function isolated(){const s=new Simulation({mode:'practice',rate:2,team:'1v1',balance:100},()=>.5);s.actors=[s.player];s.boxes=[];s.pickups=[];Object.assign(s.player,{x:0,z:0,y:0,shield:0});s.yaw=0;s.start();return s;}
 function advance(s,time,input=idleInput()){for(let n=0;n<Math.round(time/dt);n++)s.step(dt,input);}
 function sliding(){const s=isolated();s.step(dt,{...idleInput(),slide:true});assert.ok(s.sliding);return s;}
+
+test('exhaustion locks sprint while holding or tapping Shift, then resumes with a useful reserve',()=>{
+ const s=isolated();s.stamina=0.1;s.step(dt,run);
+ assert.equal(s.stamina,0);assert.equal(s.sprintExhausted,true);assert.equal(s.sprinting,false);
+ for(let frame=0;frame<100;frame++){
+  s.step(dt,{...run,sprint:frame%3!==0});
+  assert.equal(s.sprinting,false,'tapping Shift must not bypass recovery');
+ }
+ assert.ok(s.stamina>29);assert.ok(s.sprintRecoveryWait>0);
+ advance(s,0.4,run);assert.equal(s.sprintExhausted,false);assert.equal(s.sprinting,true);assert.ok(s.stamina>30);
+});
+
+test('holding sprint through repeated exhaustion never oscillates between walk and run',()=>{
+ const s=isolated();let previous=false,lastChange=-100,changes=0;
+ for(let frame=0;frame<1200;frame++){
+  s.step(dt,run);
+  if(s.sprinting!==previous){assert.ok(s.elapsed-lastChange>1,'speed changes must not chatter frame to frame');lastChange=s.elapsed;previous=s.sprinting;changes++;}
+ }
+ assert.ok(changes>=5,'the test must cross several drain/recovery cycles');
+});
+
+test('sprint recovery freezes while paused, allows sliding, and resets after respawn',()=>{
+ const s=isolated();s.stamina=0;s.step(dt,run);s.pause();
+ const before=[s.stamina,s.sprintCooldown];advance(s,1,run);assert.deepEqual([s.stamina,s.sprintCooldown],before);
+ s.start();s.step(dt,{...run,slide:true});assert.equal(s.sliding,true);assert.equal(s.sprinting,false);
+ s.respawn(s.player);assert.equal(s.stamina,100);assert.equal(s.sprintExhausted,false);assert.equal(s.sprintCooldown,0);
+ s.step(dt,run);assert.equal(s.sprinting,true);
+});
 test('slide starts standing, walking, aiming or exhausted without sprint',()=>{
  for(const input of [idleInput(),{...idleInput(),forward:1},{...idleInput(),aim:true}]){const s=isolated();s.stamina=0;s.step(dt,{...input,slide:true});assert.ok(s.sliding);assert.ok(s.player.moving>7);}
 });

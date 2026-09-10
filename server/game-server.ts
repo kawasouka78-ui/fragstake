@@ -6,6 +6,7 @@ import { LiveRoom } from '../lib/live/world.ts';
 import { readTicket, signature } from '../lib/live/security.ts';
 import { RECONNECT_MS } from '../lib/live/protocol.ts';
 import { openRooms, findRoom } from '../lib/live/matchmaking.ts';
+import {prepareRematch} from '../lib/live/rematch.ts';
 
 const secret = process.env.LIVE_TICKET_SECRET || '';
 if (secret.length < 32)
@@ -265,6 +266,22 @@ wss.on('connection', (ws: WebSocket) => {
     }
   });
 });
+const finalizing=new Set<string>();
+async function finishRoom(room:LiveRoom){
+  // Persist once, then include each private invitation in the final snapshot.
+  const result=room.result();
+  storage.prepare('INSERT OR IGNORE INTO outbox(id,body) VALUES(?,?)').run(room.id,JSON.stringify(result));
+  let rematch:Awaited<ReturnType<typeof prepareRematch>>=null;
+  try{
+    if(rooms.size<24)rematch=await prepareRematch(room,secret);
+    if(rematch)rooms.set(rematch.room.id,rematch.room);
+  }catch{ /* Results still reach players if invitations cannot be prepared. */ }
+  for(const [key,s] of sessions)if(s.room===room){
+    if(s.socket){send(s.socket,{...room.snapshot(s.subject),rematch:rematch?.invitations.get(s.subject)});s.socket.close(1000,'Match complete');}
+    sessions.delete(key);
+  }
+  rooms.delete(room.id);finalizing.delete(room.id);
+}
 const timer = setInterval(() => {
   const start = performance.now();
   ticks++;
@@ -279,7 +296,12 @@ const timer = setInterval(() => {
   for (const [id, room] of rooms) {
     if (room.status === 'waiting' && Date.now() - room.created > 300000)
       room.finish();
+    if(room.status==='waiting'&&room.inviteExpiresAt&&Date.now()>room.inviteExpiresAt&&room.players.size<room.capacity)room.finish();
     room.step();
+    if(room.status==='finished'){
+      if(!finalizing.has(id)){finalizing.add(id);void finishRoom(room);}
+      continue;
+    }
     for (const s of sessions.values())
       if (s.room === room && s.socket) send(s.socket, room.snapshot(s.subject));
     if (room.tick % 6 === 0 && room.status === 'playing')
@@ -299,18 +321,7 @@ const timer = setInterval(() => {
           }),
           Date.now(),
         );
-    if (room.status === 'finished') {
-      const result = room.result();
-      storage
-        .prepare('INSERT OR IGNORE INTO outbox(id,body) VALUES(?,?)')
-        .run(id, JSON.stringify(result));
-      for (const [key, s] of sessions)
-        if (s.room === room) {
-          s.socket?.close(1000, 'Match complete');
-          sessions.delete(key);
-        }
-      rooms.delete(id);
-    }
+
   }
   maxTickMs = Math.max(maxTickMs, performance.now() - start);
 }, 1000 / 30);

@@ -22,6 +22,7 @@ const reserveFor=()=>Object.fromEntries(matchWeaponIds.map(id=>[id,id==='knife'?
 export type Actor={id:number;name:string;team:number;x:number;z:number;y:number;vy:number;yaw:number;hp:number;kills:number;deaths:number;respawn:number;shield:number;cooldown:number;crouch:boolean;moving:number;path:{x:number;z:number}[];repath:number;target:number;reaction:number;lastDamage:number};
 export type Controls={forward:number;right:number;fire:boolean;firePressed?:boolean;aim:boolean;sprint:boolean;crouch:boolean;jump:boolean;reload:boolean;slide?:boolean;weapon?:WeaponId};
 export const idleInput=():Controls=>({forward:0,right:0,fire:false,aim:false,sprint:false,crouch:false,jump:false,reload:false,slide:false});
+export const sprintRecovery={cooldown:1.5,restartStamina:35,drain:24,regen:18} as const;
 export function shotsToEliminate(damage:number,headMultiplier=1){return Math.ceil(100/Math.max(1,Math.round(damage*headMultiplier)));}
 export function weaponTimeToKill(id:WeaponId,head=false){const gun=weapons[id],perShot=gun.damage*(id==='shotgun'?8:1),shots=shotsToEliminate(perShot,head?gun.head:1);return (shots-1)*gun.interval;}
 export type Shot={from:Vec;to:Vec;friendly:boolean;age:number};
@@ -94,6 +95,8 @@ export class Simulation{
   this.yaw=this.player.yaw;this.pickups=this.map.landmarks.map((p,i)=>({x:p.x,z:p.z,kind:i%2?'ammo':'health',ready:0}));
  }
  lastDeathLoss=0;
+ sprintExhausted=false;sprintCooldown=0;
+ get sprintRecoveryWait(){return this.sprintExhausted?Math.max(this.sprintCooldown,(sprintRecovery.restartStamina-this.stamina)/sprintRecovery.regen,0):0;}
  killConfirm:{id:number;victim:string;head:boolean;age:number}|null=null;
  stepSound=0;slideQueued=false;slideLeft=0;slideCooldown=0;slideSpeed=0;slideX=0;slideZ=0;crouchHeld=false;slideHeld=false;playerEyeHeight=1.62;
  get sliding(){return this.slideLeft>0;}
@@ -118,7 +121,7 @@ export class Simulation{
   const enemies=this.actors.filter(b=>b.id!==a.id&&b.team!==a.team&&b.hp>0);
   const ranked=this.map.spawns.map(s=>{const distance=Math.min(80,...enemies.map(e=>Math.hypot(e.x-s.x,e.z-s.z))),exposure=enemies.some(e=>Math.hypot(e.x-s.x,e.z-s.z)<28&&visible(this.boxes,{x:s.x,y:1.6,z:s.z},this.eye(e)))?9:0;return {s,value:Math.min(25,distance)-Math.max(0,distance-32)*.7-exposure-this.actors.filter(b=>b.id!==a.id&&b.hp>0&&Math.hypot(b.x-s.x,b.z-s.z)<2).length*20+this.rng()*2};}).sort((a,b)=>b.value-a.value);
   const s=ranked[0].s;Object.assign(a,{x:s.x,z:s.z,y:0,vy:0,yaw:s.yaw,hp:100,shield:1.8,respawn:0,path:[],repath:0,cooldown:.8,reaction:.6});
-  if(a.id===0){this.lastDeathLoss=0;this.yaw=s.yaw;this.pitch=0;this.vx=this.vz=0;this.slideLeft=this.slideCooldown=this.slideSpeed=0;this.slideQueued=false;this.sprinting=false;this.playerEyeHeight=1.62;a.crouch=false;a.moving=0;this.reloadLeft=0;this.ammo=ammoFor();this.reserve=reserveFor();this.stamina=100;this.events.push({kind:'spawn'});}
+  if(a.id===0){this.lastDeathLoss=0;this.yaw=s.yaw;this.pitch=0;this.vx=this.vz=0;this.slideLeft=this.slideCooldown=this.slideSpeed=0;this.slideQueued=false;this.sprinting=false;this.playerEyeHeight=1.62;a.crouch=false;a.moving=0;this.reloadLeft=0;this.ammo=ammoFor();this.reserve=reserveFor();this.stamina=100;this.sprintExhausted=false;this.sprintCooldown=0;this.events.push({kind:'spawn'});}
  }
  damage(victim:Actor,attacker:Actor,amount:number,head=false){
   if(this.ended||this.paused||victim.hp<=0||victim.shield>0||victim.team===attacker.team||(this.config.weaponRule==='headshots'&&!head))return;if(victim.id===0||attacker.id===0)this.combatAt=this.elapsed;
@@ -185,9 +188,14 @@ export class Simulation{
    }
    const slideJump=this.sliding&&input.jump&&!this.jumpHeld;
    if(slideJump){this.slideLeft=0;p.vy=5.4;}
-   p.crouch=!slideJump&&(input.crouch||this.sliding);this.sprinting=!this.sliding&&input.sprint&&input.forward>0&&!aiming&&!attacking&&!p.crouch&&this.stamina>2;
+   this.sprintCooldown=Math.max(0,this.sprintCooldown-dt);
+   if(this.sprintExhausted&&this.sprintCooldown===0&&this.stamina>=sprintRecovery.restartStamina)this.sprintExhausted=false;
+   if(!this.sprintExhausted&&this.stamina<=0){this.sprintExhausted=true;this.sprintCooldown=sprintRecovery.cooldown;}
+   p.crouch=!slideJump&&(input.crouch||this.sliding);this.sprinting=!this.sliding&&input.sprint&&input.forward>0&&!aiming&&!attacking&&!p.crouch&&!this.sprintExhausted;
    this.playerEyeHeight+=((p.crouch?1.05:1.62)-this.playerEyeHeight)*(1-Math.exp(-dt*14));
-   this.stamina=clamp(this.stamina+(this.sliding?0:this.sprinting?-24:18)*dt,0,100);this.aim+=(Number(aiming&&!this.sprinting&&!this.sliding)-this.aim)*Math.min(1,dt*14);
+   this.stamina=clamp(this.stamina+(this.sliding?0:this.sprinting?-sprintRecovery.drain:sprintRecovery.regen)*dt,0,100);
+   if(this.sprinting&&this.stamina===0){this.sprintExhausted=true;this.sprintCooldown=sprintRecovery.cooldown;this.sprinting=false;}
+   this.aim+=(Number(aiming&&!this.sprinting&&!this.sliding)-this.aim)*Math.min(1,dt*14);
    const speed=p.crouch?2.35:this.sprinting?7.5:aiming?3.15:4.7;
    const length=Math.max(1,Math.hypot(input.forward,input.right)),f=input.forward/length,r=input.right/length;
    const tx=(-Math.sin(this.yaw)*f+Math.cos(this.yaw)*r)*speed,tz=(-Math.cos(this.yaw)*f-Math.sin(this.yaw)*r)*speed;

@@ -171,6 +171,14 @@ test(
         (m) => m.type === 'snapshot' && m.status === 'finished',
       );
       assert.equal(ended.won, true);
+      assert.ok(ended.rematch?.ticket,'the final snapshot must include a usable rematch invitation');
+      const rematched=connect({type:'join',ticket:ended.rematch.ticket});
+      const rematchWelcome=await rematched.wait(m=>m.type==='welcome');
+      assert.notEqual(rematchWelcome.room,aw.room);
+      const rematchState=await rematched.wait(m=>m.type==='snapshot');
+      assert.equal(rematchState.status,'waiting');assert.equal(rematchState.actors[0].team,1,'Bob retains his team');
+      const privateList=await (await fetch(`http://127.0.0.1:${port}/health`)).json();
+      assert.ok(!privateList.openRooms.some(room=>room.id===rematchWelcome.room),'private rematches must not enter the open list');
       const health = await (
         await fetch(`http://127.0.0.1:${port}/health`)
       ).json();

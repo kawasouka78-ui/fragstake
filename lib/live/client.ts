@@ -221,6 +221,7 @@ export class NetworkSimulation extends Simulation {
       mapId: this.map.id,
       net: 0,
       liveMode: this.config.live?.mode,
+      rematch:reason==='Live match complete'&&this.latest?.rematch&&this.config.live?{...this.config.live,...this.latest.rematch}:undefined,
       ...liveResultDetails(this.latest, reason === 'Live match complete'),
     };
   }

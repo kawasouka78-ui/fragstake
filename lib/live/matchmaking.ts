@@ -18,7 +18,7 @@ export function openRooms(rooms: Iterable<LiveRoom>) {
   return [...rooms]
     .filter(
       (room) =>
-        canJoinRoom(room) &&
+        !room.reservedSlots && canJoinRoom(room) &&
         [...room.players.values()].some((p) => !p.left && p.connected),
     )
     .slice(0, 24)
@@ -57,7 +57,7 @@ export function findRoom(
   }
   return available.find(
     (room) =>
-      room.mode === claims.mode &&
+      !room.reservedSlots && room.mode === claims.mode &&
       room.mapId === claims.mapId &&
       canJoinRoom(room),
   );

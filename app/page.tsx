@@ -16,6 +16,8 @@ import './lobby-refresh.css';
 import './maps.css';
 import MatchReceipt from './match-receipt';
 import LiveMatchResult from './live-match-result';
+import DuelResult from './duel-result';
+import {rematchRules,nextDuel} from '@/lib/duel-result';
 import { canEnter, type MatchConfig, type Result } from '@/lib/game-rules';
 import {
   Crosshair,
@@ -76,6 +78,8 @@ export default function Home() {
   const [party, setParty] = useState<PartySummary>(null);
   const [game, setGame] = useState<(MatchConfig & { id: string }) | null>(null);
   const [result, setResult] = useState<Result | null>(null);
+  const [lastMatch,setLastMatch]=useState<MatchConfig|null>(null);
+  const resultIsDuel=!!result&&(result.mode==='duel'||result.liveMode==='1v1'||result.liveMode==='2v2');
   const [busy, setBusy] = useState(false),
     [saveError, setSaveError] = useState(''),
     [pendingResult, setPendingResult] = useState<Record<
@@ -120,10 +124,7 @@ export default function Home() {
   }
   function reviewMatch() {
     if (mode === 'duel' && !selectedRoom) {
-      const found = {
-        mapId: maps[Math.floor(Math.random() * maps.length)].id,
-        team: (Math.random() > 0.5 ? '2v2' : '1v1') as '1v1' | '2v2',
-      };
+      const found=nextDuel(maps.map(map=>map.id),mapId,partyCount);
       setDuelQueue({ searching: true, found });
       setSaveError('');
       setLaunch(true);
@@ -228,9 +229,9 @@ export default function Home() {
       knifeStyle,
     });
   }
-  async function start(closeSaved = false) {
+  async function start(closeSaved = false, replay?:MatchConfig) {
     if (busy) return;
-    if (mode === 'practice' && (!loaded || data?.active)) {
+    if (!replay && mode === 'practice' && (!loaded || data?.active)) {
       startGuestPractice();
       return;
     }
@@ -264,6 +265,7 @@ export default function Home() {
         bestOf,
         weaponRule,
         entry: mode === 'ffa' ? entry : 0,
+        ...(replay?rematchRules(replay):{}),
       });
       if (!r?.match || r.match.status !== 'active')
         throw new Error('This match has already ended. Try again.');
@@ -278,6 +280,24 @@ export default function Home() {
     } finally {
       setBusy(false);
     }
+  }
+  async function replayDuel(){
+    if(busy||pendingResult||!lastMatch||!result)return;
+    setSaveError('');
+    if(lastMatch.live){
+      if(!result.rematch||result.rematch.expiresAt<=Date.now()){
+        setSaveError('The rematch invitation has expired. Choose Find another game.');return;
+      }
+      const {expiresAt,...connection}=result.rematch;
+      setGame({...lastMatch,live:connection,id:'live'});setResult(null);setLaunch(false);
+    }else await start(false,lastMatch);
+  }
+  function findNextDuel(){
+    if(busy||pendingResult||!lastMatch)return;
+    setMode('duel');setOpponents(lastMatch.live?'players':'bots');
+    setDuelStake(lastMatch.stake??10);setSelectedRoom(null);setSaveError('');
+    setDuelQueue({searching:true,found:nextDuel(maps.map(map=>map.id),getMap(lastMatch.mapId).id,partyCount)});
+    setResult(null);setLaunch(true);
   }
   async function saveMatch(payload: Record<string, unknown>) {
     setBusy(true);
@@ -319,6 +339,7 @@ export default function Home() {
   }
   function finishMatch(r: Result) {
     if (!game) return;
+    setLastMatch(game);
     if (game.live) {
       setResult(r);
       setGame(null);
@@ -799,6 +820,7 @@ export default function Home() {
             setMapId(getMap(room.mapId).id);
             setOpponents('players');
             setSelectedRoom(room);
+            setDuelQueue({searching:false});
             setSaveError('');
             setLaunch(true);
           }}
@@ -806,7 +828,7 @@ export default function Home() {
             configureDuel(r);
             setMode('duel');
             setOpponents('bots');
-            reviewMatch();
+            setSelectedRoom(null);setDuelQueue({searching:false});setSaveError('');setLaunch(true);
           }}
         />
         <footer>
@@ -1049,7 +1071,7 @@ export default function Home() {
                       team +
                       '. €' +
                       duelStake +
-                      ' will be reserved from your demo wallet. First to 10. Leaving early forfeits your stake.'}
+                      ' will be reserved from your demo wallet. First to '+killTarget+'. Leaving early forfeits your stake.'}
               </p>
               <p>
                 WASD to move · Mouse to aim · Click to fire · Right-click to aim
@@ -1106,7 +1128,8 @@ export default function Home() {
           if (!open && !pendingResult) setResult(null);
         }}
       >
-        <DialogContent className="sc-dialog result-dialog">
+        <DialogContent className={resultIsDuel?"sc-dialog duel-result-dialog":"sc-dialog result-dialog"}>
+          {resultIsDuel&&result?<DuelResult result={result} config={lastMatch} pending={!!pendingResult} busy={busy} error={saveError} retry={()=>{if(pendingResult)void saveMatch(pendingResult);}} rematch={()=>void replayDuel()} findNext={findNextDuel} leave={()=>setResult(null)}/>:<>
           <span className="exit-review-meta">
             {getMap(result?.mapId).name} · MATCH REPORT
           </span>
@@ -1189,6 +1212,7 @@ export default function Home() {
               Back to lobby
             </button>
           </div>
+          </>}
         </DialogContent>
       </Dialog>
     </div>

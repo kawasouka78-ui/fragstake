@@ -4,6 +4,7 @@ import {createContext,useContext,useEffect,useState,useCallback,type ReactNode} 
 import type {Player,MatchRow} from '@/db/service';
 import {catalog,demoRating} from '@/lib/catalog';
 import {PreviewArmory} from '@/lib/preview-armory';
+import {settlePreviewMatch} from '@/lib/preview-match';
 export type Summary={matches:number;kills:number;deaths:number;wins:number;net:number;headshots?:number;maxStreak?:number};
 export type Transaction={id:string;kind:string;amount:number;label:string;created_at:number;match_id:string|null};
 export type AccountData={player:Player;stats:Summary;transactions:Transaction[];matches:MatchRow[];active:MatchRow|null;pending:number};
@@ -22,21 +23,21 @@ const previewArmory=new PreviewArmory();let armoryLoaded=false;
 function loadArmory(){if(armoryLoaded||typeof window==='undefined')return;armoryLoaded=true;try{const saved=localStorage.getItem('fragstake-preview-armory');if(saved){previewArmory.restore(saved);mockAccount={...mockAccount,player:{...mockAccount.player,balance:Math.max(0,mockAccount.player.balance-previewArmory.spent)}};}}catch{}}
 function saveArmory(){try{localStorage.setItem('fragstake-preview-armory',previewArmory.serialize());}catch{}}
 function mockStartMatch(body:Record<string,unknown>){
+ if(mockAccount.active)throw new Error('Finish your current match before starting another.');
  const mode=String(body.mode||'practice'),stake=mode==='duel'?(Number(body.stake)||10)*100:0,entry=mode==='ffa'?(Number(body.entry)||20)*100:0;
- const active:MatchRow={id:'preview-active-'+Date.now(),player_id:mockPlayer.id,mode,rate:Number(body.rate)||2,team:String(body.team||'1v1'),map_id:String(body.mapId||'citadel'),stake,target:Number(body.target)||10,best_of:Number(body.bestOf)||1,weapon_rule:String(body.weaponRule||'standard'),entry,headshots:0,max_streak:0,status:'active',kills:0,deaths:0,score:0,enemy_score:0,won:0,delta:0,reason:'In progress',started_at:Date.now(),finished_at:0};
+ const active:MatchRow={id:'preview-active-'+crypto.randomUUID(),player_id:mockPlayer.id,mode,rate:Number(body.rate)||2,team:String(body.team||'1v1'),map_id:String(body.mapId||'citadel'),stake,target:Number(body.target)||10,best_of:Number(body.bestOf)||1,weapon_rule:String(body.weaponRule||'standard'),entry,headshots:0,max_streak:0,status:'active',kills:0,deaths:0,score:0,enemy_score:0,won:0,delta:0,reason:'In progress',started_at:Date.now(),finished_at:0};
  const reserved=stake+entry;
+ if(mockAccount.player.balance<reserved)throw new Error('Insufficient demo credits. Add credits in your wallet first.');
  mockAccount={...mockAccount,player:{...mockAccount.player,balance:Math.max(0,mockAccount.player.balance-reserved)},active};
  return {match:active,player:mockAccount.player};
 }
 function mockFinishMatch(body:Record<string,unknown>){
+ const prior=mockAccount.matches.find(row=>row.id===body.id);
+ if(prior)return {...mockAccount,match:prior};
  const active=mockAccount.active;
- if(!active)return mockAccount;
- const kills=Number(body.kills)||0,deaths=Number(body.deaths)||0,score=Number(body.score)||0,enemyScore=Number(body.enemyScore)||0,ending=String(body.ending||'complete');
- const won=active.mode==='practice'?1:score>=enemyScore?1:0;
- const delta=active.mode==='duel'?won?active.stake:-active.stake:active.mode==='ffa'?(kills-deaths)*active.rate:0;
- const returned=ending==='cancel'?active.stake+active.entry:active.mode==='duel'?won?active.stake*2:0:active.mode==='ffa'?Math.max(0,active.entry+delta):0;
- const saved:MatchRow={...active,status:ending==='cancel'?'cancelled':'completed',kills,deaths,score,enemy_score:enemyScore,headshots:Number(body.headshots)||Math.floor(kills*.35),max_streak:Number(body.maxStreak)||Math.max(0,Math.min(kills,5)),won,delta,reason:ending==='cancel'?'Match cancelled':ending==='cashout'?'Arena cash-out':won?'Win':'Lost',finished_at:Date.now()};
- mockAccount={...mockAccount,player:{...mockAccount.player,balance:mockAccount.player.balance+returned},matches:[saved,...mockAccount.matches].slice(0,50),active:null,stats:{matches:mockAccount.stats.matches+1,kills:mockAccount.stats.kills+kills,deaths:mockAccount.stats.deaths+deaths,wins:mockAccount.stats.wins+won,net:mockAccount.stats.net+delta,headshots:(mockAccount.stats.headshots||0)+saved.headshots,maxStreak:Math.max(mockAccount.stats.maxStreak||0,saved.max_streak)},transactions:[{id:'mock-match-'+Date.now(),kind:'match',amount:returned,label:saved.reason,created_at:Date.now(),match_id:saved.id},...mockAccount.transactions]};
+ if(!active)throw new Error('This match is no longer active.');
+ const {saved,returned}=settlePreviewMatch(active,body,mockAccount.player.balance),completed=saved.status==='completed';
+ mockAccount={...mockAccount,player:{...mockAccount.player,balance:mockAccount.player.balance+returned},matches:[saved,...mockAccount.matches].slice(0,50),active:null,stats:{matches:mockAccount.stats.matches+Number(completed),kills:mockAccount.stats.kills+saved.kills,deaths:mockAccount.stats.deaths+saved.deaths,wins:mockAccount.stats.wins+saved.won,net:mockAccount.stats.net+saved.delta,headshots:(mockAccount.stats.headshots||0)+saved.headshots,maxStreak:Math.max(mockAccount.stats.maxStreak||0,saved.max_streak)},transactions:[{id:'mock-match-'+saved.id,kind:'match',amount:returned,label:saved.reason,created_at:Date.now(),match_id:saved.id},...mockAccount.transactions]};
  return {...mockAccount,match:saved};
 }
 const friendRows=()=>[
