@@ -453,6 +453,28 @@ export default function Home() {
   });
   const validDuel =
     Number.isInteger(duelStake) && duelStake >= 5 && duelStake <= 100;
+  const flowSteps =
+    mode === 'duel'
+      ? [
+          ['1', 'Queue', 'Finds a random 1v1 or 2v2.'],
+          ['2', 'Loadout', 'Pick a weapon before spawn.'],
+          ['3', 'Fight', 'Spawn across the map and play first to 10.'],
+        ]
+      : mode === 'ffa'
+        ? [
+            [
+              '1',
+              livePlay ? 'Find room' : 'Reserve demo',
+              livePlay ? 'Join a free player lobby.' : 'Choose a safe stake tier.',
+            ],
+            ['2', 'Loadout', 'Choose any unlocked weapon skin.'],
+            ['3', 'Cash out', 'Escape pauses and shows your result.'],
+          ]
+        : [
+            ['1', 'Enter', 'No wallet risk.'],
+            ['2', 'Warm up', 'Practice aim, movement and sliding.'],
+            ['3', 'Upgrade', 'Move into FFA or duels when ready.'],
+          ];
   if (game) return <Arena config={game} onFinish={finishMatch} />;
   return (
     <div className="site-shell">
@@ -468,6 +490,17 @@ export default function Home() {
             </h1>
           </div>
         </div>
+        <section className="flow-strip play-flow" aria-label="Match flow">
+          {flowSteps.map(([index, title, text]) => (
+            <article key={index} className={index === '1' ? 'active' : ''}>
+              <span>{index}</span>
+              <div>
+                <b>{title}</b>
+                <p>{text}</p>
+              </div>
+            </article>
+          ))}
+        </section>
         <div className="lobby-layout">
           <section className="modes-section" aria-label="Game modes">
             <div className="section-heading">

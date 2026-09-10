@@ -54,6 +54,8 @@
 }
 
 @media(max-width:740px){
+ .site-shell .flow-strip{grid-template-columns:minmax(0,1fr);gap:8px}
+ .site-shell .flow-strip :is(article,a){min-height:0;padding:13px}
  .site-shell .main .cosmetic-grid{grid-template-columns:minmax(0,1fr)}
  .site-shell .main .armory-toolbar{align-items:flex-start;flex-wrap:wrap;gap:12px}
  .site-shell .main .armory-toolbar [role=group] button{min-height:44px}
