@@ -17,3 +17,5 @@ test('playable weapon kill speeds stay in a fair competitive band',()=>{
 });
 test('headshots only rejects body hits',()=>{const g=new Simulation({...config,weaponRule:'headshots'});g.start();const v=g.actors[1];v.shield=0;g.damage(v,g.player,200,false);assert.equal(v.hp,100);g.damage(v,g.player,200,true);assert.equal(g.score,1)});
 test('funded Arena cash-out waits eight seconds after combat',()=>{const g=new Simulation({...config,mode:'ffa',entry:20,balance:80});g.start();assert.equal(g.balance,20);g.combatAt=0;g.elapsed=7;g.cashOut();assert.equal(g.ended,false);g.elapsed=8;g.cashOut();assert.equal(g.result.reason,'Arena cash-out');assert.equal(g.result.balance,20);g.cashOut();assert.equal(g.result.balance,20)});
+
+test('started matches lock the chosen gun and knife as the only switch options',()=>{const g=new Simulation({...config,weaponRule:'standard'});g.switchWeapon('smg');assert.equal(g.matchWeapon,'smg');g.start();assert.deepEqual(g.switchWeapons,['smg','knife']);g.switchWeapon('marksman');assert.equal(g.weapon,'smg');g.switchWeapon('knife');assert.equal(g.weapon,'knife');g.switchWeapon('smg');assert.equal(g.weapon,'smg')});

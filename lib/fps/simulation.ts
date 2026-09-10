@@ -3,7 +3,7 @@ import {matchOutcome} from '../match-summary.ts';
 import {duelPayout,type MatchConfig,type Result} from '../game-rules.ts';
 
 export type Vec={x:number;y:number;z:number};
-export type WeaponId='rifle'|'carbine'|'smg'|'vector'|'marksman'|'pistol'|'handcannon'|'shotgun';
+export type WeaponId='rifle'|'carbine'|'smg'|'vector'|'marksman'|'pistol'|'handcannon'|'shotgun'|'knife';
 export const weapons={
  rifle:{name:'VANGUARD',type:'ASSAULT RIFLE',mag:30,damage:25,head:1.9,interval:.14,reload:1.65,spread:.012,recoil:.018,auto:true,range:75},
  smg:{name:'PHANTOM',type:'SUBMACHINE GUN',mag:34,damage:17,head:1.9,interval:.095,reload:1.35,spread:.026,recoil:.012,auto:true,range:42},
@@ -12,11 +12,13 @@ export const weapons={
  vector:{name:'VECTOR',type:'SUBMACHINE GUN',mag:28,damage:15,head:1.9,interval:.085,reload:1.25,spread:.028,recoil:.011,auto:true,range:36},
  pistol:{name:'SIDEWINDER',type:'PISTOL',mag:15,damage:30,head:2,interval:.23,reload:1.1,spread:.012,recoil:.021,auto:false,range:40},
  handcannon:{name:'JUDGEMENT',type:'HEAVY PISTOL',mag:7,damage:55,head:2,interval:.4,reload:1.6,spread:.008,recoil:.05,auto:false,range:55},
- shotgun:{name:'BREACHER',type:'SHOTGUN',mag:6,damage:10,head:1.15,interval:.58,reload:2.25,spread:.09,recoil:.07,auto:false,range:17}
+ shotgun:{name:'BREACHER',type:'SHOTGUN',mag:6,damage:10,head:1.15,interval:.58,reload:2.25,spread:.09,recoil:.07,auto:false,range:17},
+ knife:{name:'KNIFE',type:'MELEE',mag:1,damage:75,head:1,interval:.52,reload:0,spread:0,recoil:.02,auto:false,range:1.85}
 } as const;
 export const weaponIds:WeaponId[]=['rifle','smg','marksman','carbine','vector','shotgun'];
-const ammoFor=()=>Object.fromEntries(weaponIds.map(id=>[id,weapons[id].mag])) as Record<WeaponId,number>;
-const reserveFor=()=>Object.fromEntries(weaponIds.map(id=>[id,weapons[id].mag*4])) as Record<WeaponId,number>;
+export const matchWeaponIds:WeaponId[]=[...weaponIds,'knife'];
+const ammoFor=()=>Object.fromEntries(matchWeaponIds.map(id=>[id,id==='knife'?1:weapons[id].mag])) as Record<WeaponId,number>;
+const reserveFor=()=>Object.fromEntries(matchWeaponIds.map(id=>[id,id==='knife'?0:weapons[id].mag*4])) as Record<WeaponId,number>;
 export type Actor={id:number;name:string;team:number;x:number;z:number;y:number;vy:number;yaw:number;hp:number;kills:number;deaths:number;respawn:number;shield:number;cooldown:number;crouch:boolean;moving:number;path:{x:number;z:number}[];repath:number;target:number;reaction:number;lastDamage:number};
 export type Controls={forward:number;right:number;fire:boolean;aim:boolean;sprint:boolean;crouch:boolean;jump:boolean;reload:boolean;slide?:boolean;weapon?:WeaponId};
 export const idleInput=():Controls=>({forward:0,right:0,fire:false,aim:false,sprint:false,crouch:false,jump:false,reload:false,slide:false});
@@ -57,9 +59,9 @@ export class Navigation{
 const names=['Viper','Ghost','Nova','Rook','Echo','Blaze','Atlas','Jinx','Cipher'];
 export class Simulation{
  config:MatchConfig;map:ArenaMap;boxes:Box[];nav:Navigation;rng:()=>number;actors:Actor[]=[];time=180;elapsed=0;balance:number;score=0;enemyScore=0;ended=false;result:Result|null=null;started=false;
- yaw=0;pitch=0;vx=0;vz=0;weapon:WeaponId='rifle';ammo=ammoFor();reserve=reserveFor();roundScore=0;roundEnemyScore=0;headshots=0;maxStreak=0;combatAt=-99;reloadLeft=0;shotCooldown=0;switchLeft=0;aim=0;recoil=0;bloom=0;stamina=100;sprinting=false;fireHeld=false;jumpHeld=false;combo=0;hitMarker=0;headMarker=false;hurt=0;hurtAngle=0;events:GameEvent[]=[];shots:Shot[]=[];feed:Feed[]=[];pickups:Pickup[]=[];feedId=0;
+ yaw=0;pitch=0;vx=0;vz=0;weapon:WeaponId='rifle';matchWeapon:WeaponId='rifle';ammo=ammoFor();reserve=reserveFor();roundScore=0;roundEnemyScore=0;headshots=0;maxStreak=0;combatAt=-99;reloadLeft=0;shotCooldown=0;switchLeft=0;aim=0;recoil=0;bloom=0;stamina=100;sprinting=false;fireHeld=false;jumpHeld=false;combo=0;hitMarker=0;headMarker=false;hurt=0;hurtAngle=0;events:GameEvent[]=[];shots:Shot[]=[];feed:Feed[]=[];pickups:Pickup[]=[];feedId=0;
  constructor(config:MatchConfig,rng:()=>number=Math.random){
-  this.config=config;this.rng=rng;this.map=getMap(config.mapId);this.boxes=collisionBoxes(this.map);this.nav=new Navigation(this.map);this.balance=config.entry||config.balance;this.weapon=config.weaponRule==='sniper'?'marksman':'rifle';
+  this.config=config;this.rng=rng;this.map=getMap(config.mapId);this.boxes=collisionBoxes(this.map);this.nav=new Navigation(this.map);this.balance=config.entry||config.balance;this.matchWeapon=config.weaponRule==='sniper'?'marksman':'rifle';this.weapon=this.matchWeapon;
   const count=config.mode==='duel'?(config.team==='2v2'?4:2):10;
   let starts=this.map.spawns.filter((_,i)=>Array.from({length:count},(_,id)=>Math.floor(id*this.map.spawns.length/count)).includes(i));
   if(config.mode==='duel'){
@@ -80,6 +82,7 @@ export class Simulation{
  get player(){return this.actors[0];}
  get gun(){return weapons[this.weapon];}
  get allowedWeapons(){return weaponIds.filter(id=>this.config.weaponRule==='sniper'?id==='marksman':this.config.weaponRule==='rifle'?['rifle','carbine'].includes(id):true);}
+ get switchWeapons():WeaponId[]{return this.started?[this.matchWeapon,'knife']:this.allowedWeapons;}
  get cashOutWait(){return Math.max(0,8-(this.elapsed-this.combatAt));}
  paused=false;
  pause(){if(!this.ended)this.paused=true;}
@@ -87,11 +90,11 @@ export class Simulation{
  completeRound(){if(this.roundScore===this.roundEnemyScore){this.finish();return;}if(this.roundScore>this.roundEnemyScore)this.score++;else this.enemyScore++;if(this.score>=2||this.enemyScore>=2){this.finish();return;}this.roundScore=0;this.roundEnemyScore=0;this.time=180;for(const actor of this.actors)this.respawn(actor);}
  eye(a:Actor):Vec{return {x:a.x,y:a.y+(a.id===0?this.playerEyeHeight:a.crouch?1.05:1.62),z:a.z};}
  look(dx:number,dy:number){this.yaw-=dx;this.pitch=clamp(this.pitch-dy,-1.35,1.35);}
- start(){if(this.ended)return;this.started=true;this.paused=false;}
+ start(){if(this.ended)return;this.started=true;if(this.weapon!=='knife')this.weapon=this.matchWeapon;this.paused=false;}
  finish(reason?:string){if(this.ended)return;this.ended=true;const won=this.config.mode==='duel'?this.score>this.enemyScore:this.player.kills>this.player.deaths;const draw=this.score===this.enemyScore;const cancel=reason==='Match cancelled';const forfeit=reason==='Duel forfeited';if(this.config.mode==='duel')this.balance+=cancel?(this.config.stake??10):forfeit?0:(won?2*(this.config.stake??10):draw?(this.config.stake??10):0);this.result={kills:this.player.kills,deaths:this.player.deaths,balance:this.balance,reason:reason??(this.config.mode==='duel'?(won?'Duel won':draw?'Draw — stake returned':'Duel lost'):'Round complete'),won:!cancel&&!forfeit&&reason!=='Left the arena'&&won,score:this.score,enemyScore:this.enemyScore,headshots:this.headshots,maxStreak:this.maxStreak,elapsed:this.elapsed,mode:this.config.mode,mapId:this.map.id,rate:this.config.rate,entry:this.config.entry,lastDeathLoss:this.lastDeathLoss};Object.assign(this.result,matchOutcome(this.config,this.result,cancel?'cancel':forfeit||reason==='Left the arena'?'leave':reason==='Arena cash-out'?'cashout':'complete'));}
  leave(){this.finish(!this.started?'Match cancelled':this.config.mode==='duel'?'Duel forfeited':'Left the arena');}
- switchWeapon(id:WeaponId){if(this.weapon===id||!this.allowedWeapons.includes(id))return;this.weapon=id;this.reloadLeft=0;this.switchLeft=.25;this.fireHeld=true;this.bloom=0;}
- reload(){if(this.reloadLeft||this.ammo[this.weapon]>=this.gun.mag||this.reserve[this.weapon]<=0||this.player.hp<=0)return;this.reloadLeft=this.gun.reload;this.events.push({kind:'reload'});}
+ switchWeapon(id:WeaponId){const choosingLoadout=this.paused;const allowed=this.started&&!choosingLoadout?this.switchWeapons:this.allowedWeapons;if(this.weapon===id||!allowed.includes(id))return;if(!this.started||choosingLoadout)this.matchWeapon=id;this.weapon=id;this.reloadLeft=0;this.switchLeft=.25;this.fireHeld=true;this.bloom=0;}
+ reload(){if(this.weapon==='knife'||this.reloadLeft||this.ammo[this.weapon]>=this.gun.mag||this.reserve[this.weapon]<=0||this.player.hp<=0)return;this.reloadLeft=this.gun.reload;this.events.push({kind:'reload'});}
  respawn(a:Actor){
   const enemies=this.actors.filter(b=>b.id!==a.id&&b.team!==a.team&&b.hp>0);
   const ranked=this.map.spawns.map(s=>{const distance=Math.min(80,...enemies.map(e=>Math.hypot(e.x-s.x,e.z-s.z))),exposure=enemies.some(e=>Math.hypot(e.x-s.x,e.z-s.z)<28&&visible(this.boxes,{x:s.x,y:1.6,z:s.z},this.eye(e)))?9:0;return {s,value:Math.min(25,distance)-Math.max(0,distance-32)*.7-exposure-this.actors.filter(b=>b.id!==a.id&&b.hp>0&&Math.hypot(b.x-s.x,b.z-s.z)<2).length*20+this.rng()*2};}).sort((a,b)=>b.value-a.value);
@@ -123,6 +126,7 @@ export class Simulation{
  }
  fire(){
   if(this.ended||this.paused||this.player.hp<=0||this.reloadLeft>0||this.shotCooldown>0||this.switchLeft>0||this.sprinting)return false;
+  if(this.weapon==='knife'){this.combatAt=this.elapsed;this.shotCooldown=this.gun.interval;this.player.shield=0;this.cast(this.player,direction(this.yaw,this.pitch),this.gun.damage,this.gun.head,this.gun.range);this.recoil=Math.min(.12,this.recoil+this.gun.recoil);this.events.push({kind:'shot',weapon:this.weapon});return true;}
   if(this.ammo[this.weapon]===0){this.reload();return false;}
   this.combatAt=this.elapsed;this.ammo[this.weapon]--;this.shotCooldown=this.gun.interval;this.player.shield=0;
   const spread=this.gun.spread*(1-this.aim*.82)*(this.player.crouch?.7:1)*(this.player.y>0?3:1)+(Math.hypot(this.vx,this.vz)>.5?.009*(1-this.aim*.5):0)+this.bloom*.08;

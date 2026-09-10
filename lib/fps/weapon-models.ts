@@ -456,6 +456,17 @@ function handgun(b:ModelBuilder) {
   b.hands(-.1,true,gripZ);
 }
 
+function knife(b:ModelBuilder) {
+  b.link(b.body,[.018,-.040,.060],[.018,.016,-.430],.018,.009,'steel',18);
+  b.link(b.body,[-.018,-.040,.060],[-.018,.016,-.430],.018,.009,'steel',18);
+  b.box(b.body,0,-.042,.056,.090,.020,.050,'polymer',.006);
+  b.link(b.body,[0,-.080,.135],[0,-.055,.000],.033,.026,'polymer',16);
+  b.box(b.body,0,-.038,-.030,.145,.016,.028,'accent',.004);
+  b.muzzleAt(-.475,.000,.012,false);
+  b.sightHeight=.070;
+  b.hands(-.020,true,.090);
+}
+
 function shotgun(b:ModelBuilder) {
   // Tactical pump: separate upper bore and lower magazine tube, ribbed oval pump, restrained shell carrier.
   b.shell(b.body,[[-.132,.064,.068,.026],[-.110,.077,.084,.023],[.089,.077,.076,.022],[.124,.053,.053,.014]],'steel',.23);
@@ -495,6 +506,7 @@ export function buildWeapon(id: WeaponId, skin?: string, showHands = true): Weap
   else if(id==='smg'||id==='vector')submachine(b);
   else if(id==='marksman')marksman(b);
   else if(id==='pistol'||id==='handcannon')handgun(b);
+  else if(id==='knife')knife(b);
   else shotgun(b);
   return b.finish();
 }

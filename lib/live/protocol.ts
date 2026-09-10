@@ -1,4 +1,4 @@
-import { idleInput, weaponIds, type Controls } from '../fps/simulation.ts';
+import { idleInput, matchWeaponIds, type Controls } from '../fps/simulation.ts';
 export type InputFrame = {
   type: 'input';
   seq: number;
@@ -47,7 +47,7 @@ export function parseInput(
     controls[field] = c[field] === true;
   }
   if (c.weapon !== undefined) {
-    if (!weaponIds.includes(c.weapon as never)) return null;
+    if (!matchWeaponIds.includes(c.weapon as never)) return null;
     controls.weapon = c.weapon as Controls['weapon'];
   }
   return {

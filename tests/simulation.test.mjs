@@ -24,8 +24,9 @@ const advance = (sim, seconds, input = idleInput()) => {
   const count = Math.ceil(seconds / fixedDt);
   for (let i = 0; i < count; i++) sim.step(Math.min(fixedDt, seconds - i * fixedDt), input);
 };
-function isolated(extra = {}) {
+function isolated(extra = {}, weapon = 'rifle') {
   const sim = create(extra);
+  sim.switchWeapon(weapon);
   sim.actors = [sim.player];
   sim.boxes = [];
   sim.pickups = [];
@@ -310,8 +311,7 @@ test('rifle fire respects cooldown and holding automatic fire consumes multiple 
 });
 
 test('marksman fires once per press and requires release before another shot', () => {
-  const sim = isolated();
-  sim.switchWeapon('marksman');
+  const sim = isolated({}, 'marksman');
   advance(sim, 0.3);
   advance(sim, 1, { ...idleInput(), fire: true });
   assert.equal(sim.ammo.marksman, 9);
@@ -340,12 +340,14 @@ test('switching weapons cancels reload without transferring ammunition', () => {
   const sim = isolated();
   sim.ammo.rifle = 10;
   sim.reload(); advance(sim, 0.5);
-  sim.switchWeapon('smg');
+  sim.switchWeapon('knife');
   assert.equal(sim.reloadLeft, 0);
   assert.equal(sim.fire(), false);
   advance(sim, 2);
   assert.equal(sim.ammo.rifle, 10);
   assert.equal(sim.reserve.rifle, 120);
+  sim.switchWeapon('rifle');
+  advance(sim, 0.3);
   assert.equal(sim.fire(), true);
 });
 

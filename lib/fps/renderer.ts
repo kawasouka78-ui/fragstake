@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {type Simulation,type Actor,weapons,weaponIds,type WeaponId} from './simulation.ts';
+import {type Simulation,type Actor,weapons,matchWeaponIds,type WeaponId} from './simulation.ts';
 import {buildWeapon,animateWeapon,updateWeaponFinish,type WeaponModel} from './weapon-models.ts';
 import {ArenaWorld} from './world.ts';
 import {ArenaPipeline} from './pipeline.ts';
@@ -14,7 +14,7 @@ export class ArenaRenderer{
   this.renderer.toneMappingExposure=.94;this.camera.rotation.order='YXZ';this.world=new ArenaWorld(this.scene,this.renderer,game.map);this.sun=this.world.sun;this.ready=this.world.ready;this.buildWorld();
   this.rigs=game.actors.slice(1).map(a=>this.actor(a));
   this.weaponScene.add(new THREE.HemisphereLight(0xffffff,0x3b332f,3));const key=new THREE.DirectionalLight(0xffffff,3);key.position.set(-2,4,2);this.weaponScene.add(key);this.weaponScene.add(this.gunRoot);
-  for(const id of weaponIds){const model=this.weapon(id);this.gunModels.set(id,model);this.gunRoot.add(model);}
+  for(const id of matchWeaponIds){const model=this.weapon(id);this.gunModels.set(id,model);this.gunRoot.add(model);}
   this.flash=new THREE.Mesh(new THREE.ConeGeometry(.06,.22,6),new THREE.MeshBasicMaterial({color:0xffd16f,transparent:true,opacity:.9,depthWrite:false}));this.flash.rotation.x=-Math.PI/2;this.flash.position.set(0,.025,-.68);this.gunRoot.add(this.flash);
   for(let i=0;i<32;i++){const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]),new THREE.LineBasicMaterial({color:0xffcc88,transparent:true,opacity:.8,depthWrite:false}));line.frustumCulled=false;line.visible=false;this.tracers.push(line);this.scene.add(line);const impact=new THREE.Mesh(new THREE.SphereGeometry(.045,5,4),new THREE.MeshBasicMaterial({color:0xffcf83}));impact.visible=false;this.impacts.push(impact);this.scene.add(impact);}
   this.pipeline=new ArenaPipeline(this.renderer,this.scene,this.camera,this.weaponScene,this.weaponCamera);
@@ -58,7 +58,7 @@ export class ArenaRenderer{
   animateWeapon(model,this.kick,g.reloadLeft>0?1-g.reloadLeft/weapons[g.weapon].reload:0);
   updateWeaponFinish(model,g.elapsed);
   this.gunRoot.visible=p.hp>0;this.gunRoot.position.set(pose.x,pose.y,pose.z);
-  this.gunRoot.rotation.set(pose.rx,pose.ry,pose.rz);this.flash.scale.setScalar(['pistol','handcannon','smg','vector'].includes(g.weapon)?.6:1);this.flash.position.copy(model.rig.muzzle);this.flash.position.z-=.06;this.flash.visible=this.kick>.6;this.flash.rotation.z=g.elapsed*200;
+  this.gunRoot.rotation.set(pose.rx,pose.ry,pose.rz);this.flash.scale.setScalar(g.weapon==='knife'?0:['pistol','handcannon','smg','vector'].includes(g.weapon)?.6:1);this.flash.position.copy(model.rig.muzzle);this.flash.position.z-=.06;this.flash.visible=this.kick>.6;this.flash.rotation.z=g.elapsed*200;
   this.sun.shadow.needsUpdate=true;this.pipeline.render(dt);
  }
  dispose(){if(this.disposed)return;this.disposed=true;const geometries=new Set<THREE.BufferGeometry>(),materials=new Set<THREE.Material>();for(const scene of [this.scene,this.weaponScene])scene.traverse(object=>{if(object instanceof THREE.Mesh||object instanceof THREE.Line||object instanceof THREE.Points){geometries.add(object.geometry);for(const m of Array.isArray(object.material)?object.material:[object.material])materials.add(m);}});geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());this.disposables.forEach(t=>t.dispose());this.world.dispose();this.pipeline.dispose();this.renderer.dispose();}
