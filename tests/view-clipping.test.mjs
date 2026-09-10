@@ -28,11 +28,12 @@ test('both knives stay in front of the near plane throughout a slash, draw, slid
   const model=buildWeapon('knife',undefined,true,style),root=new THREE.Group();root.add(model);
   for(const stance of [{},{speed:7.5,sprinting:true},{speed:11,sliding:true,crouch:true},{grounded:false,vy:5.4},{grounded:false,vy:-5},{switching:true}]){
    const motion=new ViewMotion();for(let i=0;i<45;i++)motion.step(1/60,{...base,...stance});
-   for(let frame=0;frame<=24;frame++){
+   for(const action of ['slash','reverse','draw','inspect'])for(let frame=0;frame<=24;frame++){
     const pose=viewmodelPose(motion.step(1/60,{...base,...stance}),style);
     root.position.set(pose.x,pose.y,pose.z);root.rotation.set(pose.rx,pose.ry,pose.rz,pose.order);
-    animateWeapon(model,1-frame/24,0);root.updateMatrixWorld(true);
-    const bounds=new THREE.Box3().setFromObject(root);assert.ok(bounds.max.z<-.025,`${style} clips during ${JSON.stringify(stance)} at frame ${frame}: ${bounds.max.z}`);
+    const phase=1-frame/24;
+    animateWeapon(model,action==='slash'||action==='reverse'?phase:0,0,{slashSide:action==='reverse'?-1:1,draw:action==='draw'?phase:0,inspect:action==='inspect'?phase:0});root.updateMatrixWorld(true);
+    const bounds=new THREE.Box3().setFromObject(root);assert.ok(bounds.max.z<-.025,`${style} clips during ${action} ${JSON.stringify(stance)} at frame ${frame}: ${bounds.max.z}`);
    }
   }
   const materials=new Set();model.traverse(o=>{if(o.isMesh){o.geometry.dispose();materials.add(o.material);}});materials.forEach(m=>m.dispose());

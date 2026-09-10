@@ -553,7 +553,7 @@ export default function Home() {
             className={'feature feature-' + mode}
             aria-label="Selected game mode"
           >
-            <div className={'feature-art map-art-' + mapId} />
+            <div key={mapId} className={'feature-art map-art-' + mapId} />
             <div className="feature-shade" />
             <div className="feature-label">
               <span />{' '}

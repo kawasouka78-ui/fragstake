@@ -5,7 +5,7 @@
 @theme inline {
  --color-background:var(--background); --color-foreground:var(--foreground); --color-card:var(--card); --color-card-foreground:var(--foreground); --color-popover:var(--card); --color-popover-foreground:var(--foreground); --color-primary:var(--primary); --color-primary-foreground:#111113; --color-muted:#202125; --color-muted-foreground:#a3a3ab; --color-accent:#2c2523; --color-accent-foreground:var(--foreground); --color-border:var(--border); --color-input:var(--border); --color-ring:var(--primary); --font-sans:var(--font-geist-sans); --radius-lg:8px;
 }
-:root,.dark {--background:#101113;--foreground:#f0efeb;--card:#191a1e;--primary:#ff6840;--border:#2c2d33;--muted-foreground:#a3a3ab;--display:var(--font-display),'Arial Narrow',Impact,sans-serif}
+:root,.dark {--background:#0c0f14;--foreground:#edf0f4;--card:#141920;--primary:#ff7849;--border:#2a313c;--muted-foreground:#9ba6b6;--display:var(--font-display),'Arial Narrow',Impact,sans-serif;--fs-ease:cubic-bezier(.22,1,.36,1);--fs-surface:#141920;--fs-raised:#1a2029;--fs-line:#ffffff12;--fs-muted:#98a5b7}
 *{box-sizing:border-box;border-color:var(--border)}
 body{margin:0;background:var(--background);color:var(--foreground);font-family:var(--font-geist-sans),Arial,sans-serif;font-size:16px;-webkit-font-smoothing:antialiased}
 button,a{-webkit-tap-highlight-color:transparent;transition:background .2s,color .2s,border-color .2s,transform .2s,box-shadow .2s}

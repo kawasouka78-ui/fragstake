@@ -42,10 +42,15 @@ export class ArenaRenderer{
  weapon(id:WeaponId){return buildWeapon(id,this.game.config.skin,true,this.game.config.knifeStyle);}
  resize(width:number,height:number){this.renderer.setSize(width,height,false);this.camera.aspect=width/height;this.camera.updateProjectionMatrix();this.weaponCamera.aspect=width/height;this.weaponCamera.updateProjectionMatrix();this.pipeline.resize(width,height);}
  setQuality(quality:string){if(this.quality===quality)return;this.quality=quality;this.renderer.setPixelRatio(Math.min(devicePixelRatio,quality==='high'?1.5:1));this.renderer.shadowMap.enabled=true;this.pipeline.setQuality(quality);}
- shot(){this.kick=1;}
+ lastWeapon:WeaponId='rifle';slashSide=-1;inspectLeft=0;
+ shot(){this.kick=1;this.inspectLeft=0;this.lastWeapon=this.game.weapon;if(this.game.weapon==='knife')this.slashSide*=-1;}
+ inspect(){if(this.game.weapon==='knife'&&!this.game.paused&&this.game.player.hp>0&&this.game.shotCooldown===0)this.inspectLeft=1.5;}
  render(dt:number){
   this.world.update(this.game.elapsed,this.quality);
-  const g=this.game,p=g.player;this.kick=Math.max(0,this.kick-dt*(g.weapon==='knife'?2.4:10));
+  const g=this.game,p=g.player;
+  if(g.weapon!==this.lastWeapon){this.kick=0;this.inspectLeft=0;this.lastWeapon=g.weapon;this.slashSide=-1;}
+  this.kick=Math.max(0,this.kick-dt*(g.weapon==='knife'?2.15:10));
+  this.inspectLeft=Math.max(0,this.inspectLeft-dt);
   const model=this.gunModels.get(g.weapon)!;
   const reload=g.reloadLeft>0?Math.sin(Math.PI*(1-g.reloadLeft/weapons[g.weapon].reload)):0;
   const aim=g.weapon==='knife'?0:g.aim;
@@ -56,7 +61,7 @@ export class ArenaRenderer{
   this.pickupMeshes.forEach((mesh,i)=>{mesh.visible=g.pickups[i].ready<=0;mesh.position.y=.45+Math.sin(g.elapsed*2+i)*.1;mesh.rotation.y=g.elapsed*.7;});
   for(let i=0;i<this.tracers.length;i++){const shot=g.shots[i],line=this.tracers[i],impact=this.impacts[i];line.visible=!!shot;impact.visible=!!shot;if(!shot)continue;const from=shot.from;const positions=line.geometry.attributes.position as THREE.BufferAttribute;positions.setXYZ(0,from.x,from.y-.08,from.z);positions.setXYZ(1,shot.to.x,shot.to.y,shot.to.z);positions.needsUpdate=true;(line.material as THREE.LineBasicMaterial).opacity=(1-shot.age/.08)*.75;impact.position.set(shot.to.x,shot.to.y,shot.to.z);}
   for(const [id,mesh]of this.gunModels)mesh.visible=id===g.weapon;
-  animateWeapon(model,this.kick,g.reloadLeft>0?1-g.reloadLeft/weapons[g.weapon].reload:0);
+  animateWeapon(model,this.kick,g.reloadLeft>0?1-g.reloadLeft/weapons[g.weapon].reload:0,{slashSide:this.slashSide,draw:g.switchLeft/.25,inspect:this.inspectLeft/1.5});
   updateWeaponFinish(model,g.elapsed);
   const placed=viewmodelPose(pose,g.weapon==='knife'?g.config.knifeStyle??'standard':undefined);
   this.gunRoot.visible=p.hp>0;this.gunRoot.position.set(placed.x,placed.y,placed.z);

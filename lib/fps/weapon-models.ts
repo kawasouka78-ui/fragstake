@@ -511,14 +511,16 @@ function karambitHand(b:ModelBuilder){
   for(let i=0;i<3;i++){
     const y=.034-i*.021;
     finger([[.035,y,.016],[.027,y,-.012],[.005,y,-.021],[-.018,y,-.018],[-.023,y,.005]],.0085-i*.0004);
-    b.oval(b.body,[.023,y,-.015],[.012,.008,.007],'fabric');
+    b.oval(b.body,[.023,y,-.020],[.010,.007,.0035],'fabric');
   }
   finger([[.034,.043,.015],[.025,.063,.001],[.006,.073,-.006],[-.014,.071,-.006],[-.024,.052,.002]],.008);
   finger([[.029,.021,.041],[.011,.044,.031],[-.014,.049,.010],[-.019,.027,-.003]],.010);
   b.link(b.body,[.027,-.003,.030],[.064,-.008,-.025],.024,.027,'glove',20);
-  b.link(b.body,[.064,-.008,-.025],[.205,-.035,-.245],.029,.041,'fabric',20);
-  b.link(b.body,[.060,-.007,-.019],[.077,-.010,-.045],.030,.032,'polymer',20);
-  b.link(b.body,[.069,.011,-.032],[.124,.004,-.117],.001,.001,'stitch',6);
+  // A fixed cuff anchors the wrist while the hand and blade turn together.
+  b.link(b.supportHand,[.064,-.008,-.025],[.218,-.105,-.220],.027,.039,'fabric',20);
+  b.link(b.supportHand,[.060,-.007,-.019],[.077,-.016,-.045],.029,.030,'polymer',20);
+  b.link(b.supportHand,[.069,.010,-.032],[.127,-.023,-.105],.0007,.0007,'stitch',6);
+  b.link(b.body,[.048,-.014,.016],[.048,.026,.008],.00055,.00055,'stitch',6);
 }
 
 function karambit(b:ModelBuilder){
@@ -645,17 +647,34 @@ export function buildWeapon(id: WeaponId, skin?: string, showHands = true, knife
 }
 
 /** Root locomotion is supplied by the renderer; these channels only animate moving parts. */
-export function animateWeapon(model: WeaponModel, kick: number, reloadFraction: number) {
+export type KnifeMotion={slashSide?:number;draw?:number;inspect?:number};
+const wristPivot=new THREE.Vector3(.064,-.008,-.025);
+const rotatedWrist=new THREE.Vector3();
+const ease=(t:number)=>{const p=THREE.MathUtils.clamp(t,0,1);return p*p*(3-2*p);};
+export function animateWeapon(model: WeaponModel, kick: number, reloadFraction: number, knifeMotion:KnifeMotion={}) {
   const {id,body,action,magazine,supportHand,pump}=model.rig;
   const recoil=THREE.MathUtils.clamp(Number.isFinite(kick)?kick:0,0,1);
   const progress=THREE.MathUtils.clamp(Number.isFinite(reloadFraction)?reloadFraction:0,0,1);
   const reload=Math.sin(Math.PI*progress);
   if(id==='knife'){
+    if(model.userData.knifeStyle==='karambit'){
+      const t=1-recoil,side=knifeMotion.slashSide??1;
+      const wind=recoil>0&&t<.16?Math.sin(t/.16*Math.PI):0;
+      const cut=recoil>0?(t<.4?ease((t-.1)/.3):1-ease((t-.4)/.6)):0;
+      const draw=ease(knifeMotion.draw??0),inspect=Math.sin(Math.PI*ease(knifeMotion.inspect??0));
+      body.rotation.set(-cut*.24+wind*.09-draw*.18-inspect*.3,-side*cut*.48+side*wind*.1+draw*.7-inspect*.4,-side*cut*.91+side*wind*.14-draw*.55+inspect*.38);
+      // Rotate about the physical wrist joint, without dragging the sleeve around.
+      rotatedWrist.copy(wristPivot).applyEuler(body.rotation);
+      body.position.copy(wristPivot).sub(rotatedWrist);
+      supportHand.position.set(0,0,0);supportHand.rotation.set(0,0,0);
+      return;
+    }
     // A short wind-up, decisive cut and slower return keep the wrist attached.
     const t=1-recoil,active=recoil>0;
     const windup=active&&t<.18?Math.sin(t/.18*Math.PI):0;
     const cut=active&&t>=.18?Math.sin(Math.PI*Math.pow((t-.18)/.82,.58)):0;
-    body.rotation.set(windup*.08-cut*.22,windup*.12-cut*.4,windup*.12-cut*.78);
+    const inspect=Math.sin(Math.PI*ease(knifeMotion.inspect??0));
+    body.rotation.set(windup*.08-cut*.22-inspect*.12,windup*.12-cut*.4+inspect*.6,windup*.12-cut*.78+inspect*.15);
     body.position.set(windup*.015-cut*.07,cut*.022,-cut*.055);
     return;
   }
