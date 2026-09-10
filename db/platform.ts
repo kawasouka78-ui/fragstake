@@ -49,7 +49,7 @@ export async function platformMutation(db:D1Database,id:string,b:Record<string,u
    if(!await db.prepare('SELECT id FROM inventory WHERE id=?').bind(key).first())throw new InputError('Add enough demo credits in your wallet first.',409);
   }
  }else if(action==='inventory_equip'){
-  const sku=String(b.sku);if(sku&&!await db.prepare('SELECT id FROM inventory WHERE player_id=? AND sku=?').bind(id,sku).first())throw new InputError('You do not own that cosmetic.',403);
+  const sku=String(b.sku);if(sku){const item=catalog.find(item=>item.sku===sku);if(!item)throw new InputError('Unknown cosmetic.');await db.prepare('INSERT OR IGNORE INTO inventory(id,player_id,sku,created_at) VALUES(?,?,?,?)').bind('shop:'+id+':'+item.sku,id,item.sku,now).run();}
   await db.prepare('UPDATE inventory SET equipped=CASE WHEN sku=? THEN 1 ELSE 0 END WHERE player_id=?').bind(sku,id).run();
  }else if(action==='report_create'){
   const category=String(b.category);if(!['bug','cheating','payment','other'].includes(category))throw new InputError('Choose a report type.');
