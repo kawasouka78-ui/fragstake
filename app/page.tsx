@@ -45,6 +45,10 @@ type PartySummary = {
   name: string;
   members: { status: string; name?: string; handle?: string }[];
 } | null;
+type DuelQueue = {
+  searching: boolean;
+  found?: { mapId: MapId; team: '1v1' | '2v2' };
+};
 const tiers = [
   { name: 'Rookie', rate: 1, desc: 'Start small', icon: Target },
   { name: 'Beginner', rate: 2, desc: 'Find your footing', icon: Target },
@@ -82,6 +86,7 @@ export default function Home() {
   const livePlay = mode !== 'practice' && opponents === 'players';
   const live = useLiveStatus(!game);
   const [selectedRoom, setSelectedRoom] = useState<OpenRoom | null>(null);
+  const [duelQueue, setDuelQueue] = useState<DuelQueue>({ searching: false });
   const partyCount =
     party?.members.filter((m) => m.status === 'joined').length ?? 0;
   const partyNames =
@@ -113,7 +118,18 @@ export default function Home() {
     }
   }
   function reviewMatch() {
+    if (mode === 'duel' && !selectedRoom) {
+      const found = {
+        mapId: maps[Math.floor(Math.random() * maps.length)].id,
+        team: (Math.random() > 0.5 ? '2v2' : '1v1') as '1v1' | '2v2',
+      };
+      setDuelQueue({ searching: true, found });
+      setSaveError('');
+      setLaunch(true);
+      return;
+    }
     setSelectedRoom(null);
+    setDuelQueue({ searching: false });
     setSaveError('');
     setLaunch(true);
   }
@@ -158,6 +174,18 @@ export default function Home() {
         )
         .catch(() => {});
   }, [data?.player.id]);
+  useEffect(() => {
+    if (!duelQueue.searching || !duelQueue.found || mode !== 'duel') return;
+    const timer = window.setTimeout(() => {
+      setMapId(duelQueue.found!.mapId);
+      setTeam(duelQueue.found!.team);
+      setKillTarget(10);
+      setBestOf(1);
+      setWeaponRule('standard');
+      setDuelQueue({ searching: false, found: duelQueue.found });
+    }, 1400);
+    return () => window.clearTimeout(timer);
+  }, [duelQueue, mode]);
   useEffect(() => {
     let alive = true;
     if (!data) {
@@ -473,10 +501,10 @@ export default function Home() {
                     id: 'duel',
                     title: 'DUELS',
                     tag: 'FACE OFF',
-                    desc: 'Face your rival. Bring a teammate.',
+                    desc: 'Search, get a random duel, pick your gun.',
                     icon: Swords,
-                    foot: '1v1 · 2v2',
-                    meta: '1v1 · 2v2',
+                    foot: 'RANDOM MATCH',
+                    meta: '1v1 or 2v2',
                   },
                 ] as const
               ).map((m, i) => (
@@ -628,7 +656,7 @@ export default function Home() {
                   ? 'Climb the scoreboard against other players.'
                   : 'Select your demo stakes'
                 : mode === 'duel'
-                  ? 'Select your format'
+                  ? 'Quick queue chooses the format and map'
                   : 'No stakes. Just you and the arena.'}
             </p>
             {mode === 'ffa' && livePlay ? (
@@ -671,56 +699,35 @@ export default function Home() {
               </div>
             ) : mode === 'duel' ? (
               <>
-                <Tabs value={team} onValueChange={(v) => setTeam(String(v))}>
-                  <TabsList className="format-tabs">
-                    <TabsTrigger value="1v1">
-                      <Crosshair size={18} />
-                      1v1
-                    </TabsTrigger>
-                    <TabsTrigger value="2v2">
-                      <Swords size={18} />
-                      2v2
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-                {!livePlay && (
-                  <details className="inline-duel-rules">
-                    <summary>Stakes & weapon rules</summary>
-                    <DuelFields
-                      rules={{
-                        stake: duelStake,
-                        target: killTarget,
-                        bestOf,
-                        team,
-                        weaponRule,
-                      }}
-                      onChange={configureDuel}
-                    />
-                  </details>
-                )}
+                <div className="duel-random-card">
+                  <Swords size={30} />
+                  <div>
+                    <b>QUICK DUEL SEARCH</b>
+                    <p>
+                      The queue picks 1v1 or 2v2 and a map when it finds a
+                      match. You choose your weapon during the countdown.
+                    </p>
+                  </div>
+                </div>
                 {livePlay ? (
                   <div className="live-mode-summary duel">
-                    <Swords size={30} />
-                    <b>FIRST TO 10</b>
+                    <Users size={30} />
+                    <b>QUEUE THEN LOADOUT</b>
                     <p>
-                      {team === '2v2'
-                        ? 'Two teammates. One shared score.'
-                        : 'You and one opponent.'}
+                      Finds a player duel or creates one for others to join.
                       <br />
-                      Everyone readies up before the round.
+                      First to 10 after the weapon timer.
                     </p>
                     <span>FREE ENTRY</span>
                   </div>
                 ) : (
                   <div className="duel-pot">
-                    <span>TOTAL MATCH POT</span>
+                    <span>DEMO DUEL STAKE</span>
                     <b>
-                      €{duelStake * (team === '1v1' ? 2 : 4)}
+                      €{duelStake}
                       <i>.00</i>
                     </b>
-                    <small>
-                      {'€' + duelStake * 2 + ' to each winning player'}
-                    </small>
+                    <small>Random format · winner payout shown after search</small>
                   </div>
                 )}
               </>
@@ -738,7 +745,7 @@ export default function Home() {
                 <span>FREE TO PLAY</span>
               </div>
             )}
-            <label className="match-map-picker">
+            {mode !== 'duel' ? <label className="match-map-picker">
               MAP
               <select
                 value={mapId}
@@ -751,7 +758,7 @@ export default function Home() {
                 ))}
               </select>
               <span>{selectedMap.tagline}</span>
-            </label>
+            </label> : <div className="match-map-picker random-map-lock"><span>MAP</span><b>Random on match found</b><small>No map picking in quick duels.</small></div>}
             <div className="match-bottom">
               <div className="stake-summary">
                 {livePlay ? (
@@ -764,7 +771,7 @@ export default function Home() {
                       <small>
                         {mode === 'duel' ? 'WIN CONDITION' : 'ROUND LENGTH'}
                       </small>
-                      <b>{mode === 'duel' ? 'FIRST TO 10' : '3 MINUTES'}</b>
+                      <b>{mode === 'duel' ? 'RANDOM DUEL' : '3 MINUTES'}</b>
                     </span>
                   </>
                 ) : mode === 'ffa' ? (
@@ -786,9 +793,7 @@ export default function Home() {
                     </span>
                     <span>
                       <small>WIN CONDITION</small>
-                      <b>
-                        {bestOf === 3 ? 'BO3 · ' : ''}FIRST TO {killTarget}
-                      </b>
+                      <b>RANDOM DUEL</b>
                     </span>
                   </>
                 ) : (
@@ -820,9 +825,9 @@ export default function Home() {
                     : 'FIND ' + team + ' DUEL'
                   : mode === 'practice'
                     ? 'START PRACTICE'
-                    : mode === 'ffa'
-                      ? 'PLAY ' + tiers[tier].name.toUpperCase()
-                      : 'PLAY ' + team + ' DUEL'}
+                  : mode === 'ffa'
+                    ? 'PLAY ' + tiers[tier].name.toUpperCase()
+                    : 'FIND DUEL'}
                 <ArrowRight size={20} />
               </button>
               <small className="queue-note">
@@ -914,7 +919,9 @@ export default function Home() {
       <Dialog open={launch} onOpenChange={setLaunch}>
         <DialogContent className="sc-dialog">
           <DialogTitle>
-            {livePlay
+            {mode === 'duel' && duelQueue.searching
+              ? 'Finding duel'
+              : livePlay
               ? mode === 'ffa'
                 ? 'FFA'
                 : team + ' duel'
@@ -925,8 +932,12 @@ export default function Home() {
                   : team + ' duel'}
           </DialogTitle>
           <DialogDescription>
-            {selectedMap.name} ·{' '}
-            {livePlay
+            {mode === 'duel' && duelQueue.searching
+              ? 'Searching for a match, then you choose your weapon.'
+              : selectedMap.name + ' · '}{' '}
+            {mode === 'duel' && duelQueue.searching
+              ? ''
+              : livePlay
               ? 'Player match · Free entry'
               : 'Bot arena · Demo credits'}
           </DialogDescription>
@@ -935,7 +946,23 @@ export default function Home() {
               {saveError}
             </p>
           )}
-          {livePlay ? (
+          {mode === 'duel' && duelQueue.searching ? (
+            <div className="duel-searching" role="status">
+              <span />
+              <h3>Looking for a duel…</h3>
+              <p>
+                Picking a random map and format. When the match is found,
+                you’ll get a short loadout screen before spawning far from the
+                enemy.
+              </p>
+              {duelQueue.found && (
+                <div>
+                  <b>{getMap(duelQueue.found.mapId).name}</b>
+                  <small>{duelQueue.found.team} · First to 10</small>
+                </div>
+              )}
+            </div>
+          ) : livePlay ? (
             <>
               <div className="live-review">
                 <div>
@@ -949,9 +976,11 @@ export default function Home() {
                 <p>
                   {mode === 'ffa'
                     ? 'Three minutes. Everyone is an opponent. The round starts with 2 ready players.'
-                    : 'First to 10 eliminations. The round begins when all ' +
-                      (team === '2v2' ? '4' : '2') +
-                      ' players are ready.'}
+                    : 'Match found: ' +
+                      selectedMap.name +
+                      ' · ' +
+                      team +
+                      '. First to 10 after the loadout countdown.'}
                 </p>
                 <p>
                   Choose your weapon after joining. Escape opens the loadout
@@ -1061,7 +1090,7 @@ export default function Home() {
                 </p>
               )}
               <p>
-                {mode === 'practice'
+                  {mode === 'practice'
                   ? 'Free entry. Warm up against nine bots in a three-minute round.'
                   : mode === 'ffa'
                     ? 'Earn €' +
@@ -1069,19 +1098,13 @@ export default function Home() {
                       ' per kill and lose €' +
                       tiers[tier].rate +
                       ' per death. The round ends if your balance cannot cover another death.'
-                    : '€' +
+                    : 'Match found: ' +
+                      selectedMap.name +
+                      ' · ' +
+                      team +
+                      '. €' +
                       duelStake +
-                      ' will be reserved from your demo wallet. First to ' +
-                      killTarget +
-                      ' each round; ' +
-                      (bestOf === 3 ? 'best of 3 rounds' : 'single round') +
-                      '. ' +
-                      (team === '2v2'
-                        ? 'Each winning teammate receives €' +
-                          duelStake * 2 +
-                          '.'
-                        : 'The winner receives €' + duelStake * 2 + '.') +
-                      ' Leaving early forfeits your stake.'}
+                      ' will be reserved from your demo wallet. First to 10. Leaving early forfeits your stake.'}
               </p>
               <p>
                 WASD to move · Mouse to aim · Click to fire · Right-click to aim

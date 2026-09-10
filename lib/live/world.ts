@@ -3,6 +3,7 @@ import {
   idleInput,
   rayBox,
   wallDistance,
+  visible,
   type Actor,
   type Vec,
   type Controls,
@@ -87,9 +88,11 @@ export class LiveRoom {
     game.player.name = claims.name;
     game.player.team = this.mode === 'ffa' ? slot : slot % 2;
     const spawn =
-      game.map.spawns[
-        Math.floor((slot * game.map.spawns.length) / this.capacity)
-      ];
+      this.mode === 'ffa'
+        ? game.map.spawns[
+            Math.floor((slot * game.map.spawns.length) / this.capacity)
+          ]
+        : this.duelSpawns(game)[slot];
     Object.assign(game.player, { x: spawn.x, z: spawn.z, yaw: spawn.yaw });
     game.yaw = spawn.yaw;
     game.room = this;
@@ -109,6 +112,46 @@ export class LiveRoom {
     };
     this.players.set(claims.sub, p);
     return p;
+  }
+  duelSpawns(game: HumanSimulation) {
+    const options = [...game.map.spawns],
+      distance = (a: { x: number; z: number }, b: { x: number; z: number }) =>
+        Math.hypot(a.x - b.x, a.z - b.z),
+      face = (from: { x: number; z: number }, to: { x: number; z: number }) =>
+        Math.atan2(from.x - to.x, from.z - to.z),
+      pairs = options
+        .flatMap((a, i) =>
+          options.slice(i + 1).map((b) => ({
+            a,
+            b,
+            score:
+              distance(a, b) -
+              (visible(
+                game.boxes,
+                { x: a.x, y: 1.6, z: a.z },
+                { x: b.x, y: 1.6, z: b.z },
+              )
+                ? 8
+                : 0),
+          })),
+        )
+        .sort((a, b) => b.score - a.score),
+      home = pairs[0].a,
+      rival = pairs[0].b,
+      buddies = options.filter((s) => s !== home && s !== rival),
+      ally =
+        [...buddies].sort((a, b) => distance(a, home) - distance(b, home))[0] ??
+        home,
+      enemyBuddy =
+        buddies
+          .filter((s) => s !== ally)
+          .sort((a, b) => distance(a, rival) - distance(b, rival))[0] ?? rival;
+    return [
+      { ...home, yaw: face(home, rival) },
+      { ...rival, yaw: face(rival, home) },
+      { ...ally, yaw: face(ally, rival) },
+      { ...enemyBuddy, yaw: face(enemyBuddy, home) },
+    ];
   }
   input(subject: string, value: unknown) {
     const p = this.players.get(subject);

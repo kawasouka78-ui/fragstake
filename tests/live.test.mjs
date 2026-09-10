@@ -92,6 +92,10 @@ test('2v2 waits for four ready humans and allocates two players per side', () =>
     [...r.players.values()].map((p) => p.game.player.team),
     [0, 1, 0, 1],
   );
+  const [a,b,c,d]=[...r.players.values()].map((p)=>p.game.player);
+  assert.ok(Math.hypot(a.x-b.x,a.z-b.z)>=40);
+  assert.ok(Math.hypot(a.x-c.x,a.z-c.z)<Math.hypot(a.x-b.x,a.z-b.z));
+  assert.ok(Math.hypot(b.x-d.x,b.z-d.z)<Math.hypot(a.x-b.x,a.z-b.z));
 });
 test('roster reports real participants and readiness without exposing account or ticket claims', () => {
   const r = new LiveRoom('1v1', 'citadel');

@@ -13,7 +13,7 @@ for(const map of maps){
   assert.ok(map.width*map.depth>=3000);assert.ok(map.walls.length>=40);assert.ok(map.spawns.length>=16);
   const nav=new Navigation(map),first=map.spawns[0];
   for(const point of [...map.spawns,...map.landmarks]){assert.ok(clearAt(collisionBoxes(map),point.x,point.z,.4));assert.ok(nav.route(first,point).length);}
-  const duel=new Simulation({mapId:map.id,mode:'duel',rate:2,team:'2v2',balance:90});assert.equal(new Set(duel.actors.map(a=>a.x+','+a.z)).size,4);const distance=Math.hypot(duel.player.x-duel.actors[1].x,duel.player.z-duel.actors[1].z);assert.ok(distance>=16&&distance<=32,'duel should start near a fight');
+  const duel=new Simulation({mapId:map.id,mode:'duel',rate:2,team:'2v2',balance:90});assert.equal(new Set(duel.actors.map(a=>a.x+','+a.z)).size,4);const distance=Math.hypot(duel.player.x-duel.actors[1].x,duel.player.z-duel.actors[1].z);assert.ok(distance>=40,'duel teams should start across the map');
  });
  test(map.name+': detailed world batches contain finite geometry and match solid cover',()=>{
   const original=globalThis.document;globalThis.document={createElement:labelCanvas};

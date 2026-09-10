@@ -63,11 +63,12 @@ export class Simulation{
   const count=config.mode==='duel'?(config.team==='2v2'?4:2):10;
   let starts=this.map.spawns.filter((_,i)=>Array.from({length:count},(_,id)=>Math.floor(id*this.map.spawns.length/count)).includes(i));
   if(config.mode==='duel'){
-   const options=[...this.map.spawns].sort((a,b)=>Math.hypot(a.x,a.z)-Math.hypot(b.x,b.z)),home=options[0];
    const distance=(a:{x:number;z:number},b:{x:number;z:number})=>Math.hypot(a.x-b.x,a.z-b.z);
-   const rival=options.filter(s=>s!==home).sort((a,b)=>Math.abs(distance(a,home)-25)-Math.abs(distance(b,home)-25))[0];
-   const buddies=options.filter(s=>s!==home&&s!==rival),ally=[...buddies].sort((a,b)=>distance(a,home)-distance(b,home))[0],enemyBuddy=buddies.filter(s=>s!==ally).sort((a,b)=>distance(a,rival)-distance(b,rival))[0];
-   starts=[home,rival,enemyBuddy,ally];
+   const face=(from:{x:number;z:number},to:{x:number;z:number})=>Math.atan2(from.x-to.x,from.z-to.z);
+   const options=[...this.map.spawns],pairs=options.flatMap((a,i)=>options.slice(i+1).map(b=>({a,b,score:distance(a,b)-(visible(this.boxes,{x:a.x,y:1.6,z:a.z},{x:b.x,y:1.6,z:b.z})?8:0)}))).sort((a,b)=>b.score-a.score);
+   const home=pairs[0].a,rival=pairs[0].b,buddies=options.filter(s=>s!==home&&s!==rival);
+   const ally=[...buddies].sort((a,b)=>distance(a,home)-distance(b,home))[0]??home,enemyBuddy=buddies.filter(s=>s!==ally).sort((a,b)=>distance(a,rival)-distance(b,rival))[0]??rival;
+   starts=[{...home,yaw:face(home,rival)},{...rival,yaw:face(rival,home)},{...enemyBuddy,yaw:face(enemyBuddy,home)},{...ally,yaw:face(ally,rival)}];
   }
   for(let id=0;id<count;id++){const spawn=starts[id];this.actors.push({id,name:id===0?'You':names[id-1],team:config.mode==='duel'?(id===0||id===3?0:1):id,x:spawn.x,z:spawn.z,y:0,vy:0,yaw:spawn.yaw,hp:100,kills:0,deaths:0,respawn:0,shield:2,cooldown:1+this.rng(),crouch:false,moving:0,path:[],repath:0,target:-1,reaction:.5,lastDamage:-99});}
   this.yaw=this.player.yaw;this.pickups=this.map.landmarks.map((p,i)=>({x:p.x,z:p.z,kind:i%2?'ammo':'health',ready:0}));
