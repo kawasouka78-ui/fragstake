@@ -40,6 +40,11 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 type Mode = 'practice' | 'ffa' | 'duel';
+type PartySummary = {
+  id: string;
+  name: string;
+  members: { status: string; name?: string; handle?: string }[];
+} | null;
 const tiers = [
   { name: 'Rookie', rate: 1, desc: 'Start small', icon: Target },
   { name: 'Beginner', rate: 2, desc: 'Find your footing', icon: Target },
@@ -63,6 +68,7 @@ export default function Home() {
   const { data, loading, error: accountError, update, refresh } = useAccount();
   const balance = data ? data.player.balance / 100 : 0,
     loaded = !!data && !loading;
+  const [party, setParty] = useState<PartySummary>(null);
   const [game, setGame] = useState<(MatchConfig & { id: string }) | null>(null);
   const [result, setResult] = useState<Result | null>(null);
   const [busy, setBusy] = useState(false),
@@ -76,11 +82,21 @@ export default function Home() {
   const livePlay = mode !== 'practice' && opponents === 'players';
   const live = useLiveStatus(!game);
   const [selectedRoom, setSelectedRoom] = useState<OpenRoom | null>(null);
+  const partyCount =
+    party?.members.filter((m) => m.status === 'joined').length ?? 0;
+  const partyNames =
+    party?.members
+      .filter((m) => m.status === 'joined')
+      .map((m) => m.name || m.handle)
+      .filter(Boolean)
+      .join(', ') ?? '';
   async function startLive() {
     if (busy) return;
     setBusy(true);
     setSaveError('');
     try {
+      if (!live.status?.online)
+        throw new Error('The player server is offline. Try again in a moment.');
       const config = await requestLiveMatch(
         mode === 'ffa' ? 'ffa' : team === '2v2' ? '2v2' : '1v1',
         mapId,
@@ -141,6 +157,23 @@ export default function Home() {
           ),
         )
         .catch(() => {});
+  }, [data?.player.id]);
+  useEffect(() => {
+    let alive = true;
+    if (!data) {
+      setParty(null);
+      return;
+    }
+    void accountApi<{ party: PartySummary }>(undefined, '?action=platform')
+      .then((p) => {
+        if (alive) setParty(p.party ?? null);
+      })
+      .catch(() => {
+        if (alive) setParty(null);
+      });
+    return () => {
+      alive = false;
+    };
   }, [data?.player.id]);
   function openSavedMatch(match: MatchRow, player: Player) {
     setGame({
@@ -209,7 +242,7 @@ export default function Home() {
         weaponRule,
         entry: mode === 'ffa' ? entry : 0,
       });
-      if (r.match.status !== 'active')
+      if (!r?.match || r.match.status !== 'active')
         throw new Error('This match has already ended. Try again.');
       startKey.current = '';
       if (account) update({ ...account, player: r.player, active: r.match });
@@ -924,6 +957,14 @@ export default function Home() {
                   Choose your weapon after joining. Escape opens the loadout
                   menu while the shared match continues.
                 </p>
+                {partyCount > 1 && (
+                  <p className="party-queue-note">
+                    <Users size={15} />
+                    {mode === 'ffa'
+                      ? 'Your party stays out of FFA. Everyone joins FFA solo so there is no teaming.'
+                      : `${party?.name} is ready for duels: ${partyNames}.`}
+                  </p>
+                )}
                 <span>
                   {data
                     ? 'Finish the match after at least 30 seconds to earn XP.'

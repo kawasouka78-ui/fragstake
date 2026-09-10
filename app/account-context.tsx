@@ -18,6 +18,24 @@ const match=(id:string,mode:string,map_id:string,kills:number,deaths:number,won:
 const mockMatches=[match('preview-match-1','duel','citadel',18,9,1,1000,1),match('preview-match-2','ffa','depot',22,15,1,1400,2,'1v1','Cashed out'),match('preview-match-3','practice','underpass',31,12,1,0,4,'1v1','Practice complete'),match('preview-match-4','duel','depot',8,10,0,-1000,6,'2v2','Duel lost'),match('preview-match-5','ffa','citadel',13,18,0,-1000,8,'1v1','Round complete')];
 let mockAccount:AccountData={player:mockPlayer,stats:{matches:mockMatches.length,kills:92,deaths:64,wins:3,net:400,headshots:31,maxStreak:8},transactions:[{id:'tx-1',kind:'match',amount:1400,label:'Cash FFA cash-out',created_at:now-day,match_id:'preview-match-2'},{id:'tx-2',kind:'stake',amount:-1000,label:'Duel stake reserved',created_at:now-2*day,match_id:'preview-match-1'},{id:'tx-3',kind:'match',amount:2000,label:'Duel pot won',created_at:now-2*day+180000,match_id:'preview-match-1'},{id:'tx-4',kind:'topup',amount:5000,label:'Demo credit top-up',created_at:now-5*day,match_id:null},{id:'tx-5',kind:'welcome',amount:10000,label:'Welcome demo credits',created_at:now-94*day,match_id:null}],matches:mockMatches,active:null,pending:2};
 let equippedSku='plasma-flow';
+function mockStartMatch(body:Record<string,unknown>){
+ const mode=String(body.mode||'practice'),stake=mode==='duel'?(Number(body.stake)||10)*100:0,entry=mode==='ffa'?(Number(body.entry)||20)*100:0;
+ const active:MatchRow={id:'preview-active-'+Date.now(),player_id:mockPlayer.id,mode,rate:Number(body.rate)||2,team:String(body.team||'1v1'),map_id:String(body.mapId||'citadel'),stake,target:Number(body.target)||10,best_of:Number(body.bestOf)||1,weapon_rule:String(body.weaponRule||'standard'),entry,headshots:0,max_streak:0,status:'active',kills:0,deaths:0,score:0,enemy_score:0,won:0,delta:0,reason:'In progress',started_at:Date.now(),finished_at:0};
+ const reserved=stake+entry;
+ mockAccount={...mockAccount,player:{...mockAccount.player,balance:Math.max(0,mockAccount.player.balance-reserved)},active};
+ return {match:active,player:mockAccount.player};
+}
+function mockFinishMatch(body:Record<string,unknown>){
+ const active=mockAccount.active;
+ if(!active)return mockAccount;
+ const kills=Number(body.kills)||0,deaths=Number(body.deaths)||0,score=Number(body.score)||0,enemyScore=Number(body.enemyScore)||0,ending=String(body.ending||'complete');
+ const won=active.mode==='practice'?1:score>=enemyScore?1:0;
+ const delta=active.mode==='duel'?won?active.stake:-active.stake:active.mode==='ffa'?(kills-deaths)*active.rate:0;
+ const returned=ending==='cancel'?active.stake+active.entry:active.mode==='duel'?won?active.stake*2:0:active.mode==='ffa'?Math.max(0,active.entry+delta):0;
+ const saved:MatchRow={...active,status:ending==='cancel'?'cancelled':'completed',kills,deaths,score,enemy_score:enemyScore,headshots:Number(body.headshots)||Math.floor(kills*.35),max_streak:Number(body.maxStreak)||Math.max(0,Math.min(kills,5)),won,delta,reason:ending==='cancel'?'Match cancelled':ending==='cashout'?'Arena cash-out':won?'Win':'Lost',finished_at:Date.now()};
+ mockAccount={...mockAccount,player:{...mockAccount.player,balance:mockAccount.player.balance+returned},matches:[saved,...mockAccount.matches].slice(0,50),active:null,stats:{matches:mockAccount.stats.matches+1,kills:mockAccount.stats.kills+kills,deaths:mockAccount.stats.deaths+deaths,wins:mockAccount.stats.wins+won,net:mockAccount.stats.net+delta,headshots:(mockAccount.stats.headshots||0)+saved.headshots,maxStreak:Math.max(mockAccount.stats.maxStreak||0,saved.max_streak)},transactions:[{id:'mock-match-'+Date.now(),kind:'match',amount:returned,label:saved.reason,created_at:Date.now(),match_id:saved.id},...mockAccount.transactions]};
+ return {...mockAccount,match:saved};
+}
 const friendRows=()=>[
  {...mockPeople[0],friendship_id:'friend-1',sender_id:'nova',receiver_id:mockPlayer.id,status:'pending',friendship_status:'pending'},
  {...mockPeople[1],friendship_id:'friend-2',sender_id:mockPlayer.id,receiver_id:'vex',status:'accepted',friendship_status:'accepted'},
@@ -34,6 +52,8 @@ function mockResponse<T>(body?:Record<string,unknown>,query=''):T{
  if(body?.action==='topup'){const amount=Number(body.amount)||0;mockAccount={...mockAccount,player:{...mockAccount.player,balance:mockAccount.player.balance+amount},transactions:[{id:'mock-topup-'+Date.now(),kind:'topup',amount,label:'Demo preview top-up',created_at:Date.now(),match_id:null},...mockAccount.transactions]};return mockAccount as T;}
  if(body?.action==='profile'){mockAccount={...mockAccount,player:{...mockAccount.player,name:String(body.name||mockAccount.player.name),handle:String(body.handle||mockAccount.player.handle),bio:String(body.bio||''),color:String(body.color||mockAccount.player.color)}};return {player:mockAccount.player} as T;}
  if(body?.action==='inventory_equip'){equippedSku=String(body.sku||'');return {...mockAccount,platform:platform()} as T;}
+ if(body?.action==='match_start')return mockStartMatch(body) as T;
+ if(body?.action==='match_finish')return mockFinishMatch(body) as T;
  if(String(body?.action||'').startsWith('lobby_'))return lobbies() as T;
  if(['message_send','presence','player_block','player_unblock'].includes(String(body?.action)))return {ok:true} as T;
  if(body?.action)return {...mockAccount,platform:platform()} as T;
