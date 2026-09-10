@@ -460,19 +460,20 @@ function handgun(b:ModelBuilder) {
 }
 
 /** Flat blade faces meet a separately shaded, tapered cutting bevel. */
-function knifeBlade(b:ModelBuilder,outline:Profile,inset:Profile) {
+function knifeBlade(b:ModelBuilder,outline:Profile,inset:Profile,thickness=.0038,spineEdges=0) {
   const contour=inset.map(([z,y])=>new THREE.Vector2(z,y));
   const triangles=THREE.ShapeUtils.triangulateShape(contour,[]);
   for(const side of [-1,1]) {
-    const faces:number[]=[],bevel:number[]=[];
+    const faces:number[]=[],bevel:number[]=[],spine:number[]=[];
     const point=(p:readonly number[],x:number)=>[x,p[1],p[0]];
     const tri=(out:number[],a:number[],c:number[],d:number[])=>out.push(...a,...(side===1?d:c),...(side===1?c:d));
-    for(const [a,c,d] of triangles)tri(faces,point(inset[a],side*.0038),point(inset[c],side*.0038),point(inset[d],side*.0038));
+    for(const [a,c,d] of triangles)tri(faces,point(inset[a],side*thickness),point(inset[c],side*thickness),point(inset[d],side*thickness));
     for(let i=0;i<outline.length;i++){
-      const j=(i+1)%outline.length,a=point(outline[i],0),c=point(outline[j],0),d=point(inset[i],side*.0038),e=point(inset[j],side*.0038);
-      tri(bevel,a,c,d);tri(bevel,c,e,d);
+      const j=(i+1)%outline.length,a=point(outline[i],0),c=point(outline[j],0),d=point(inset[i],side*thickness),e=point(inset[j],side*thickness),band=i<spineEdges?spine:bevel;
+      tri(band,a,c,d);tri(band,c,e,d);
     }
-    for(const [vertices,finish] of [[faces,'blade'],[bevel,'honed']] as const){
+    for(const [vertices,finish] of [[faces,'blade'],[bevel,'honed'],[spine,'steel']] as const){
+      if(!vertices.length)continue;
       const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));geometry.computeVertexNormals();b.mesh(b.body,geometry,finish);
     }
   }
@@ -480,6 +481,7 @@ function knifeBlade(b:ModelBuilder,outline:Profile,inset:Profile) {
 
 function knifeHand(b:ModelBuilder,curved:boolean) {
   if(!b.showHands)return;
+  if(curved){karambitHand(b);return;}
   const palmZ=curved?.065:.096;
   b.oval(b.body,[.031,-.008,palmZ],[.025,.033,.048],'glove');
   b.oval(b.body,[.050,-.005,palmZ],[.008,.025,.037],'fabric');
@@ -496,33 +498,83 @@ function knifeHand(b:ModelBuilder,curved:boolean) {
   b.link(b.body,[.067,-.060,palmZ+.094],[.077,-.074,palmZ+.112],.038,.040,'polymer',16);
 }
 
+function karambitHand(b:ModelBuilder){
+  // The index finger passes through the pommel ring; three fingers wrap the grip.
+  for(const [finish,color] of [['glove','#303740'],['fabric','#191f26'],['stitch','#59626e']] as const)(b.finishes[finish] as THREE.MeshStandardMaterial).color.set(color);
+  const finger=(points:Point[],radius=.008)=>{
+    for(let i=0;i<points.length-1;i++)b.link(b.body,points[i],points[i+1],radius,radius*.94,'glove',16);
+    for(const point of points)b.oval(b.body,point,[radius,radius,radius],'glove');
+  };
+  b.oval(b.body,[.025,.014,.022],[.023,.041,.027],'glove');
+  b.oval(b.body,[.044,.014,.027],[.006,.030,.021],'fabric');
+  for(let i=0;i<3;i++){
+    const y=.034-i*.021;
+    finger([[.035,y,.016],[.027,y,-.012],[.005,y,-.021],[-.018,y,-.018],[-.023,y,.005]],.0085-i*.0004);
+    b.oval(b.body,[.023,y,-.015],[.012,.008,.007],'fabric');
+  }
+  finger([[.034,.043,.015],[.025,.063,.001],[.006,.073,-.006],[-.014,.071,-.006],[-.024,.052,.002]],.008);
+  finger([[.029,.021,.041],[.011,.044,.031],[-.014,.049,.010],[-.019,.027,-.003]],.010);
+  b.link(b.body,[.027,-.003,.030],[.085,-.018,-.012],.025,.029,'glove',18);
+  b.link(b.body,[.085,-.018,-.012],[.280,-.070,-.075],.030,.044,'fabric',18);
+  b.link(b.body,[.084,-.018,-.012],[.106,-.024,-.019],.031,.033,'polymer',18);
+}
+
+function karambit(b:ModelBuilder){
+  // Compact hooked blade: a continuous spine and a ground, concave cutting edge.
+  const blade=new THREE.Shape();blade.moveTo(-.008,.021);
+  blade.bezierCurveTo(-.063,.049,-.132,.011,-.119,-.075);
+  blade.bezierCurveTo(-.113,-.028,-.060,-.004,-.010,-.012);
+  blade.lineTo(-.008,.021);blade.closePath();
+  const face=new THREE.Shape();face.moveTo(-.012,.017);
+  face.bezierCurveTo(-.062,.043,-.127,.010,-.118,-.068);
+  face.bezierCurveTo(-.109,-.022,-.057,.003,-.014,-.005);
+  face.lineTo(-.012,.017);face.closePath();
+  knifeBlade(b,blade.getPoints(28).slice(0,-1).map(p=>[p.x,p.y]),face.getPoints(28).slice(0,-1).map(p=>[p.x,p.y]),.0018,28);
+
+  const grip=new THREE.Shape();grip.moveTo(-.010,.021);
+  grip.bezierCurveTo(.023,.028,.066,.025,.094,.011);
+  grip.quadraticCurveTo(.111,.004,.118,-.005);
+  grip.lineTo(.108,-.020);grip.quadraticCurveTo(.098,-.010,.089,-.017);
+  grip.quadraticCurveTo(.081,-.026,.072,-.018);
+  grip.quadraticCurveTo(.060,-.026,.050,-.017);
+  grip.quadraticCurveTo(.038,-.025,.026,-.016);
+  grip.quadraticCurveTo(.009,-.010,.004,-.025);
+  grip.lineTo(-.010,-.027);grip.quadraticCurveTo(-.020,-.013,-.010,.021);grip.closePath();
+  const extrude=(shape:THREE.Shape,width:number,x:number,finish:Finish,bevel:number)=>{
+    const geometry=new THREE.ExtrudeGeometry(shape,{depth:width,steps:1,bevelEnabled:true,bevelSize:bevel,bevelThickness:bevel,bevelSegments:3,curveSegments:16});
+    geometry.rotateY(-Math.PI/2).translate(width/2+x,0,0);b.mesh(b.body,geometry,finish);
+  };
+  extrude(grip,.006,0,'steel',.001);
+  const panel=new THREE.Shape();panel.moveTo(.001,.016);
+  panel.bezierCurveTo(.026,.022,.065,.019,.086,.009);
+  panel.quadraticCurveTo(.099,.002,.100,-.007);
+  panel.quadraticCurveTo(.092,-.015,.083,-.010);
+  panel.bezierCurveTo(.064,-.011,.025,-.009,.005,-.016);
+  panel.quadraticCurveTo(-.001,-.005,.001,.016);panel.closePath();
+  for(const side of [-1,1]){
+    extrude(panel,.007,side*.0075,'polymer',.0015);
+    for(const z of [.011,.085])b.bolt(side*.0127,.001,z,b.body,.0025);
+    // Fine angled grip cuts follow the side scales without floating above them.
+    for(let i=0;i<9;i++)b.link(b.body,[side*.0121,-.005,.025+i*.006],[side*.0121,.012,.018+i*.006],.00065,.00065,'edge',6);
+  }
+  const ring=b.mesh(b.body,new THREE.TorusGeometry(.018,.004,12,56),'steel',0,-.007,.124);ring.rotation.y=Math.PI/2;
+  for(const side of [-1,1]){
+    const edge=b.mesh(b.body,new THREE.TorusGeometry(.018,.0008,6,56),'edge',side*.0038,-.007,.124);edge.rotation.y=Math.PI/2;
+  }
+  for(const point of blade.getPoints(28).slice(1,5))b.box(b.body,0,point.y-.0004,point.x,.006,.002,.0015,'edge',.0003);
+  b.muzzle.set(0,-.075,-.119);
+  if(b.showHands){
+    const gripPose=new THREE.Matrix4().makeRotationX(-Math.PI/2);gripPose.setPosition(0,-.053,-.015);
+    for(const part of b.body.children)part.applyMatrix4(gripPose);
+    b.muzzle.applyMatrix4(gripPose);
+  }
+}
+
 function knife(b:ModelBuilder,style:'standard'|'karambit') {
   const curved=style==='karambit';
   b.root.userData.knifeStyle=style;
   if(curved){
-    const shape=new THREE.Shape();
-    shape.moveTo(-.026,.034);
-    shape.bezierCurveTo(-.116,.114,-.279,.055,-.280,-.154);
-    shape.bezierCurveTo(-.232,-.064,-.164,-.008,-.060,-.010);
-    shape.lineTo(-.026,-.017);shape.closePath();
-    const outline=shape.getPoints(20).slice(0,-1).map(p=>[p.x,p.y] as const);
-    // A narrow continuous silver bevel follows the talon's concave edge.
-    const inner=new THREE.Shape();inner.moveTo(-.034,.027);
-    inner.bezierCurveTo(-.116,.106,-.270,.048,-.276,-.138);
-    inner.bezierCurveTo(-.232,-.047,-.166,.003,-.061,.000);
-    inner.lineTo(-.034,-.009);inner.closePath();
-    const inset=inner.getPoints(20).slice(0,-1).map(p=>[p.x,p.y] as const);
-    knifeBlade(b,outline,inset);
-    b.profile(b.body,[[-.034,.031],[.021,.034],[.101,.004],[.141,-.028],[.126,-.056],[.063,-.023],[.005,-.014],[-.035,-.025]],.020,'steel',.003);
-    for(const side of [-1,1]){
-      b.profile(b.body,[[-.015,.025],[.022,.025],[.100,-.003],[.123,-.024],[.113,-.039],[.058,-.015],[.008,-.005],[-.015,-.011]],.009,'polymer',.003,side*.014);
-      for(let i=0;i<6;i++)b.box(b.body,side*.020,.009-i*.005,.005+i*.018,.0015,.021,.003,'recess',.0004);
-      b.bolt(side*.022,.009,.006,b.body,.004);b.bolt(side*.022,-.023,.105,b.body,.004);
-    }
-    const ring=b.ring(b.body,0,-.044,.157,.038,.026,.019,'steel',48);ring.rotation.y=Math.PI/2;
-    for(const side of [-1,1]){const lip=b.ring(b.body,side*.011,-.044,.157,.037,.029,.002,'edge',48);lip.rotation.y=Math.PI/2;}
-    for(let i=0;i<5;i++)b.box(b.body,0,.036+i*.002,-.040-i*.008,.019,.003,.003,'edge',.0004);
-    b.muzzle.set(0,-.154,-.280);
+    karambit(b);
   }else{
     knifeBlade(b,
       [[-.025,.034],[-.230,.038],[-.350,.012],[-.253,-.043],[-.100,-.045],[-.046,-.027],[-.025,-.027]],

@@ -59,8 +59,11 @@ export class ArenaRenderer{
   animateWeapon(model,this.kick,g.reloadLeft>0?1-g.reloadLeft/weapons[g.weapon].reload:0);
   updateWeaponFinish(model,g.elapsed);
   this.gunRoot.visible=p.hp>0;this.gunRoot.position.set(pose.x,pose.y,pose.z);
-  this.gunRoot.rotation.set(pose.rx,pose.ry,pose.rz);this.flash.scale.setScalar(g.weapon==='knife'?0:['pistol','handcannon','smg','vector'].includes(g.weapon)?.6:1);this.flash.position.copy(model.rig.muzzle);this.flash.position.z-=.06;this.flash.visible=this.kick>.6;this.flash.rotation.z=g.elapsed*200;
-  if(g.weapon==='knife'){this.gunRoot.position.y+=.075;this.gunRoot.position.z+=.065;this.gunRoot.rotation.x+=.12;this.gunRoot.rotation.y+=.85;this.gunRoot.rotation.z-=.22;}
+  this.gunRoot.rotation.set(pose.rx,pose.ry,pose.rz,'XYZ');this.flash.scale.setScalar(g.weapon==='knife'?0:['pistol','handcannon','smg','vector'].includes(g.weapon)?.6:1);this.flash.position.copy(model.rig.muzzle);this.flash.position.z-=.06;this.flash.visible=this.kick>.6;this.flash.rotation.z=g.elapsed*200;
+  if(g.weapon==='knife'){
+   if(g.config.knifeStyle==='karambit'){this.gunRoot.position.y+=.17;this.gunRoot.position.z+=.16;this.gunRoot.rotation.set(pose.rx+.10,pose.ry-1.18,pose.rz-.65,'ZYX');}
+   else{this.gunRoot.position.y+=.075;this.gunRoot.position.z+=.065;this.gunRoot.rotation.x+=.12;this.gunRoot.rotation.y+=.85;this.gunRoot.rotation.z-=.22;}
+  }
   this.sun.shadow.needsUpdate=true;this.pipeline.render(dt);
  }
  dispose(){if(this.disposed)return;this.disposed=true;const geometries=new Set<THREE.BufferGeometry>(),materials=new Set<THREE.Material>();for(const scene of [this.scene,this.weaponScene])scene.traverse(object=>{if(object instanceof THREE.Mesh||object instanceof THREE.Line||object instanceof THREE.Points){geometries.add(object.geometry);for(const m of Array.isArray(object.material)?object.material:[object.material])materials.add(m);}});geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());this.disposables.forEach(t=>t.dispose());this.world.dispose();this.pipeline.dispose();this.renderer.dispose();}
