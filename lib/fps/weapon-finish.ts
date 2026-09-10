@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {weaponWraps} from './weapon-wraps.ts';
 
 // The armory and match renderer use the same finish patterns.
 const patterns:Record<string,string>={
@@ -104,23 +105,30 @@ const patterns:Record<string,string>={
 
 export function createWeaponFinish(skin?:string){
  const effect=skin?.startsWith('fx:')?skin.slice(3):undefined;
- const pattern=effect&&Object.hasOwn(patterns,effect)?patterns[effect]:undefined;
- const animated=pattern!==undefined;
- const material=new THREE.MeshStandardMaterial({color:animated?'#ffffff':skin?.startsWith('#')?skin:'#141619',metalness:animated?.28:.42,roughness:animated?.42:.48});
+ const wrapId=skin?.startsWith('wrap:')?skin.slice(5):undefined;
+ const wrap=wrapId&&Object.hasOwn(weaponWraps,wrapId)?weaponWraps[wrapId]:undefined;
+ const motionPattern=effect&&Object.hasOwn(patterns,effect)?patterns[effect]:undefined;
+ const pattern=motionPattern??wrap?.fragment;
+ const animated=motionPattern!==undefined;
+ const material=new THREE.MeshStandardMaterial({color:pattern?'#ffffff':skin?.startsWith('#')?skin:'#141619',metalness:wrap?.metalness??(animated?.28:.42),roughness:wrap?.roughness??(animated?.42:.48)});
  const time={value:0};
- if(animated){
-  material.customProgramCacheKey=()=>`fragstake-finish-${effect}-2`;
+ if(pattern){
+  material.customProgramCacheKey=()=>`fragstake-finish-${skin}-3`;
   material.onBeforeCompile=shader=>{
-   shader.uniforms.uFinishTime=time;
+   if(animated)shader.uniforms.uFinishTime=time;
    shader.vertexShader='varying vec3 vFinishPosition;\n'+shader.vertexShader;
    shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvFinishPosition = position;');
-   shader.fragmentShader=`uniform float uFinishTime;
+   shader.fragmentShader=`${animated?'uniform float uFinishTime;':''}
     varying vec3 vFinishPosition;
     float finishHash(vec2 point){return fract(sin(dot(point,vec2(127.1,311.7))) * 43758.5453);}
+    float finishNoise(vec2 point){
+     vec2 cell=floor(point),blend=fract(point);blend=blend*blend*(3.0-2.0*blend);
+     return mix(mix(finishHash(cell),finishHash(cell+vec2(1.0,0.0)),blend.x),mix(finishHash(cell+vec2(0.0,1.0)),finishHash(cell+vec2(1.0,1.0)),blend.x),blend.y);
+    }
     `+shader.fragmentShader;
    shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',`#include <color_fragment>
-    vec3 p = vFinishPosition; float t = uFinishTime;
-    vec3 finishColor; vec3 finishGlow;
+    vec3 p = vFinishPosition; ${animated?'float t = uFinishTime;':''}
+    vec3 finishColor; vec3 finishGlow = vec3(0.0);
     ${pattern}
     diffuseColor.rgb *= finishColor;`);
    shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance += finishGlow;');

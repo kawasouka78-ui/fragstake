@@ -43,8 +43,32 @@ test('every animated finish equips free, survives reload and reaches its own ani
  }
 });
 
+test('patterned wraps equip and persist without enabling animated previews',()=>{
+ const armory=new PreviewArmory(),programs=new Set();
+ armory.buy('karambit-obsidian',10000);armory.equip('karambit-obsidian');
+ for(const item of catalog.filter(item=>'pattern' in item)){
+  assert.equal(armory.buy(item.sku,0),0);
+  armory.equip(item.sku);
+  const restored=new PreviewArmory();restored.restore(armory.serialize());
+  const equipment=equippedCosmetics(restored.inventory);
+  assert.deepEqual(equipment,{skin:cosmeticFinish(item),knifeStyle:'karambit'});
+  assert.equal(restored.spent,4999);
+  const finish=createWeaponFinish(equipment.skin);
+  assert.equal(finish.animated,false,item.name+' must remain still');
+  const shader={uniforms:{},vertexShader:ShaderLib.standard.vertexShader,fragmentShader:ShaderLib.standard.fragmentShader};
+  finish.material.onBeforeCompile(shader);
+  assert.notEqual(shader.fragmentShader,ShaderLib.standard.fragmentShader,'the pattern must reach the material');
+  assert.ok(!shader.fragmentShader.includes('uFinishTime'),'static wraps must not read the animation clock');
+  assert.equal(shader.uniforms.uFinishTime,undefined);
+  assert.ok(!shader.fragmentShader.includes('undefined'));
+  const key=finish.material.customProgramCacheKey();
+  assert.ok(!programs.has(key));programs.add(key);
+  finish.material.dispose();
+ }
+});
+
 test('missing and unrecognized finishes retain the standard black material',()=>{
- for(const skin of [undefined,'fx:missing','fx:constructor','fx:toString']){
+ for(const skin of [undefined,'fx:missing','fx:constructor','fx:toString','wrap:missing','wrap:constructor','wrap:toString']){
   const finish=createWeaponFinish(skin);
   assert.equal(finish.animated,false);assert.equal(finish.material.color.getHexString(),'141619');
   finish.material.dispose();
