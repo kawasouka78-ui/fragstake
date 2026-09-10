@@ -119,17 +119,7 @@ export class NetworkSimulation extends Simulation {
         this.interval = setInterval(() => {
           if (this.disposed || this.ended) return;
           if (this.socket?.readyState === WebSocket.OPEN) {
-            this.send({
-              type: 'input',
-              seq: ++this.seq,
-              yaw: Math.atan2(Math.sin(this.yaw), Math.cos(this.yaw)),
-              pitch: this.pitch,
-              controls: this.nextInput,
-            });
-            this.nextInput.reload = false;
-            this.nextInput.slide = false;
-            this.nextInput.jump = false;
-            this.nextInput.weapon = undefined;
+            this.flushInput();
             if (this.seq % 30 === 0)
               this.send({ type: 'ping', sent: performance.now() });
           }
@@ -145,6 +135,14 @@ export class NetworkSimulation extends Simulation {
   send(value: unknown) {
     if (this.socket?.readyState === WebSocket.OPEN)
       this.socket.send(JSON.stringify(value));
+  }
+  flushInput() {
+    this.send({type:'input',seq:++this.seq,yaw:Math.atan2(Math.sin(this.yaw),Math.cos(this.yaw)),pitch:this.pitch,controls:this.nextInput});
+    this.nextInput.reload = false;
+    this.nextInput.firePressed = false;
+    this.nextInput.slide = false;
+    this.nextInput.jump = false;
+    this.nextInput.weapon = undefined;
   }
   updateView(dt: number) {
     const factor = 1 - Math.exp(-dt * 30);
@@ -171,6 +169,7 @@ export class NetworkSimulation extends Simulation {
   override step(_dt: number, input: Controls) {
     this.nextInput = {
       ...input,
+      firePressed: input.firePressed || this.nextInput.firePressed,
       reload: input.reload || this.nextInput.reload,
       slide: input.slide || this.nextInput.slide,
       jump: input.jump || this.nextInput.jump,
@@ -178,6 +177,8 @@ export class NetworkSimulation extends Simulation {
     };
   }
   override start() {
+    // Send the chosen loadout before ready locks the server's two weapon slots.
+    this.flushInput();
     super.start();
     this.send({ type: 'ready' });
   }

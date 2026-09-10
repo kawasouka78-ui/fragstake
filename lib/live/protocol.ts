@@ -36,6 +36,7 @@ export function parseInput(
   controls.right = Number(c.right);
   for (const field of [
     'fire',
+    'firePressed',
     'aim',
     'sprint',
     'crouch',

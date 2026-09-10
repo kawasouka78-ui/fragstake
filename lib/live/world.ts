@@ -4,6 +4,9 @@ import {
   rayBox,
   wallDistance,
   visible,
+  meleeTarget,
+  direction,
+  weapons,
   type Actor,
   type Vec,
   type Controls,
@@ -16,6 +19,7 @@ import type { Ticket, LiveMode } from './security.ts';
 class HumanSimulation extends Simulation {
   room?: LiveRoom;
   subject = '';
+  override melee() { this.room?.melee(this.subject); }
   override cast(
     _attacker: Actor,
     dir: Vec,
@@ -159,7 +163,8 @@ export class LiveRoom {
     const frame = parseInput(value, p.seq);
     if (!frame) return false;
     p.seq = frame.seq;
-    p.input = frame.controls;
+    const firePressed = frame.controls.firePressed || p.input.firePressed;
+    p.input = { ...frame.controls, firePressed };
     if (frame.controls.weapon) p.game.switchWeapon(frame.controls.weapon);
     p.game.yaw = frame.yaw;
     p.game.pitch = frame.pitch;
@@ -225,6 +230,7 @@ export class LiveRoom {
         p.seconds += LIVE_TICK;
       }
       p.input.reload = false;
+      p.input.firePressed = false;
       p.input.weapon = undefined;
       g.time = Math.max(0, 180 - this.elapsed);
     }
@@ -297,6 +303,21 @@ export class LiveRoom {
       victim.game.player.team === g.player.team
     )
       return;
+    this.hit(shooter, victim, amount, multiplier, head);
+  }
+  melee(subject: string) {
+    const shooter = this.players.get(subject);
+    if (!shooter || this.status !== 'playing') return;
+    const g = shooter.game;
+    const targets = [...this.players.values()].filter(p => p !== shooter && p.ready && !p.left);
+    const hit = meleeTarget(g.boxes, g.eye(g.player), direction(g.yaw, g.pitch), targets.map(p => p.game.player));
+    if (!hit) return;
+    const victim = targets.find(p => p.game.player === hit.actor)!;
+    if (hit.actor.shield > 0 || hit.actor.team === g.player.team) return;
+    this.hit(shooter, victim, weapons.knife.damage, 1, hit.head);
+  }
+  hit(shooter: Participant, victim: Participant, amount: number, multiplier: number, head: boolean) {
+    const g = shooter.game, subject = shooter.claims.sub;
     const target = victim.game,
       a = target.player;
     a.hp = Math.max(0, a.hp - Math.round(amount * (head ? multiplier : 1)));
@@ -385,6 +406,7 @@ export class LiveRoom {
       ],
       state: {
         weapon: g.weapon,
+        matchWeapon: g.matchWeapon,
         ammo: g.ammo,
         reserve: g.reserve,
         reloadLeft: g.reloadLeft,

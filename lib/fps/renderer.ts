@@ -3,7 +3,7 @@ import {type Simulation,type Actor,weapons,matchWeaponIds,type WeaponId} from '.
 import {buildWeapon,animateWeapon,updateWeaponFinish,type WeaponModel} from './weapon-models.ts';
 import {ArenaWorld} from './world.ts';
 import {ArenaPipeline} from './pipeline.ts';
-import {ViewMotion} from './view-motion.ts';
+import {ViewMotion,viewmodelPose} from './view-motion.ts';
 
 type Rig={root:THREE.Group;legs:THREE.Group[];shield:THREE.Mesh;health:THREE.Mesh};
 export class ArenaRenderer{
@@ -45,7 +45,7 @@ export class ArenaRenderer{
  shot(){this.kick=1;}
  render(dt:number){
   this.world.update(this.game.elapsed,this.quality);
-  const g=this.game,p=g.player;this.kick=Math.max(0,this.kick-dt*(g.weapon==='knife'?3.8:10));
+  const g=this.game,p=g.player;this.kick=Math.max(0,this.kick-dt*(g.weapon==='knife'?2.4:10));
   const model=this.gunModels.get(g.weapon)!;
   const reload=g.reloadLeft>0?Math.sin(Math.PI*(1-g.reloadLeft/weapons[g.weapon].reload)):0;
   const aim=g.weapon==='knife'?0:g.aim;
@@ -58,12 +58,9 @@ export class ArenaRenderer{
   for(const [id,mesh]of this.gunModels)mesh.visible=id===g.weapon;
   animateWeapon(model,this.kick,g.reloadLeft>0?1-g.reloadLeft/weapons[g.weapon].reload:0);
   updateWeaponFinish(model,g.elapsed);
-  this.gunRoot.visible=p.hp>0;this.gunRoot.position.set(pose.x,pose.y,pose.z);
-  this.gunRoot.rotation.set(pose.rx,pose.ry,pose.rz,'XYZ');this.flash.scale.setScalar(g.weapon==='knife'?0:['pistol','handcannon','smg','vector'].includes(g.weapon)?.6:1);this.flash.position.copy(model.rig.muzzle);this.flash.position.z-=.06;this.flash.visible=this.kick>.6;this.flash.rotation.z=g.elapsed*200;
-  if(g.weapon==='knife'){
-   if(g.config.knifeStyle==='karambit'){this.gunRoot.position.y+=.17;this.gunRoot.position.z+=.16;this.gunRoot.rotation.set(pose.rx+.10,pose.ry-1.18,pose.rz-.65,'ZYX');}
-   else{this.gunRoot.position.y+=.075;this.gunRoot.position.z+=.065;this.gunRoot.rotation.x+=.12;this.gunRoot.rotation.y+=.85;this.gunRoot.rotation.z-=.22;}
-  }
+  const placed=viewmodelPose(pose,g.weapon==='knife'?g.config.knifeStyle??'standard':undefined);
+  this.gunRoot.visible=p.hp>0;this.gunRoot.position.set(placed.x,placed.y,placed.z);
+  this.gunRoot.rotation.set(placed.rx,placed.ry,placed.rz,placed.order);this.flash.scale.setScalar(g.weapon==='knife'?0:['pistol','handcannon','smg','vector'].includes(g.weapon)?.6:1);this.flash.position.copy(model.rig.muzzle);this.flash.position.z-=.06;this.flash.visible=g.weapon!=='knife'&&this.kick>.6;this.flash.rotation.z=g.elapsed*200;
   this.sun.shadow.needsUpdate=true;this.pipeline.render(dt);
  }
  dispose(){if(this.disposed)return;this.disposed=true;const geometries=new Set<THREE.BufferGeometry>(),materials=new Set<THREE.Material>();for(const scene of [this.scene,this.weaponScene])scene.traverse(object=>{if(object instanceof THREE.Mesh||object instanceof THREE.Line||object instanceof THREE.Points){geometries.add(object.geometry);for(const m of Array.isArray(object.material)?object.material:[object.material])materials.add(m);}});geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());this.disposables.forEach(t=>t.dispose());this.world.dispose();this.pipeline.dispose();this.renderer.dispose();}

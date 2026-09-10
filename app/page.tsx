@@ -1054,7 +1054,7 @@ export default function Home() {
               <p>
                 WASD to move · Mouse to aim · Click to fire · Right-click to aim
                 down sights · Shift to sprint · Space to jump · C to slide ·
-                Ctrl to crouch · R to reload · 1–6 to switch weapons · Esc for
+                Ctrl to crouch · R to reload · 1 for your gun · 2 for your knife · Esc for
                 cash-out and exit. Touch controls are available.
               </p>
               {entry > 0 && mode === 'ffa' && (

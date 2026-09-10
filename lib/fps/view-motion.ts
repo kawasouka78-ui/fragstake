@@ -2,6 +2,13 @@ export type MotionSample={speed:number;grounded:boolean;vy:number;crouch:boolean
 const damp=(value:number,target:number,rate:number,dt:number)=>value+(target-value)*(1-Math.exp(-rate*dt));
 const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,value));
 
+/** Keep the actual render placement available to camera-clipping regression checks. */
+export function viewmodelPose(pose:ReturnType<ViewMotion['step']>,knifeStyle?:'standard'|'karambit'){
+  if(knifeStyle==='karambit')return {...pose,x:pose.x-.035,y:pose.y+.14,z:pose.z+.08,rx:pose.rx+.06,ry:pose.ry-1.05,rz:pose.rz-.38,order:'ZYX' as const};
+  if(knifeStyle==='standard')return {...pose,y:pose.y+.075,z:pose.z+.065,rx:pose.rx+.12,ry:pose.ry+.85,rz:pose.rz-.22,order:'XYZ' as const};
+  return {...pose,order:'XYZ' as const};
+}
+
 /** Continuous, bounded view motion; stance changes never snap or accumulate transforms. */
 export class ViewMotion{
   sprint=0;slide=0;crouch=0;movement=0;air=0;landing=0;swap=0;phase=0;

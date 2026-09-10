@@ -500,13 +500,14 @@ function knifeHand(b:ModelBuilder,curved:boolean) {
 
 function karambitHand(b:ModelBuilder){
   // The index finger passes through the pommel ring; three fingers wrap the grip.
-  for(const [finish,color] of [['glove','#303740'],['fabric','#191f26'],['stitch','#59626e']] as const)(b.finishes[finish] as THREE.MeshStandardMaterial).color.set(color);
+  for(const [finish,color] of [['glove','#171b20'],['fabric','#0d1116'],['stitch','#343e47']] as const)(b.finishes[finish] as THREE.MeshStandardMaterial).color.set(color);
   const finger=(points:Point[],radius=.008)=>{
-    for(let i=0;i<points.length-1;i++)b.link(b.body,points[i],points[i+1],radius,radius*.94,'glove',16);
-    for(const point of points)b.oval(b.body,point,[radius,radius,radius],'glove');
+    const curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)),false,'centripetal');
+    b.mesh(b.body,new THREE.TubeGeometry(curve,28,radius,12,false),'glove');
+    for(const point of [points[0],points[points.length-1]])b.oval(b.body,point,[radius,radius,radius],'glove');
   };
   b.oval(b.body,[.025,.014,.022],[.023,.041,.027],'glove');
-  b.oval(b.body,[.044,.014,.027],[.006,.030,.021],'fabric');
+  b.profile(b.body,[[.015,-.016],[.035,-.019],[.046,.005],[.035,.038],[.012,.035],[.006,.010]],.003,'fabric',.003,.046);
   for(let i=0;i<3;i++){
     const y=.034-i*.021;
     finger([[.035,y,.016],[.027,y,-.012],[.005,y,-.021],[-.018,y,-.018],[-.023,y,.005]],.0085-i*.0004);
@@ -514,20 +515,24 @@ function karambitHand(b:ModelBuilder){
   }
   finger([[.034,.043,.015],[.025,.063,.001],[.006,.073,-.006],[-.014,.071,-.006],[-.024,.052,.002]],.008);
   finger([[.029,.021,.041],[.011,.044,.031],[-.014,.049,.010],[-.019,.027,-.003]],.010);
-  b.link(b.body,[.027,-.003,.030],[.085,-.018,-.012],.025,.029,'glove',18);
-  b.link(b.body,[.085,-.018,-.012],[.280,-.070,-.075],.030,.044,'fabric',18);
-  b.link(b.body,[.084,-.018,-.012],[.106,-.024,-.019],.031,.033,'polymer',18);
+  b.link(b.body,[.027,-.003,.030],[.064,-.008,-.025],.024,.027,'glove',20);
+  b.link(b.body,[.064,-.008,-.025],[.205,-.035,-.245],.029,.041,'fabric',20);
+  b.link(b.body,[.060,-.007,-.019],[.077,-.010,-.045],.030,.032,'polymer',20);
+  b.link(b.body,[.069,.011,-.032],[.124,.004,-.117],.001,.001,'stitch',6);
 }
 
 function karambit(b:ModelBuilder){
   // Compact hooked blade: a continuous spine and a ground, concave cutting edge.
+  const bladeFinish=b.finishes.blade as THREE.MeshStandardMaterial,edgeFinish=b.finishes.honed as THREE.MeshStandardMaterial;
+  bladeFinish.color.set('#39434d');bladeFinish.metalness=.32;bladeFinish.roughness=.3;
+  edgeFinish.color.set('#bcc9d2');edgeFinish.metalness=.35;edgeFinish.roughness=.27;
   const blade=new THREE.Shape();blade.moveTo(-.008,.021);
-  blade.bezierCurveTo(-.063,.049,-.132,.011,-.119,-.075);
-  blade.bezierCurveTo(-.113,-.028,-.060,-.004,-.010,-.012);
+  blade.bezierCurveTo(-.049,.041,-.104,.006,-.090,-.064);
+  blade.bezierCurveTo(-.076,-.018,-.045,-.012,-.010,-.014);
   blade.lineTo(-.008,.021);blade.closePath();
   const face=new THREE.Shape();face.moveTo(-.012,.017);
-  face.bezierCurveTo(-.062,.043,-.127,.010,-.118,-.068);
-  face.bezierCurveTo(-.109,-.022,-.057,.003,-.014,-.005);
+  face.bezierCurveTo(-.048,.035,-.098,.005,-.090,-.057);
+  face.bezierCurveTo(-.075,-.011,-.043,-.005,-.014,-.007);
   face.lineTo(-.012,.017);face.closePath();
   knifeBlade(b,blade.getPoints(28).slice(0,-1).map(p=>[p.x,p.y]),face.getPoints(28).slice(0,-1).map(p=>[p.x,p.y]),.0018,28);
 
@@ -562,7 +567,7 @@ function karambit(b:ModelBuilder){
     const edge=b.mesh(b.body,new THREE.TorusGeometry(.018,.0008,6,56),'edge',side*.0038,-.007,.124);edge.rotation.y=Math.PI/2;
   }
   for(const point of blade.getPoints(28).slice(1,5))b.box(b.body,0,point.y-.0004,point.x,.006,.002,.0015,'edge',.0003);
-  b.muzzle.set(0,-.075,-.119);
+  b.muzzle.set(0,-.064,-.090);
   if(b.showHands){
     const gripPose=new THREE.Matrix4().makeRotationX(-Math.PI/2);gripPose.setPosition(0,-.053,-.015);
     for(const part of b.body.children)part.applyMatrix4(gripPose);
@@ -646,9 +651,12 @@ export function animateWeapon(model: WeaponModel, kick: number, reloadFraction: 
   const progress=THREE.MathUtils.clamp(Number.isFinite(reloadFraction)?reloadFraction:0,0,1);
   const reload=Math.sin(Math.PI*progress);
   if(id==='knife'){
-    const slash=recoil>0?Math.sin(Math.PI*(1-recoil)):0;
-    body.rotation.set(-slash*.45,-slash*.65,-slash*1.1);
-    body.position.set(-slash*.10,slash*.035,-slash*.075);
+    // A short wind-up, decisive cut and slower return keep the wrist attached.
+    const t=1-recoil,active=recoil>0;
+    const windup=active&&t<.18?Math.sin(t/.18*Math.PI):0;
+    const cut=active&&t>=.18?Math.sin(Math.PI*Math.pow((t-.18)/.82,.58)):0;
+    body.rotation.set(windup*.08-cut*.22,windup*.12-cut*.4,windup*.12-cut*.78);
+    body.position.set(windup*.015-cut*.07,cut*.022,-cut*.055);
     return;
   }
   action.position.z=(id==='pistol'||id==='handcannon'?.030:.013)*recoil;

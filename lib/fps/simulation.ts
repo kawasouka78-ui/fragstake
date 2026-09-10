@@ -13,14 +13,14 @@ export const weapons={
  pistol:{name:'SIDEWINDER',type:'PISTOL',mag:15,damage:30,head:2,interval:.23,reload:1.1,spread:.012,recoil:.021,auto:false,range:40},
  handcannon:{name:'JUDGEMENT',type:'HEAVY PISTOL',mag:7,damage:55,head:2,interval:.4,reload:1.6,spread:.008,recoil:.05,auto:false,range:55},
  shotgun:{name:'BREACHER',type:'SHOTGUN',mag:6,damage:10,head:1.15,interval:.58,reload:2.25,spread:.09,recoil:.07,auto:false,range:17},
- knife:{name:'KNIFE',type:'MELEE',mag:1,damage:75,head:1,interval:.52,reload:0,spread:0,recoil:.02,auto:false,range:1.85}
+ knife:{name:'KNIFE',type:'MELEE',mag:1,damage:75,head:1,interval:.52,reload:0,spread:0,recoil:0,auto:true,range:1.85}
 } as const;
 export const weaponIds:WeaponId[]=['rifle','smg','marksman','carbine','vector','shotgun'];
 export const matchWeaponIds:WeaponId[]=[...weaponIds,'knife'];
 const ammoFor=()=>Object.fromEntries(matchWeaponIds.map(id=>[id,id==='knife'?1:weapons[id].mag])) as Record<WeaponId,number>;
 const reserveFor=()=>Object.fromEntries(matchWeaponIds.map(id=>[id,id==='knife'?0:weapons[id].mag*4])) as Record<WeaponId,number>;
 export type Actor={id:number;name:string;team:number;x:number;z:number;y:number;vy:number;yaw:number;hp:number;kills:number;deaths:number;respawn:number;shield:number;cooldown:number;crouch:boolean;moving:number;path:{x:number;z:number}[];repath:number;target:number;reaction:number;lastDamage:number};
-export type Controls={forward:number;right:number;fire:boolean;aim:boolean;sprint:boolean;crouch:boolean;jump:boolean;reload:boolean;slide?:boolean;weapon?:WeaponId};
+export type Controls={forward:number;right:number;fire:boolean;firePressed?:boolean;aim:boolean;sprint:boolean;crouch:boolean;jump:boolean;reload:boolean;slide?:boolean;weapon?:WeaponId};
 export const idleInput=():Controls=>({forward:0,right:0,fire:false,aim:false,sprint:false,crouch:false,jump:false,reload:false,slide:false});
 export function shotsToEliminate(damage:number,headMultiplier=1){return Math.ceil(100/Math.max(1,Math.round(damage*headMultiplier)));}
 export function weaponTimeToKill(id:WeaponId,head=false){const gun=weapons[id],perShot=gun.damage*(id==='shotgun'?8:1),shots=shotsToEliminate(perShot,head?gun.head:1);return (shots-1)*gun.interval;}
@@ -43,6 +43,24 @@ export function moveActor(actor:Actor,dx:number,dz:number,boxes:Box[]){
  for(let i=0;i<steps;i++){if(clearAt(boxes,actor.x+dx/steps,actor.z))actor.x+=dx/steps;if(clearAt(boxes,actor.x,actor.z+dz/steps))actor.z+=dz/steps;}
 }
 export function visible(boxes:Box[],a:Vec,b:Vec){const d={x:b.x-a.x,y:b.y-a.y,z:b.z-a.z},len=Math.hypot(d.x,d.y,d.z);return len<.01||wallDistance(boxes,a,{x:d.x/len,y:d.y/len,z:d.z/len})>len-.05;}
+/** A short forward slash, shared by bot matches and the authoritative player server. */
+export function meleeTarget(boxes:Box[],from:Vec,dir:Vec,actors:Actor[],range=weapons.knife.range){
+ let closest=Infinity,result:{actor:Actor;head:boolean}|undefined;
+ for(const actor of actors){
+  if(actor.hp<=0)continue;
+  const scale=actor.crouch?.67:1;
+  const point={x:clamp(from.x,actor.x-.32,actor.x+.32),y:clamp(from.y,actor.y+.35,actor.y+1.84*scale),z:clamp(from.z,actor.z-.26,actor.z+.26)};
+  const delta={x:point.x-from.x,y:point.y-from.y,z:point.z-from.z},distance=Math.hypot(delta.x,delta.y,delta.z);
+  if(distance>range||distance>=closest)continue;
+  if(distance>.001){
+   const toward={x:delta.x/distance,y:delta.y/distance,z:delta.z/distance};
+   if(toward.x*dir.x+toward.y*dir.y+toward.z*dir.z<Math.cos(Math.PI/5)||wallDistance(boxes,from,toward)<distance-.001)continue;
+  }
+  const head=rayBox(from,dir,{x:actor.x-.22,y:actor.y+1.4*scale,z:actor.z-.22},{x:actor.x+.22,y:actor.y+1.84*scale,z:actor.z+.22})<=range;
+  closest=distance;result={actor,head};
+ }
+ return result;
+}
 export class Navigation{
  map:ArenaMap;boxes:Box[];cols:number;rows:number;walk:Uint8Array;
  constructor(map:ArenaMap){this.map=map;this.boxes=collisionBoxes(map);this.cols=map.width;this.rows=map.depth;this.walk=new Uint8Array(this.cols*this.rows);for(let n=0;n<this.walk.length;n++){const p=this.point(n);this.walk[n]=clearAt(this.boxes,p.x,p.z,.55)?1:0;}}
@@ -85,7 +103,8 @@ export class Simulation{
  get switchWeapons():WeaponId[]{return this.started?[this.matchWeapon,'knife']:this.allowedWeapons;}
  get cashOutWait(){return Math.max(0,8-(this.elapsed-this.combatAt));}
  paused=false;
- pause(){if(!this.ended)this.paused=true;}
+ knifeBuffer=0;
+ pause(){if(!this.ended)this.paused=true;this.knifeBuffer=0;this.fireHeld=false;}
  cashOut(){if(this.started&&!this.ended&&this.config.mode==='ffa'&&(this.paused||(this.player.hp>0&&this.cashOutWait===0)))this.finish('Arena cash-out');}
  completeRound(){if(this.roundScore===this.roundEnemyScore){this.finish();return;}if(this.roundScore>this.roundEnemyScore)this.score++;else this.enemyScore++;if(this.score>=2||this.enemyScore>=2){this.finish();return;}this.roundScore=0;this.roundEnemyScore=0;this.time=180;for(const actor of this.actors)this.respawn(actor);}
  eye(a:Actor):Vec{return {x:a.x,y:a.y+(a.id===0?this.playerEyeHeight:a.crouch?1.05:1.62),z:a.z};}
@@ -93,7 +112,7 @@ export class Simulation{
  start(){if(this.ended)return;this.started=true;if(this.weapon!=='knife')this.weapon=this.matchWeapon;this.paused=false;}
  finish(reason?:string){if(this.ended)return;this.ended=true;const won=this.config.mode==='duel'?this.score>this.enemyScore:this.player.kills>this.player.deaths;const draw=this.score===this.enemyScore;const cancel=reason==='Match cancelled';const forfeit=reason==='Duel forfeited';if(this.config.mode==='duel')this.balance+=cancel?(this.config.stake??10):forfeit?0:(won?2*(this.config.stake??10):draw?(this.config.stake??10):0);this.result={kills:this.player.kills,deaths:this.player.deaths,balance:this.balance,reason:reason??(this.config.mode==='duel'?(won?'Duel won':draw?'Draw — stake returned':'Duel lost'):'Round complete'),won:!cancel&&!forfeit&&reason!=='Left the arena'&&won,score:this.score,enemyScore:this.enemyScore,headshots:this.headshots,maxStreak:this.maxStreak,elapsed:this.elapsed,mode:this.config.mode,mapId:this.map.id,rate:this.config.rate,entry:this.config.entry,lastDeathLoss:this.lastDeathLoss};Object.assign(this.result,matchOutcome(this.config,this.result,cancel?'cancel':forfeit||reason==='Left the arena'?'leave':reason==='Arena cash-out'?'cashout':'complete'));}
  leave(){this.finish(!this.started?'Match cancelled':this.config.mode==='duel'?'Duel forfeited':'Left the arena');}
- switchWeapon(id:WeaponId){const choosingLoadout=this.paused;const allowed=this.started&&!choosingLoadout?this.switchWeapons:this.allowedWeapons;if(this.weapon===id||!allowed.includes(id))return;if(!this.started||choosingLoadout)this.matchWeapon=id;this.weapon=id;this.reloadLeft=0;this.switchLeft=.25;this.fireHeld=true;this.bloom=0;}
+ switchWeapon(id:WeaponId){const choosingLoadout=this.paused;const allowed=this.started&&!choosingLoadout?this.switchWeapons:this.allowedWeapons;if(this.weapon===id||!allowed.includes(id))return;if(!this.started||choosingLoadout)this.matchWeapon=id;this.weapon=id;this.reloadLeft=0;this.switchLeft=.25;this.fireHeld=true;this.knifeBuffer=0;this.bloom=0;}
  reload(){if(this.weapon==='knife'||this.reloadLeft||this.ammo[this.weapon]>=this.gun.mag||this.reserve[this.weapon]<=0||this.player.hp<=0)return;this.reloadLeft=this.gun.reload;this.events.push({kind:'reload'});}
  respawn(a:Actor){
   const enemies=this.actors.filter(b=>b.id!==a.id&&b.team!==a.team&&b.hp>0);
@@ -124,9 +143,13 @@ export class Simulation{
   this.shots.push({from,to:{x:from.x+dir.x*distance,y:from.y+dir.y*distance,z:from.z+dir.z*distance},friendly:attacker.team===this.player.team,age:0});
   if(target)this.damage(target,attacker,Math.round(damage*(head?headMultiplier:1)),head);
  }
+ melee(){
+  const hit=meleeTarget(this.boxes,this.eye(this.player),direction(this.yaw,this.pitch),this.actors.filter(a=>a!==this.player));
+  if(hit)this.damage(hit.actor,this.player,weapons.knife.damage,hit.head);
+ }
  fire(){
   if(this.ended||this.paused||this.player.hp<=0||this.reloadLeft>0||this.shotCooldown>0||this.switchLeft>0||this.sprinting)return false;
-  if(this.weapon==='knife'){this.combatAt=this.elapsed;this.shotCooldown=this.gun.interval;this.player.shield=0;this.cast(this.player,direction(this.yaw,this.pitch),this.gun.damage,this.gun.head,this.gun.range);this.recoil=Math.min(.12,this.recoil+this.gun.recoil);this.events.push({kind:'shot',weapon:this.weapon});return true;}
+  if(this.weapon==='knife'){this.combatAt=this.elapsed;this.shotCooldown=this.gun.interval;this.player.shield=0;this.melee();this.events.push({kind:'shot',weapon:this.weapon});return true;}
   if(this.ammo[this.weapon]===0){this.reload();return false;}
   this.combatAt=this.elapsed;this.ammo[this.weapon]--;this.shotCooldown=this.gun.interval;this.player.shield=0;
   const spread=this.gun.spread*(1-this.aim*.82)*(this.player.crouch?.7:1)*(this.player.y>0?3:1)+(Math.hypot(this.vx,this.vz)>.5?.009*(1-this.aim*.5):0)+this.bloom*.08;
@@ -147,6 +170,9 @@ export class Simulation{
   const p=this.player;
   if(p.hp>0){
    if(input.weapon)this.switchWeapon(input.weapon);if(input.reload)this.reload();
+   this.knifeBuffer=Math.max(0,this.knifeBuffer-dt);
+   if(this.weapon==='knife'&&(input.firePressed||(input.fire&&!this.fireHeld)))this.knifeBuffer=.28;
+   const attacking=input.fire||!!input.firePressed||this.knifeBuffer>0,aiming=this.weapon!=='knife'&&input.aim;
    if(this.reloadLeft>0){this.reloadLeft=Math.max(0,this.reloadLeft-dt);if(this.reloadLeft===0){const n=Math.min(this.gun.mag-this.ammo[this.weapon],this.reserve[this.weapon]);this.ammo[this.weapon]+=n;this.reserve[this.weapon]-=n;}}
    const momentum=Math.hypot(this.vx,this.vz),slidePressed=!!input.slide&&!this.slideHeld;
    if(slidePressed)this.slideQueued=true;
@@ -159,10 +185,10 @@ export class Simulation{
    }
    const slideJump=this.sliding&&input.jump&&!this.jumpHeld;
    if(slideJump){this.slideLeft=0;p.vy=5.4;}
-   p.crouch=!slideJump&&(input.crouch||this.sliding);this.sprinting=!this.sliding&&input.sprint&&input.forward>0&&!input.aim&&!input.fire&&!p.crouch&&this.stamina>2;
+   p.crouch=!slideJump&&(input.crouch||this.sliding);this.sprinting=!this.sliding&&input.sprint&&input.forward>0&&!aiming&&!attacking&&!p.crouch&&this.stamina>2;
    this.playerEyeHeight+=((p.crouch?1.05:1.62)-this.playerEyeHeight)*(1-Math.exp(-dt*14));
-   this.stamina=clamp(this.stamina+(this.sliding?0:this.sprinting?-24:18)*dt,0,100);this.aim+=(Number(input.aim&&!this.sprinting&&!this.sliding)-this.aim)*Math.min(1,dt*14);
-   const speed=p.crouch?2.35:this.sprinting?7.5:input.aim?3.15:4.7;
+   this.stamina=clamp(this.stamina+(this.sliding?0:this.sprinting?-24:18)*dt,0,100);this.aim+=(Number(aiming&&!this.sprinting&&!this.sliding)-this.aim)*Math.min(1,dt*14);
+   const speed=p.crouch?2.35:this.sprinting?7.5:aiming?3.15:4.7;
    const length=Math.max(1,Math.hypot(input.forward,input.right)),f=input.forward/length,r=input.right/length;
    const tx=(-Math.sin(this.yaw)*f+Math.cos(this.yaw)*r)*speed,tz=(-Math.cos(this.yaw)*f-Math.sin(this.yaw)*r)*speed;
    if(this.sliding){this.slideSpeed=Math.max(0,this.slideSpeed-7.2*dt);this.vx=this.slideX*this.slideSpeed;this.vz=this.slideZ*this.slideSpeed;}
@@ -171,12 +197,13 @@ export class Simulation{
    if(this.sliding){this.slideLeft=Math.max(0,this.slideLeft-dt);if(p.moving<this.slideSpeed*.35||p.y>0)this.slideLeft=0;}
    this.stepSound-=dt;if(p.y===0&&p.moving>1&&!p.crouch&&this.stepSound<=0){this.events.push({kind:'footstep'});this.stepSound=this.sprinting?.28:.4;}
    if(input.jump&&!this.jumpHeld&&p.y===0&&!p.crouch){p.vy=5.4;}p.vy-=20*dt;p.y=Math.max(0,p.y+p.vy*dt);if(p.y===0)p.vy=0;
-   if(input.fire&&(this.gun.auto||!this.fireHeld))this.fire();
+   if(this.weapon==='knife'){if(attacking&&this.fire())this.knifeBuffer=0;}
+   else if(input.firePressed||(input.fire&&(this.gun.auto||!this.fireHeld)))this.fire();
    for(const pickup of this.pickups)if(pickup.ready===0&&Math.hypot(p.x-pickup.x,p.z-pickup.z)<1.1){
     if(pickup.kind==='health'&&p.hp<100){p.hp=Math.min(100,p.hp+45);pickup.ready=18;this.events.push({kind:'pickup'});}
     else if(pickup.kind==='ammo'&&weaponIds.some(id=>this.reserve[id]<(id==='marksman'?40:180))){for(const id of weaponIds)this.reserve[id]=Math.min(id==='marksman'?40:180,this.reserve[id]+weapons[id].mag*2);pickup.ready=15;this.events.push({kind:'pickup'});}
    }
-  }else{this.sprinting=false;this.slideQueued=false;this.slideLeft=this.slideSpeed=0;this.vx=this.vz=0;this.reloadLeft=0;}
+  }else{this.sprinting=false;this.slideQueued=false;this.slideLeft=this.slideSpeed=0;this.vx=this.vz=0;this.reloadLeft=0;this.knifeBuffer=0;}
   this.fireHeld=input.fire;this.jumpHeld=input.jump;this.crouchHeld=input.crouch;this.slideHeld=!!input.slide;
   if(this.ended)return;
   for(const bot of this.actors.slice(1)){if(bot.hp>0)this.botStep(bot,dt);if(this.ended)return;}
