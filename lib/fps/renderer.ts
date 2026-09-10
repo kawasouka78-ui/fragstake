@@ -39,18 +39,19 @@ export class ArenaRenderer{
   const shield=new THREE.Mesh(new THREE.CapsuleGeometry(.52,1.05,4,10),new THREE.MeshBasicMaterial({color:ally?0x63dffc:0xffbb75,transparent:true,opacity:.1,wireframe:true,depthWrite:false}));shield.position.y=.95;root.add(shield);
   const health=new THREE.Mesh(new THREE.PlaneGeometry(.65,.045),new THREE.MeshBasicMaterial({color:trim,side:THREE.DoubleSide,depthTest:true}));health.position.y=2.1;root.add(health);this.scene.add(root);return {root,legs,shield,health};
  }
- weapon(id:WeaponId){return buildWeapon(id,this.game.config.skin);}
+ weapon(id:WeaponId){return buildWeapon(id,this.game.config.skin,true,this.game.config.knifeStyle);}
  resize(width:number,height:number){this.renderer.setSize(width,height,false);this.camera.aspect=width/height;this.camera.updateProjectionMatrix();this.weaponCamera.aspect=width/height;this.weaponCamera.updateProjectionMatrix();this.pipeline.resize(width,height);}
  setQuality(quality:string){if(this.quality===quality)return;this.quality=quality;this.renderer.setPixelRatio(Math.min(devicePixelRatio,quality==='high'?1.5:1));this.renderer.shadowMap.enabled=true;this.pipeline.setQuality(quality);}
  shot(){this.kick=1;}
  render(dt:number){
   this.world.update(this.game.elapsed,this.quality);
-  const g=this.game,p=g.player;this.kick=Math.max(0,this.kick-dt*10);
+  const g=this.game,p=g.player;this.kick=Math.max(0,this.kick-dt*(g.weapon==='knife'?3.8:10));
   const model=this.gunModels.get(g.weapon)!;
   const reload=g.reloadLeft>0?Math.sin(Math.PI*(1-g.reloadLeft/weapons[g.weapon].reload)):0;
-  const pose=this.motion.step(dt,{speed:p.hp>0?p.moving:0,grounded:p.y===0,vy:p.vy,crouch:p.crouch,sprinting:g.sprinting,sliding:g.sliding,aim:g.aim,reload,switching:g.switchLeft>0,kick:this.kick,sightHeight:model.rig.sightHeight});
+  const aim=g.weapon==='knife'?0:g.aim;
+  const pose=this.motion.step(dt,{speed:p.hp>0?p.moving:0,grounded:p.y===0,vy:p.vy,crouch:p.crouch,sprinting:g.sprinting,sliding:g.sliding,aim,reload,switching:g.switchLeft>0,kick:g.weapon==='knife'?0:this.kick,sightHeight:model.rig.sightHeight});
   const eye=g.eye(p);this.camera.position.set(eye.x,eye.y+pose.cameraBob,eye.z);this.camera.rotation.set(g.pitch+g.recoil,g.yaw,pose.cameraRoll);
-  const desired=this.fov-g.aim*(g.weapon==='marksman'?37:21)+pose.sprintBlend*5+pose.slideBlend*3;this.camera.fov+=(desired-this.camera.fov)*(1-Math.exp(-dt*12));this.camera.updateProjectionMatrix();
+  const desired=this.fov-aim*(g.weapon==='marksman'?37:21)+pose.sprintBlend*5+pose.slideBlend*3;this.camera.fov+=(desired-this.camera.fov)*(1-Math.exp(-dt*12));this.camera.updateProjectionMatrix();
   for(let i=0;i<this.rigs.length;i++){const a=g.actors[i+1],rig=this.rigs[i];rig.root.visible=a.hp>0;if(a.hp<=0)continue;rig.root.position.set(a.x,a.y,a.z);rig.root.rotation.y=a.yaw;rig.root.scale.y=a.crouch?.7:1;rig.legs.forEach((leg,j)=>leg.rotation.x=Math.sin(g.elapsed*10+j*Math.PI)*Math.min(.6,a.moving*.14));rig.shield.visible=a.shield>0;rig.shield.rotation.y=g.elapsed;rig.health.scale.x=a.hp/100;rig.health.rotation.y=g.yaw-a.yaw;}
   this.pickupMeshes.forEach((mesh,i)=>{mesh.visible=g.pickups[i].ready<=0;mesh.position.y=.45+Math.sin(g.elapsed*2+i)*.1;mesh.rotation.y=g.elapsed*.7;});
   for(let i=0;i<this.tracers.length;i++){const shot=g.shots[i],line=this.tracers[i],impact=this.impacts[i];line.visible=!!shot;impact.visible=!!shot;if(!shot)continue;const from=shot.from;const positions=line.geometry.attributes.position as THREE.BufferAttribute;positions.setXYZ(0,from.x,from.y-.08,from.z);positions.setXYZ(1,shot.to.x,shot.to.y,shot.to.z);positions.needsUpdate=true;(line.material as THREE.LineBasicMaterial).opacity=(1-shot.age/.08)*.75;impact.position.set(shot.to.x,shot.to.y,shot.to.z);}
@@ -59,6 +60,7 @@ export class ArenaRenderer{
   updateWeaponFinish(model,g.elapsed);
   this.gunRoot.visible=p.hp>0;this.gunRoot.position.set(pose.x,pose.y,pose.z);
   this.gunRoot.rotation.set(pose.rx,pose.ry,pose.rz);this.flash.scale.setScalar(g.weapon==='knife'?0:['pistol','handcannon','smg','vector'].includes(g.weapon)?.6:1);this.flash.position.copy(model.rig.muzzle);this.flash.position.z-=.06;this.flash.visible=this.kick>.6;this.flash.rotation.z=g.elapsed*200;
+  if(g.weapon==='knife'){this.gunRoot.position.y+=.075;this.gunRoot.position.z+=.065;this.gunRoot.rotation.x+=.12;this.gunRoot.rotation.y+=.85;this.gunRoot.rotation.z-=.22;}
   this.sun.shadow.needsUpdate=true;this.pipeline.render(dt);
  }
  dispose(){if(this.disposed)return;this.disposed=true;const geometries=new Set<THREE.BufferGeometry>(),materials=new Set<THREE.Material>();for(const scene of [this.scene,this.weaponScene])scene.traverse(object=>{if(object instanceof THREE.Mesh||object instanceof THREE.Line||object instanceof THREE.Points){geometries.add(object.geometry);for(const m of Array.isArray(object.material)?object.material:[object.material])materials.add(m);}});geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());this.disposables.forEach(t=>t.dispose());this.world.dispose();this.pipeline.dispose();this.renderer.dispose();}

@@ -9,7 +9,7 @@ import { useLiveStatus } from './use-live-status';
 import { requestLiveMatch } from '@/lib/live/launch';
 import type { OpenRoom } from '@/lib/live/matchmaking';
 import './live-platform.css';
-import { catalog, cosmeticFinish } from '@/lib/catalog';
+import { equippedCosmetics } from '@/lib/catalog';
 import { maps, getMap, type MapId } from '@/lib/fps/maps';
 import OpenDuels, { DuelFields, type DuelRules } from './open-duels';
 import './lobby-refresh.css';
@@ -62,6 +62,7 @@ export default function Home() {
     [weaponRule, setWeaponRule] = useState('standard'),
     [entry, setEntry] = useState(20),
     [skin, setSkin] = useState<string | undefined>();
+  const [knifeStyle,setKnifeStyle]=useState<'standard'|'karambit'>('standard');
   const [mapId, setMapId] = useState<MapId>('citadel');
   const selectedMap = getMap(mapId);
   const [mode, setMode] = useState<Mode>('practice');
@@ -110,7 +111,7 @@ export default function Home() {
       );
       setLaunch(false);
       setResult(null);
-      setGame({ ...config, id: 'live', skin });
+      setGame({ ...config, id: 'live', skin, knifeStyle });
     } catch (e) {
       setSaveError((e as Error).message);
     } finally {
@@ -163,15 +164,7 @@ export default function Home() {
         undefined,
         '?action=platform',
       )
-        .then((p) =>
-          setSkin(
-            cosmeticFinish(
-              catalog.find(
-                (c) => c.sku === p.inventory.find((i) => i.equipped)?.sku,
-              ),
-            ),
-          ),
-        )
+        .then((p) => {const equipped=equippedCosmetics(p.inventory);setSkin(equipped.skin);setKnifeStyle(equipped.knifeStyle);})
         .catch(() => {});
   }, [data?.player.id]);
   useEffect(() => {
@@ -217,6 +210,7 @@ export default function Home() {
       weaponRule: match.weapon_rule,
       entry: match.entry / 100,
       skin,
+      knifeStyle,
     });
   }
   function startGuestPractice() {
@@ -231,6 +225,7 @@ export default function Home() {
       mapId,
       balance: 0,
       skin,
+      knifeStyle,
     });
   }
   async function start(closeSaved = false) {

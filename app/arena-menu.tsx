@@ -15,29 +15,29 @@ import {NetworkSimulation} from '@/lib/live/client';
 type Preferences={sensitivity:number;fov:number;quality:string;muted:boolean};
 type Props={game:Simulation|undefined;config:MatchConfig;map:ArenaMap;ready:boolean;error:string;settings:boolean;prefs:Preferences;setSettings:(value:boolean)=>void;preference:(value:Partial<Preferences>)=>void;select:(id:WeaponId)=>void;resume:()=>void;leave:()=>void;cashOut:()=>void;};
 
-export function WeaponPreview({id,skin,angle=0}:{id:WeaponId;skin?:string;angle?:number}){
-  const canvas=useRef<HTMLCanvasElement>(null),view=useRef<LoadoutRenderer|null>(null),selection=useRef({id,skin,angle});
+export function WeaponPreview({id,skin,angle=0,knifeStyle='standard'}:{id:WeaponId;skin?:string;angle?:number;knifeStyle?:'standard'|'karambit'}){
+  const canvas=useRef<HTMLCanvasElement>(null),view=useRef<LoadoutRenderer|null>(null),selection=useRef({id,skin,angle,knifeStyle});
   const [failed,setFailed]=useState(false);
-  selection.current={id,skin,angle};
+  selection.current={id,skin,angle,knifeStyle};
   useEffect(()=>{
     let cancelled=false,observer:ResizeObserver|undefined,visibility:IntersectionObserver|undefined;
     void import('@/lib/fps/loadout-renderer').then(({LoadoutRenderer})=>{
       if(cancelled||!canvas.current)return;
       const element=canvas.current,renderer=new LoadoutRenderer(element);view.current=renderer;
-      renderer.setAngle(selection.current.angle);renderer.select(selection.current.id,selection.current.skin);
+      renderer.setAngle(selection.current.angle);renderer.select(selection.current.id,selection.current.skin,selection.current.knifeStyle);
       const resize=()=>{const rect=element.getBoundingClientRect();renderer.resize(Math.max(1,rect.width),Math.max(1,rect.height));};
       observer=new ResizeObserver(resize);observer.observe(element);resize();
       visibility=new IntersectionObserver(entries=>renderer.setActive(entries.some(entry=>entry.isIntersecting)));visibility.observe(element);
     }).catch(()=>{if(!cancelled)setFailed(true);});
     return()=>{cancelled=true;observer?.disconnect();visibility?.disconnect();view.current?.dispose();view.current=null;};
   },[]);
-  useEffect(()=>{try{view.current?.select(id,skin);}catch{setFailed(true);}},[id,skin]);
+  useEffect(()=>{try{view.current?.select(id,skin,knifeStyle);}catch{setFailed(true);}},[id,skin,knifeStyle]);
   useEffect(()=>{view.current?.setAngle(angle);},[angle]);
-  return <div className="loadout-model"><canvas ref={canvas} aria-label={`${weapons[id].name} weapon preview`} role="img"/>{failed&&<p className="loadout-preview-error">Weapon preview unavailable. You can still choose your loadout.</p>}</div>;
+  return <div className="loadout-model"><canvas ref={canvas} aria-label={`${id==='knife'&&knifeStyle==='karambit'?'Obsidian Karambit':weapons[id].name} weapon preview`} role="img"/>{failed&&<p className="loadout-preview-error">Weapon preview unavailable. You can still choose your loadout.</p>}</div>;
 }
 
 export default function ArenaMenu({game,config,map,ready,error,settings,prefs,setSettings,preference,select,resume,leave,cashOut}:Props){
-  const selected=game?.weapon??(config.weaponRule==='sniper'?'marksman':'rifle');
+  const selected=game?.weapon==='knife'?game.matchWeapon:game?.weapon??(config.weaponRule==='sniper'?'marksman':'rifle');
   const gun=weapons[selected],mode=config.live?(config.live.mode==='ffa'?'Free FFA':config.live.mode+' Duel'):config.mode==='duel'?`${config.team} Duel`:config.mode==='ffa'?'Cash FFA':'Practice';
   const round=config.mode==='duel'?(config.bestOf===3?`Best of 3 · First to ${config.target??5}`:`First to ${config.target??5}`):'3 minutes';
   const loadoutWeapons=game?.paused?game.allowedWeapons:game?.switchWeapons??[],helpKeys=loadoutWeapons.length||6,isDuel=config.live?config.live.mode!=='ffa':config.mode==='duel';
@@ -56,7 +56,7 @@ export default function ArenaMenu({game,config,map,ready,error,settings,prefs,se
       <div className="deployment-body">
         <section className="loadout-spotlight" aria-label="Selected weapon">
           <div className="loadout-spotlight-top"><span><i/> SELECTED WEAPON</span><span>{gun.auto?'FULL AUTO':'SEMI AUTO'}</span></div>
-          <WeaponPreview id={selected} skin={config.skin}/>
+          <WeaponPreview id={selected} skin={config.skin} knifeStyle={config.knifeStyle}/>
           <div className="loadout-name"><span>{gun.type}</span><h2>{gun.name}</h2></div>
           <dl className="loadout-stats"><div><dt>Magazine</dt><dd>{gun.mag}<small> rounds</small></dd></div><div><dt>Reload</dt><dd>{gun.reload.toFixed(2)}<small> s</small></dd></div><div><dt>Max. range</dt><dd>{gun.range}<small> m</small></dd></div></dl>
         </section>
@@ -67,7 +67,7 @@ export default function ArenaMenu({game,config,map,ready,error,settings,prefs,se
             <label>Field of view <b>{prefs.fov}°</b><Slider aria-label="Field of view" min={65} max={100} step={1} value={[prefs.fov]} onValueChange={v=>preference({fov:Array.isArray(v)?v[0]:v})}/></label>
             <div><span>Graphics</span><Tabs value={prefs.quality} onValueChange={v=>preference({quality:String(v)})}><TabsList><TabsTrigger value="high">High</TabsTrigger><TabsTrigger value="low">Performance</TabsTrigger></TabsList></Tabs></div>
             <p>Changes apply immediately. Choose Performance for smoother play on slower devices.</p>
-          </div>:<>{!game?.started&&isDuel&&<div className="duel-deploy-timer" role="status"><span>LOADOUT TIME</span><b>{deployIn}</b><small>Spawning across the map when the timer hits zero.</small></div>}<div className="loadout-grid">{loadoutWeapons.map((id,i)=><button type="button" key={id} disabled={!ready} aria-pressed={selected===id} aria-label={`Select ${weapons[id].name}`} className={'loadout-card '+(selected===id?'selected':'')} onClick={()=>select(id)}><span className="loadout-card-number">{String(i+1).padStart(2,'0')}</span><span><b>{weapons[id].name}</b><small>{weapons[id].type}</small></span>{selected===id&&<Check size={16} aria-hidden="true"/>}</button>)}</div>{!ready&&<p role="status" className="loadout-rule">Preparing your loadout…</p>}<p className="loadout-rule">{config.weaponRule==='headshots'?'Headshots only. Body shots deal no damage.':game&&game.allowedWeapons.length<6?'This match uses a restricted weapon pool.':game?.started?'Your round loadout is one gun plus knife.':'Pick one gun before the round starts.'}</p></>}
+          </div>:<>{!game?.started&&isDuel&&<div className="duel-deploy-timer" role="status"><span>LOADOUT TIME</span><b>{deployIn}</b><small>Spawning across the map when the timer hits zero.</small></div>}<div className="loadout-grid">{loadoutWeapons.map((id,i)=><button type="button" key={id} disabled={!ready} aria-pressed={selected===id} aria-label={`Select ${weapons[id].name}`} className={'loadout-card '+(selected===id?'selected':'')} onClick={()=>select(id)}><span className="loadout-card-number">{String(i+1).padStart(2,'0')}</span><span><b>{weapons[id].name}</b><small>{weapons[id].type}</small></span>{selected===id&&<Check size={16} aria-hidden="true"/>}</button>)}</div>{!ready&&<p role="status" className="loadout-rule">Preparing your loadout…</p>}<p className="loadout-rule">{config.weaponRule==='headshots'?'Headshots only. Body shots deal no damage.':game&&game.allowedWeapons.length<6?'This match uses a restricted weapon pool.':game?.started?'Your round loadout is one gun plus knife.':'Pick one gun · '+(config.knifeStyle==='karambit'?'Obsidian Karambit':'Combat knife')+' included.'}</p></>}
         </section>
       </div>
       {game?.started&&!config.live&&<PausedSession game={game} config={config}/>}

@@ -1,3 +1,4 @@
+export class AccountRequestError extends Error {status:number;constructor(message:string,status:number){super(message);this.status=status;}}
 export async function requestAccount<T>(body?: Record<string, unknown>, query = '', timeoutMs = 15000): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -12,7 +13,7 @@ export async function requestAccount<T>(body?: Record<string, unknown>, query = 
       throw new Error('Your account connection needs to be refreshed. Sign in with ChatGPT or retry. Free practice is still available.');
     }
     const data = await response.json() as T & {error?: string};
-    if (!response.ok) throw new Error(data.error || 'Your account could not be loaded. Please retry.');
+    if (!response.ok) throw new AccountRequestError(data.error || 'Your account could not be loaded. Please retry.',response.status);
     return data;
   } catch (error) {
     if (controller.signal.aborted) throw new Error('Your account took too long to respond. Retry, or play free practice while it reconnects.');

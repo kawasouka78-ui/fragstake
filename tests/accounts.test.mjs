@@ -31,6 +31,26 @@ test('practice records scores but does not change wallet balance; leaderboard fi
 test('custom series stake pays once and records combat statistics',async()=>{const {match}=await mutate(db,'alice',{action:'match_start',mode:'duel',rate:2,team:'1v1',key:'custom-duel',stake:25,target:10,bestOf:3,weaponRule:'pistol'});assert.equal(match.stake,2500);assert.equal(match.target,10);assert.equal((await state(db,'alice')).player.balance,7500);await finish('alice',match,{kills:20,deaths:3,score:2,enemyScore:0,headshots:5,maxStreak:7});const s=await state(db,'alice');assert.equal(s.player.balance,12500);assert.equal(s.stats.net,2500);assert.equal(s.matches[0].max_streak,7)});
 test('funded Arena cash-out settles once and early leave forfeits only entry',async()=>{const body={action:'match_start',mode:'ffa',rate:2,team:'1v1',key:'funded-arena',entry:20};const {match}=await mutate(db,'alice',body);assert.equal((await state(db,'alice')).player.balance,8000);await finish('alice',match,{kills:12,deaths:7,ending:'cashout',maxStreak:4});await finish('alice',match,{kills:12,deaths:7,ending:'cashout'});assert.equal((await state(db,'alice')).player.balance,11000);assert.equal((await state(db,'alice')).stats.net,1000);const b=await mutate(db,'bob',body);await finish('bob',b.match,{kills:0,deaths:0,ending:'leave'});assert.equal((await state(db,'bob')).player.balance,8000)});
 test('cosmetic purchase retries do not double charge and skins can be preview-equipped directly',async()=>{await mutate(db,'alice',{action:'shop_buy',sku:'inferno'});await mutate(db,'alice',{action:'shop_buy',sku:'inferno'});assert.equal((await state(db,'alice')).player.balance,8501);await mutate(db,'bob',{action:'inventory_equip',sku:'inferno'});assert.equal((await view('bob','action=platform')).inventory.find(i=>i.sku==='inferno').equipped,1);await mutate(db,'alice',{action:'inventory_equip',sku:'inferno'});assert.equal((await view('alice','action=platform')).inventory.find(i=>i.sku==='inferno').equipped,1);await mutate(db,'alice',{action:'inventory_equip',sku:''});assert.equal((await view('alice','action=platform')).inventory.find(i=>i.sku==='inferno').equipped,0)});
+test('karambit requires ownership, charges once and equips independently of gun finishes',async()=>{
+ const sku='karambit-obsidian';
+ await assert.rejects(mutate(db,'alice',{action:'inventory_equip',sku}),/Buy this knife/);
+ await mutate(db,'alice',{action:'inventory_equip',sku:'plasma-flow'});
+ await mutate(db,'alice',{action:'shop_buy',sku});await mutate(db,'alice',{action:'shop_buy',sku});
+ assert.equal((await state(db,'alice')).player.balance,5001);
+ await mutate(db,'alice',{action:'inventory_equip',sku});
+ let inventory=(await view('alice','action=platform')).inventory;
+ assert.equal(inventory.filter(i=>i.equipped).length,2);
+ await mutate(db,'alice',{action:'inventory_equip',sku:'inferno'});
+ inventory=(await view('alice','action=platform')).inventory;
+ assert.equal(inventory.find(i=>i.sku===sku).equipped,1);
+ await mutate(db,'alice',{action:'inventory_equip',slot:'knife',sku:''});
+ inventory=(await view('alice','action=platform')).inventory;
+ assert.equal(inventory.find(i=>i.sku==='inferno').equipped,1);assert.equal(inventory.find(i=>i.sku===sku).equipped,0);
+ await assert.rejects(mutate(db,'bob',{action:'inventory_equip',sku}),/Buy this knife/);
+ await mutate(db,'bob',{action:'shop_buy',sku:'molten-core'});await mutate(db,'bob',{action:'shop_buy',sku:'plasma-flow'});
+ await assert.rejects(mutate(db,'bob',{action:'shop_buy',sku}),/credits/);
+ assert.ok(!(await view('bob','action=platform')).inventory.some(i=>i.sku===sku));
+});
 test('party and challenge invitations enforce recipient ownership',async()=>{await mutate(db,'alice',{action:'party_create',name:'Test squad'});const handle=(await state(db,'bob')).player.handle;await mutate(db,'alice',{action:'party_invite',handle});const invitation=(await view('bob','action=platform')).invites[0];await assert.rejects(mutate(db,'charlie',{action:'party_accept',id:invitation.id}),/not found/);await mutate(db,'bob',{action:'party_accept',id:invitation.id});assert.equal((await view('alice','action=platform')).party.members.filter(m=>m.status==='joined').length,2);await mutate(db,'alice',{action:'challenge_create',handle,stake:25,target:10,bestOf:3,weaponRule:'sniper',team:'1v1'});const c=(await view('bob','action=platform')).challenges[0];await assert.rejects(mutate(db,'charlie',{action:'challenge_accept',id:c.id}),/not yours/);await mutate(db,'bob',{action:'challenge_accept',id:c.id});assert.equal((await view('alice','action=platform')).challenges[0].status,'accepted');assert.equal((await state(db,'bob')).player.balance,10000)});
 test('reports stay private and can reference only owned matches',async()=>{const {match}=await start('alice','practice');await assert.rejects(mutate(db,'bob',{action:'report_create',category:'bug',details:'A test report for this match.',matchId:match.id}),/not found/);await mutate(db,'alice',{action:'report_create',category:'bug',details:'A test report for this match.',matchId:match.id});assert.equal((await view('alice','action=platform')).reports.length,1);assert.equal((await view('bob','action=platform')).reports.length,0)});
 

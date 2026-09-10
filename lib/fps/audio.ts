@@ -180,6 +180,7 @@ export class ArenaAudio {
     if (!this.ready()) return;
     const t = this.context!.currentTime;
     if (event.kind === 'shot') {
+      if(event.weapon==='knife'){this.burst('shot',1800,.16,.20,'bandpass');return;}
       const sound = SHOTS[event.weapon ?? 'rifle'] ?? SHOTS.rifle;
       const pitch = .975 + Math.random() * .05;
       this.note('shot', sound.body * pitch, sound.end, sound.length, sound.weight, 'triangle');

@@ -6,6 +6,7 @@ import {createWeaponFinish} from './weapon-finish.ts';
 /** Metres; the bore points down -Z. Named groups are independent animation channels. */
 export type WeaponRig = {
   id: WeaponId;
+  body: THREE.Group;
   muzzle: THREE.Vector3;
   sightHeight: number;
   magazine: THREE.Group;
@@ -16,7 +17,7 @@ export type WeaponRig = {
 export type WeaponModel = THREE.Group & {rig: WeaponRig};
 type Profile = readonly (readonly [number, number])[];
 type Point = readonly [number, number, number];
-type Finish = 'shell' | 'polymer' | 'steel' | 'edge' | 'recess' | 'accent' | 'glove' | 'fabric' | 'stitch' | 'lens' | 'reticle';
+type Finish = 'shell' | 'polymer' | 'steel' | 'edge' | 'blade' | 'honed' | 'recess' | 'accent' | 'glove' | 'fabric' | 'stitch' | 'lens' | 'reticle';
 type Section = readonly [z: number, width: number, height: number, centerY: number];
 
 const defaultFinish = '#141619';
@@ -43,6 +44,8 @@ class ModelBuilder {
       polymer: material('#0e1012', .06, .78),
       steel: material('#1c1f23', .72, .36),
       edge: material('#30343a', .65, .4),
+      blade: material('#525d67', .55, .34),
+      honed: material('#a5b0ba', .85, .26),
       recess: material('#08090b', .2, .81),
       accent: material('#24272b', .52, .46),
       glove: material('#505849', .02, .95),
@@ -321,7 +324,7 @@ class ModelBuilder {
     }
     const used=new Set<THREE.Material>();this.root.traverse(child=>{if(child instanceof THREE.Mesh)used.add(child.material as THREE.Material);});
     for(const material of Object.values(this.finishes))if(!used.has(material))material.dispose();
-    this.root.rig={id:this.id,muzzle:this.muzzle.clone(),sightHeight:this.sightHeight,magazine:this.magazine,action:this.action,supportHand:this.supportHand,pump:this.pump};
+    this.root.rig={id:this.id,body:this.body,muzzle:this.muzzle.clone(),sightHeight:this.sightHeight,magazine:this.magazine,action:this.action,supportHand:this.supportHand,pump:this.pump};
     return this.root;
   }
 }
@@ -456,15 +459,88 @@ function handgun(b:ModelBuilder) {
   b.hands(-.1,true,gripZ);
 }
 
-function knife(b:ModelBuilder) {
-  b.link(b.body,[.018,-.040,.060],[.018,.016,-.430],.018,.009,'steel',18);
-  b.link(b.body,[-.018,-.040,.060],[-.018,.016,-.430],.018,.009,'steel',18);
-  b.box(b.body,0,-.042,.056,.090,.020,.050,'polymer',.006);
-  b.link(b.body,[0,-.080,.135],[0,-.055,.000],.033,.026,'polymer',16);
-  b.box(b.body,0,-.038,-.030,.145,.016,.028,'accent',.004);
-  b.muzzleAt(-.475,.000,.012,false);
+/** Flat blade faces meet a separately shaded, tapered cutting bevel. */
+function knifeBlade(b:ModelBuilder,outline:Profile,inset:Profile) {
+  const contour=inset.map(([z,y])=>new THREE.Vector2(z,y));
+  const triangles=THREE.ShapeUtils.triangulateShape(contour,[]);
+  for(const side of [-1,1]) {
+    const faces:number[]=[],bevel:number[]=[];
+    const point=(p:readonly number[],x:number)=>[x,p[1],p[0]];
+    const tri=(out:number[],a:number[],c:number[],d:number[])=>out.push(...a,...(side===1?d:c),...(side===1?c:d));
+    for(const [a,c,d] of triangles)tri(faces,point(inset[a],side*.0038),point(inset[c],side*.0038),point(inset[d],side*.0038));
+    for(let i=0;i<outline.length;i++){
+      const j=(i+1)%outline.length,a=point(outline[i],0),c=point(outline[j],0),d=point(inset[i],side*.0038),e=point(inset[j],side*.0038);
+      tri(bevel,a,c,d);tri(bevel,c,e,d);
+    }
+    for(const [vertices,finish] of [[faces,'blade'],[bevel,'honed']] as const){
+      const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));geometry.computeVertexNormals();b.mesh(b.body,geometry,finish);
+    }
+  }
+}
+
+function knifeHand(b:ModelBuilder,curved:boolean) {
+  if(!b.showHands)return;
+  const palmZ=curved?.065:.096;
+  b.oval(b.body,[.031,-.008,palmZ],[.025,.033,.048],'glove');
+  b.oval(b.body,[.050,-.005,palmZ],[.008,.025,.037],'fabric');
+  for(let i=0;i<4;i++){
+    const z=palmZ-.039+i*.023,y=curved?-.009-i*.003:-.006;
+    const path:Point[]=[[.040,y,z],[.025,y-.029,z],[-.014,y-.032,z],[-.030,y-.013,z],[-.026,y+.010,z]];
+    for(let n=0;n<path.length-1;n++)b.link(b.body,path[n],path[n+1],.0085,.008,'glove');
+    b.oval(b.body,[.029,y-.025,z],[.011,.009,.010],'fabric');
+  }
+  b.link(b.body,[.030,.017,palmZ+.026],[.004,.032,palmZ-.012],.012,.010,'glove');
+  b.link(b.body,[.004,.032,palmZ-.012],[-.020,.020,palmZ-.034],.010,.008,'glove');
+  b.link(b.body,[.039,-.023,palmZ+.036],[.068,-.061,palmZ+.095],.028,.035,'glove',16);
+  b.link(b.body,[.068,-.061,palmZ+.095],[.156,-.188,palmZ+.247],.037,.057,'fabric',16);
+  b.link(b.body,[.067,-.060,palmZ+.094],[.077,-.074,palmZ+.112],.038,.040,'polymer',16);
+}
+
+function knife(b:ModelBuilder,style:'standard'|'karambit') {
+  const curved=style==='karambit';
+  b.root.userData.knifeStyle=style;
+  if(curved){
+    const shape=new THREE.Shape();
+    shape.moveTo(-.026,.034);
+    shape.bezierCurveTo(-.116,.114,-.279,.055,-.280,-.154);
+    shape.bezierCurveTo(-.232,-.064,-.164,-.008,-.060,-.010);
+    shape.lineTo(-.026,-.017);shape.closePath();
+    const outline=shape.getPoints(20).slice(0,-1).map(p=>[p.x,p.y] as const);
+    // A narrow continuous silver bevel follows the talon's concave edge.
+    const inner=new THREE.Shape();inner.moveTo(-.034,.027);
+    inner.bezierCurveTo(-.116,.106,-.270,.048,-.276,-.138);
+    inner.bezierCurveTo(-.232,-.047,-.166,.003,-.061,.000);
+    inner.lineTo(-.034,-.009);inner.closePath();
+    const inset=inner.getPoints(20).slice(0,-1).map(p=>[p.x,p.y] as const);
+    knifeBlade(b,outline,inset);
+    b.profile(b.body,[[-.034,.031],[.021,.034],[.101,.004],[.141,-.028],[.126,-.056],[.063,-.023],[.005,-.014],[-.035,-.025]],.020,'steel',.003);
+    for(const side of [-1,1]){
+      b.profile(b.body,[[-.015,.025],[.022,.025],[.100,-.003],[.123,-.024],[.113,-.039],[.058,-.015],[.008,-.005],[-.015,-.011]],.009,'polymer',.003,side*.014);
+      for(let i=0;i<6;i++)b.box(b.body,side*.020,.009-i*.005,.005+i*.018,.0015,.021,.003,'recess',.0004);
+      b.bolt(side*.022,.009,.006,b.body,.004);b.bolt(side*.022,-.023,.105,b.body,.004);
+    }
+    const ring=b.ring(b.body,0,-.044,.157,.038,.026,.019,'steel',48);ring.rotation.y=Math.PI/2;
+    for(const side of [-1,1]){const lip=b.ring(b.body,side*.011,-.044,.157,.037,.029,.002,'edge',48);lip.rotation.y=Math.PI/2;}
+    for(let i=0;i<5;i++)b.box(b.body,0,.036+i*.002,-.040-i*.008,.019,.003,.003,'edge',.0004);
+    b.muzzle.set(0,-.154,-.280);
+  }else{
+    knifeBlade(b,
+      [[-.025,.034],[-.230,.038],[-.350,.012],[-.253,-.043],[-.100,-.045],[-.046,-.027],[-.025,-.027]],
+      [[-.028,.029],[-.228,.032],[-.333,.012],[-.249,-.023],[-.105,-.026],[-.048,-.017],[-.028,-.019]]);
+    b.profile(b.body,[[-.017,.028],[.166,.023],[.179,.006],[.169,-.030],[-.017,-.028]],.018,'steel',.002);
+    for(const side of [-1,1]){
+      b.profile(b.body,[[.012,.025],[.145,.022],[.160,.009],[.151,-.027],[.106,-.023],[.064,-.027],[.011,-.021]],.012,'polymer',.004,side*.014);
+      for(let i=0;i<9;i++)b.box(b.body,side*.022,-.001,.026+i*.013,.0018,.034,.0025,'recess',.0004);
+      for(const z of [.025,.135])b.bolt(side*.023,-.001,z,b.body,.004);
+      b.profile(b.body,[[-.076,.020],[-.221,.022],[-.250,.013],[-.081,.008]],.0006,'recess',.0003,side*.0042);
+    }
+    b.profile(b.body,[[-.019,.061],[-.006,.062],[.005,.025],[.002,-.033],[-.010,-.059],[-.023,-.054]],.049,'edge',.003);
+    b.box(b.body,0,-.002,.169,.037,.047,.014,'steel',.003);
+    for(let i=0;i<7;i++)b.box(b.body,0,.035,-.038-i*.008,.012,.004,.003,'edge',.0005);
+    b.muzzle.set(0,.012,-.350);
+  }
   b.sightHeight=.070;
-  b.hands(-.020,true,.090);
+  knifeHand(b,curved);
 }
 
 function shotgun(b:ModelBuilder) {
@@ -500,23 +576,29 @@ function shotgun(b:ModelBuilder) {
   b.sightHeight=.083;b.hands(-.337,false,.061);
 }
 
-export function buildWeapon(id: WeaponId, skin?: string, showHands = true): WeaponModel {
-  const b=new ModelBuilder(id,skin,showHands);
+export function buildWeapon(id: WeaponId, skin?: string, showHands = true, knifeStyle:'standard'|'karambit'='standard'): WeaponModel {
+  const b=new ModelBuilder(id,id==='knife'?undefined:skin,showHands);
   if(id==='rifle'||id==='carbine')assault(b);
   else if(id==='smg'||id==='vector')submachine(b);
   else if(id==='marksman')marksman(b);
   else if(id==='pistol'||id==='handcannon')handgun(b);
-  else if(id==='knife')knife(b);
+  else if(id==='knife')knife(b,knifeStyle);
   else shotgun(b);
   return b.finish();
 }
 
 /** Root locomotion is supplied by the renderer; these channels only animate moving parts. */
 export function animateWeapon(model: WeaponModel, kick: number, reloadFraction: number) {
-  const {id,action,magazine,supportHand,pump}=model.rig;
+  const {id,body,action,magazine,supportHand,pump}=model.rig;
   const recoil=THREE.MathUtils.clamp(Number.isFinite(kick)?kick:0,0,1);
   const progress=THREE.MathUtils.clamp(Number.isFinite(reloadFraction)?reloadFraction:0,0,1);
   const reload=Math.sin(Math.PI*progress);
+  if(id==='knife'){
+    const slash=recoil>0?Math.sin(Math.PI*(1-recoil)):0;
+    body.rotation.set(-slash*.45,-slash*.65,-slash*1.1);
+    body.position.set(-slash*.10,slash*.035,-slash*.075);
+    return;
+  }
   action.position.z=(id==='pistol'||id==='handcannon'?.030:.013)*recoil;
   magazine.position.y=-(id==='pistol'||id==='handcannon'?.105:.155)*reload;
   magazine.rotation.x=reload*.10;

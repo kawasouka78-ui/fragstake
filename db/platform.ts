@@ -1,5 +1,5 @@
 import {InputError,textValue,matchSetup} from '../lib/account-rules.ts';
-import {catalog,demoRating} from '../lib/catalog.ts';
+import {catalog,cosmeticSlot,demoRating} from '../lib/catalog.ts';
 
 export async function platformData(db:D1Database,id:string){
  const membership=await db.prepare("SELECT p.* FROM parties p JOIN party_members m ON m.party_id=p.id WHERE m.player_id=? AND m.status='joined'").bind(id).first<{id:string;owner_id:string;name:string}>();
@@ -49,8 +49,16 @@ export async function platformMutation(db:D1Database,id:string,b:Record<string,u
    if(!await db.prepare('SELECT id FROM inventory WHERE id=?').bind(key).first())throw new InputError('Add enough demo credits in your wallet first.',409);
   }
  }else if(action==='inventory_equip'){
-  const sku=String(b.sku);if(sku){const item=catalog.find(item=>item.sku===sku);if(!item)throw new InputError('Unknown cosmetic.');await db.prepare('INSERT OR IGNORE INTO inventory(id,player_id,sku,created_at) VALUES(?,?,?,?)').bind('shop:'+id+':'+item.sku,id,item.sku,now).run();}
-  await db.prepare('UPDATE inventory SET equipped=CASE WHEN sku=? THEN 1 ELSE 0 END WHERE player_id=?').bind(sku,id).run();
+  const sku=String(b.sku||''),item=catalog.find(item=>item.sku===sku);
+  if(sku&&!item)throw new InputError('Unknown cosmetic.');
+  const slot=item?cosmeticSlot(item):b.slot==='knife'?'knife':'finish';
+  if(item){
+   if(slot==='knife'){
+    if(!await db.prepare('SELECT id FROM inventory WHERE player_id=? AND sku=?').bind(id,sku).first())throw new InputError('Buy this knife in the shop first.',409);
+   }else await db.prepare('INSERT OR IGNORE INTO inventory(id,player_id,sku,created_at) VALUES(?,?,?,?)').bind('shop:'+id+':'+sku,id,sku,now).run();
+  }
+  const skus=catalog.filter(item=>cosmeticSlot(item)===slot).map(item=>item.sku);
+  await db.prepare(`UPDATE inventory SET equipped=CASE WHEN sku=? THEN 1 ELSE 0 END WHERE player_id=? AND sku IN (${skus.map(()=>'?').join(',')})`).bind(sku,id,...skus).run();
  }else if(action==='report_create'){
   const category=String(b.category);if(!['bug','cheating','payment','other'].includes(category))throw new InputError('Choose a report type.');
   const matchId=String(b.matchId||'');if(matchId&&!await db.prepare('SELECT id FROM matches WHERE id=? AND player_id=?').bind(matchId,id).first())throw new InputError('Match not found.',404);

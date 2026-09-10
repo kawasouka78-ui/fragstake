@@ -25,9 +25,9 @@ export class LoadoutRenderer {
     const fill=new THREE.DirectionalLight('#a9d5ff',2);fill.position.set(0,1,3);this.scene.add(fill);
     document.addEventListener('visibilitychange',this.visibility);this.motion.addEventListener('change',this.visibility);
   }
-  select(id:WeaponId,skin?:string){
+  select(id:WeaponId,skin?:string,knifeStyle:'standard'|'karambit'='standard'){
     this.clearModel();
-    this.model=buildWeapon(id,skin,false);
+    this.model=buildWeapon(id,skin,false,knifeStyle);
     this.model.rotation.set(0,this.angle,-.10);
     const box=new THREE.Box3().setFromObject(this.model);
     this.model.position.sub(box.getCenter(new THREE.Vector3()));
