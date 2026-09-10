@@ -6,7 +6,7 @@ import {usePathname} from 'next/navigation';
 import {Crosshair,Gamepad2,Wallet,Users,Trophy,History,UserRound,ShoppingBag,Settings2,ArrowUpRight,LifeBuoy,ChevronRight,Plus,Menu} from 'lucide-react';
 import {useAccount,euro,accountApi} from './account-context';
 export function PlayerAvatar({name,color='orange',large=false}:{name:string;color?:string;large?:boolean}){return <span className={'player-avatar color-'+color+(large?' large':'')}>{name.slice(0,2).toUpperCase()}</span>}
-const destinations=[{path:'/',name:'Play',icon:Gamepad2},{path:'/friends',name:'Friends & Party',icon:Users},{path:'/leaderboard',name:'Leaderboard',icon:Trophy},{path:'/history',name:'History & Stats',icon:History},{path:'/wallet',name:'Wallet',icon:Wallet},{path:'/shop',name:'Shop',icon:ShoppingBag},{path:'/progression',name:'Progression',icon:Crosshair}];
+const destinations=[{path:'/',name:'Play',icon:Gamepad2},{path:'/friends',name:'Social',icon:Users},{path:'/leaderboard',name:'Leaderboard',icon:Trophy},{path:'/history',name:'History & Stats',icon:History},{path:'/wallet',name:'Wallet',icon:Wallet},{path:'/shop',name:'Shop',icon:ShoppingBag},{path:'/progression',name:'Progression',icon:Crosshair}];
 type PartySummary={id:string;name:string;members:{status:string}[]}|null;
 export default function SiteHeader(){
  const {data}=useAccount(),path=usePathname(),current=destinations.find(n=>n.path===path)?.name??({profile:'Player profile',settings:'Settings',inventory:'Inventory',ranked:'Rankings',support:'Support'} as Record<string,string>)[path.split('/')[1]]??'Arena';
