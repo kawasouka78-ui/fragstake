@@ -1,3 +1,2 @@
-import AccountPage from '../account-page';
-export const metadata={title:'History & Stats | FragStake'};
-export default function Page(){return <AccountPage section='history'/>}
+import Content from '../player-records';
+export default function Page(){return <Content history/>}

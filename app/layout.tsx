@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono, Barlow_Condensed } from 'next/font/google';
 import './globals.css';
+import './launch.css';
 import './visual-refresh.css';
 import './platform-polish.css';
 import './lobby-polish.css';
@@ -26,7 +27,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'FragStake | Enter the arena',
   icons: { icon: '/favicon.svg' },
-  description: 'Practice your aim, compete in tiered free-for-all matches, and challenge rivals in 1v1 or 2v2 duels. Play the demo arena.',
+  description: 'Play competitive browser FPS matches against real players. Join free-for-all, 1v1 and 2v2 duels on FragStake.',
 };
 
 export default function RootLayout({

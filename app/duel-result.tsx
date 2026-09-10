@@ -1,6 +1,6 @@
 import {Trophy,Swords,RotateCcw,ArrowRight,LogOut,LoaderCircle} from 'lucide-react';
 import {DialogTitle,DialogDescription} from '@/components/ui/dialog';
-import {duelOutcome} from '@/lib/duel-result';
+import {duelOutcome,completedLiveResult} from '@/lib/duel-result';
 import {signedEuros} from '@/lib/match-summary';
 import {getMap} from '@/lib/fps/maps';
 import type {MatchConfig,Result} from '@/lib/game-rules';
@@ -11,7 +11,7 @@ type Props={result:Result;config:MatchConfig|null;pending:boolean;busy:boolean;e
 export default function DuelResult({result,config,pending,busy,error,retry,rematch,findNext,leave}:Props){
  const outcome=duelOutcome(result),live=!!result.live,disabled=pending||busy;
  const canRematch=!!config&&(!live||!!result.rematch);
- const incomplete=live&&result.reason!=='Live match complete';
+ const incomplete=live&&!completedLiveResult(result);
  return <div className={'duel-result '+outcome.tone}>
   <div className="duel-result-meta"><span>{getMap(result.mapId).name}</span><i/><span>{result.liveMode??config?.team??'1v1'} DUEL</span><span>{live?'FREE MATCH':'DEMO CREDITS'}</span></div>
   <div className="duel-result-hero">

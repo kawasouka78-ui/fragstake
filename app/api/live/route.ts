@@ -1,6 +1,6 @@
 import { env } from 'cloudflare:workers';
 import { database } from '@/db';
-import { ensurePlayer } from '@/db/service';
+import { ensureLaunchPlayer } from '@/db/launch';
 import { checkSanction, rateLimit } from '@/db/live';
 import { accountIdentity } from '@/lib/identity';
 import { issueTicket, type LiveMode } from '@/lib/live/security';
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
         (id || request.headers.get('cf-connecting-ip') || 'anonymous'),
       12,
     );
-    const p = id ? await ensurePlayer(db, id) : null;
+    const p = id ? await ensureLaunchPlayer(db, id) : null;
     if (id) await checkSanction(db, id);
     const ticket = await issueTicket(env.LIVE_TICKET_SECRET, {
       sub: id || 'guest:' + crypto.randomUUID(),

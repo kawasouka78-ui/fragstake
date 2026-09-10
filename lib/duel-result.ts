@@ -1,8 +1,9 @@
 import type {MatchConfig,Result} from './game-rules.ts';
+export function completedLiveResult(result:Result){return ['Live match complete','Victory','Defeat','Draw','FFA complete'].includes(result.reason)}
 
 export function duelOutcome(result:Result){
  if(/cancelled/i.test(result.reason))return {tone:'neutral',title:'MATCH CANCELLED',label:'STAKE RETURNED'} as const;
- if(result.live&&result.reason!=='Live match complete')return {tone:'neutral',title:'MATCH LEFT',label:'NO CASH CHANGE'} as const;
+ if(result.live&&!completedLiveResult(result))return {tone:'neutral',title:'MATCH LEFT',label:'NO CASH CHANGE'} as const;
  if(result.won)return {tone:'win',title:'YOU WON',label:'YOUR PROFIT'} as const;
  if(!/forfeit|left|lost|defeat/i.test(result.reason)&&result.score===result.enemyScore)return {tone:'neutral',title:'MATCH DRAWN',label:'NO GAIN OR LOSS'} as const;
  return {tone:'loss',title:'YOU LOST',label:'YOUR LOSS'} as const;

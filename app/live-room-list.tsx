@@ -69,10 +69,10 @@ export default function LiveRoomList({
           {checking && !status
             ? 'Finding open matches…'
             : !status?.online
-              ? 'Player server unavailable. Try Refresh, or play a bot match.'
+              ? 'Match server unavailable. Try Refresh shortly.'
               : 'No open matches' +
                 (filter !== 'all' ? ' in this format' : '') +
-                ' yet. Choose Players above and start one.'}
+                ' yet. Start a match above.'}
         </p>
       )}
     </div>

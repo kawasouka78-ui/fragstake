@@ -11,6 +11,9 @@ void test('unfinished live duels never fabricate a final loss or draw',()=>{
  assert.equal(duelOutcome({...base,reason:'Left live match'}).title,'MATCH LEFT');
  assert.equal(duelOutcome({...base,reason:'Connection lost'}).title,'MATCH LEFT');
  assert.equal(duelOutcome({...base,reason:'Live match complete',enemyScore:10}).title,'YOU LOST');
+ assert.equal(duelOutcome({...base,reason:'Victory',won:true,score:10}).title,'YOU WON');
+ assert.equal(duelOutcome({...base,reason:'Defeat',enemyScore:10}).title,'YOU LOST');
+ assert.equal(duelOutcome({...base,reason:'Draw'}).title,'MATCH DRAWN');
 });
 test('duel results distinguish profit from total return for wins, losses, draws and forfeits',()=>{
  for(const row of [

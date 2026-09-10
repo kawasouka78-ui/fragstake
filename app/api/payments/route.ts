@@ -3,10 +3,15 @@ export function GET() {
   return Response.json(
     {
       enabled: false,
-      currency: 'EUR',
+      currency: 'USDC',
+      fundingMethod: 'crypto',
+      network: 'polygon',
+      provider: null,
+      plannedProvider: 'CryptoProcessing by CoinsPaid',
+      integrationStatus: 'awaiting_merchant_onboarding',
       approvedCountries: [],
       reason:
-        'Real-money play is awaiting market and payment-provider approval. Your existing balance is demo credits.',
+        'Crypto funding is not connected. Deposits, withdrawals and paid matches are unavailable.',
     },
     { headers: { 'Cache-Control': 'no-store' } },
   );

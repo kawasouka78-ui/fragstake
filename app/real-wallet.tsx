@@ -1,0 +1,4 @@
+'use client';
+import {Wallet,ArrowRight} from 'lucide-react';
+import SiteHeader from './site-header';
+export default function RealWallet(){return <div className="site-shell"><SiteHeader/><main className="main account-main"><div className="page-heading"><div><span className="eyebrow">ACCOUNT / FUNDING</span><h1>WALLET<span>.</span></h1></div></div><section className="real-wallet"><Wallet size={32}/><h2>CRYPTO FUNDING IS NOT OPEN.</h2><p>Deposits, withdrawals and cash-prize matches are unavailable. No deposit address has been issued, and there is no funded balance to display.</p><p>Planned funding: USDC on Polygon. You can join free player matches while funding is being connected.</p><a className="primary" href="/play">Find a free match <ArrowRight size={17}/></a></section><section><h2>TRANSACTIONS</h2><p className="real-empty">No real transactions. Your wallet history will appear once funding becomes available.</p></section></main></div>}
