@@ -659,18 +659,7 @@ export default function Home() {
                   ? 'Quick queue chooses the format and map'
                   : 'No stakes. Just you and the arena.'}
             </p>
-            {mode === 'ffa' && livePlay ? (
-              <div className="live-mode-summary">
-                <Users size={30} />
-                <b>EVERY ELIMINATION COUNTS.</b>
-                <p>
-                  Up to 10 players. Three minutes.
-                  <br />
-                  Starts when 2 players are ready.
-                </p>
-                <span>FREE ENTRY</span>
-              </div>
-            ) : mode === 'ffa' ? (
+            {mode === 'ffa' && !livePlay ? (
               <div className="tier-grid">
                 {tiers.map((t, i) => (
                   <button
@@ -731,20 +720,7 @@ export default function Home() {
                   </div>
                 )}
               </>
-            ) : (
-              <div className="practice-detail">
-                <Crosshair size={48} />
-                <div>
-                  <b>LOCK IN YOUR AIM.</b>
-                  <p>
-                    9 bots. Instant respawns.
-                    <br />
-                    Unlimited chances to improve.
-                  </p>
-                </div>
-                <span>FREE TO PLAY</span>
-              </div>
-            )}
+            ) : null}
             {mode !== 'duel' ? <label className="match-map-picker">
               MAP
               <select
