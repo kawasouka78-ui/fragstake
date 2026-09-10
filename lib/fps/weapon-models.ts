@@ -13,6 +13,7 @@ export type WeaponRig = {
   action: THREE.Group;
   supportHand: THREE.Group;
   pump: THREE.Group;
+  arm?: THREE.Group;
 };
 export type WeaponModel = THREE.Group & {rig: WeaponRig};
 type Profile = readonly (readonly [number, number])[];
@@ -29,6 +30,7 @@ class ModelBuilder {
   action = new THREE.Group();
   supportHand = new THREE.Group();
   pump = new THREE.Group();
+  arm?: THREE.Group;
   finishes: Record<Finish, THREE.Material>;
   muzzle = new THREE.Vector3();
   sightHeight = .143;
@@ -324,7 +326,7 @@ class ModelBuilder {
     }
     const used=new Set<THREE.Material>();this.root.traverse(child=>{if(child instanceof THREE.Mesh)used.add(child.material as THREE.Material);});
     for(const material of Object.values(this.finishes))if(!used.has(material))material.dispose();
-    this.root.rig={id:this.id,body:this.body,muzzle:this.muzzle.clone(),sightHeight:this.sightHeight,magazine:this.magazine,action:this.action,supportHand:this.supportHand,pump:this.pump};
+    this.root.rig={id:this.id,body:this.body,muzzle:this.muzzle.clone(),sightHeight:this.sightHeight,magazine:this.magazine,action:this.action,supportHand:this.supportHand,pump:this.pump,arm:this.arm};
     return this.root;
   }
 }
@@ -524,6 +526,8 @@ function karambitHand(b:ModelBuilder){
 }
 
 function karambit(b:ModelBuilder){
+  b.arm=new THREE.Group();b.arm.name='knife-arm';
+  b.root.add(b.arm);b.arm.add(b.body,b.supportHand);
   // Compact hooked blade: a continuous spine and a ground, concave cutting edge.
   const bladeFinish=b.finishes.blade as THREE.MeshStandardMaterial,edgeFinish=b.finishes.honed as THREE.MeshStandardMaterial;
   bladeFinish.color.set('#39434d');bladeFinish.metalness=.32;bladeFinish.roughness=.3;
@@ -650,9 +654,11 @@ export function buildWeapon(id: WeaponId, skin?: string, showHands = true, knife
 export type KnifeMotion={slashSide?:number;draw?:number;inspect?:number};
 const wristPivot=new THREE.Vector3(.064,-.008,-.025);
 const rotatedWrist=new THREE.Vector3();
+const elbowPivot=new THREE.Vector3(.218,-.105,-.220);
+const rotatedElbow=new THREE.Vector3();
 const ease=(t:number)=>{const p=THREE.MathUtils.clamp(t,0,1);return p*p*(3-2*p);};
 export function animateWeapon(model: WeaponModel, kick: number, reloadFraction: number, knifeMotion:KnifeMotion={}) {
-  const {id,body,action,magazine,supportHand,pump}=model.rig;
+  const {id,body,action,magazine,supportHand,pump,arm}=model.rig;
   const recoil=THREE.MathUtils.clamp(Number.isFinite(kick)?kick:0,0,1);
   const progress=THREE.MathUtils.clamp(Number.isFinite(reloadFraction)?reloadFraction:0,0,1);
   const reload=Math.sin(Math.PI*progress);
@@ -662,8 +668,16 @@ export function animateWeapon(model: WeaponModel, kick: number, reloadFraction: 
       const wind=recoil>0&&t<.16?Math.sin(t/.16*Math.PI):0;
       const cut=recoil>0?(t<.4?ease((t-.1)/.3):1-ease((t-.4)/.6)):0;
       const draw=ease(knifeMotion.draw??0),inspect=Math.sin(Math.PI*ease(knifeMotion.inspect??0));
-      body.rotation.set(-cut*.24+wind*.09-draw*.18-inspect*.3,-side*cut*.48+side*wind*.1+draw*.7-inspect*.4,-side*cut*.91+side*wind*.14-draw*.55+inspect*.38);
-      // Rotate about the physical wrist joint, without dragging the sleeve around.
+      if(arm){
+        // The elbow drives the full forearm, including the cuff and knife grip.
+        arm.rotation.set(-cut*.22+wind*.1-draw*.18-inspect*.12,-side*cut*.38+side*wind*.12+draw*.3-inspect*.18,-side*cut*.78+side*wind*.18-draw*.58+inspect*.22);
+        rotatedElbow.copy(elbowPivot).applyEuler(arm.rotation);
+        arm.position.copy(elbowPivot).sub(rotatedElbow);
+        arm.position.y+=cut*.025-draw*.06+inspect*.025;
+        arm.position.z-=cut*.045;
+      }
+      // A smaller wrist follow-through stays attached to the moving sleeve.
+      body.rotation.set(-cut*.08-draw*.06-inspect*.16,-side*cut*.12+draw*.25-inspect*.22,-side*cut*.24+side*wind*.04-draw*.12+inspect*.16);
       rotatedWrist.copy(wristPivot).applyEuler(body.rotation);
       body.position.copy(wristPivot).sub(rotatedWrist);
       supportHand.position.set(0,0,0);supportHand.rotation.set(0,0,0);
