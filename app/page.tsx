@@ -378,7 +378,7 @@ export default function Home() {
       context.registerTool(
         {
           name: 'configure_match',
-          title: 'Configure a SkillClash match',
+          title: 'Configure a FragStake match',
           description:
             'Select a demo mode and open its pre-match review. Does not spend credits or start gameplay.',
           inputSchema: {
@@ -461,7 +461,7 @@ export default function Home() {
         <div className="page-heading">
           <div>
             <div className="eyebrow">
-              <span className="orange-line" /> SKILLCLASH / PLAY
+              <span className="orange-line" /> FRAGSTAKE / PLAY
             </div>
             <h1>
               READY TO PLAY<span>?</span>
@@ -815,7 +815,7 @@ export default function Home() {
           }}
         />
         <footer>
-          <span className="footer-brand">SKILLCLASH</span>
+          <span className="footer-brand">FRAGSTAKE</span>
           <span>YOUR SKILL. YOUR GAME.</span>
           <button onClick={() => setInfo(true)}>
             Game rules <ArrowUpRight size={14} />

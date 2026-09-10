@@ -21,7 +21,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'SkillClash | Enter the arena',
+  title: 'FragStake | Enter the arena',
   icons: { icon: '/favicon.svg' },
   description: 'Practice your aim, compete in tiered free-for-all matches, and challenge rivals in 1v1 or 2v2 duels. Play the demo arena.',
 };

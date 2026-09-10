@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {requestAccount} from '../lib/account-client.ts';
 
 test('account failures finish with actionable messages instead of endless loading', async(t)=>{
-  const fetchMock=t.mock.method(globalThis,'fetch',async()=>new Response(JSON.stringify({error:'Sign in to access your SkillClash account.'}),{status:401,headers:{'content-type':'application/json'}}));
+  const fetchMock=t.mock.method(globalThis,'fetch',async()=>new Response(JSON.stringify({error:'Sign in to access your FragStake account.'}),{status:401,headers:{'content-type':'application/json'}}));
   await assert.rejects(requestAccount(),/Sign in/);
   fetchMock.mock.mockImplementation(async()=>new Response('<html>Sign in</html>',{headers:{'content-type':'text/html'}}));
   await assert.rejects(requestAccount(),/Sign in with ChatGPT/);
