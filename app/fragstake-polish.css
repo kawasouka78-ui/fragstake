@@ -10,7 +10,7 @@ body .arena-navigation{gap:5px}
 body .arena-navigation>a{position:relative;border:1px solid transparent;border-radius:7px;min-height:44px;color:#9da8b8;font-size:13px;padding:11px 13px;transition:background .2s,color .2s,border-color .2s,translate .25s var(--fs-ease)}
 body .arena-navigation>a>svg:first-child{width:18px;opacity:.75;transition:color .2s,transform .25s var(--fs-ease)}
 body .arena-navigation>a.nav-active{background:linear-gradient(90deg,#ff784914,#ff784905);border-color:#ff784926;color:#ffad8a;box-shadow:none}
-body .arena-navigation>a.nav-active:after{display:block;inset:10px auto 10px -1px;width:3px;height:auto;border-radius:4px;background:#ff7849;animation:fs-indicator .28s var(--fs-ease)}
+body .arena-navigation>a.nav-active:after{display:block;inset:10px auto 10px -1px;width:3px;height:auto;border-radius:4px;background:#ff7849}
 body .arena-navigation>a.nav-active>svg{opacity:1}
 body .sidebar-bottom{gap:12px;padding-top:18px}
 body .sidebar-bottom nav{padding-bottom:10px}
@@ -209,36 +209,6 @@ body .fps-shell .loadout-card.selected{background:linear-gradient(105deg,#ff8c5a
 body .fps-shell :is(.deployment-heading,.deployment-controls,.deployment-actions){border-color:#ffffff15}
 body .fps-shell .deployment-location{background:#1b2430;border-color:#ffffff14}
 
-/* Animate entrances and feedback, never force content to wait for an animation. */
-@keyframes fs-enter{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
-@keyframes fs-panel{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
-@keyframes fs-indicator{from{transform:scaleY(.35);opacity:0}to{transform:scaleY(1);opacity:1}}
-@keyframes fs-image{from{opacity:.5;transform:scale(1.035)}to{opacity:1;transform:scale(1)}}
-@keyframes fs-progress{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
-@keyframes fs-row{from{opacity:0}to{opacity:1}}
-@media(prefers-reduced-motion:no-preference){
- body .site-shell .page-heading{animation:fs-enter .4s var(--fs-ease) both}
- body .site-shell .main>:is(.lobby-layout,.wallet-grid,.stat-grid,.profile-banner,.leader-banner,.progress-hero,.platform-two,.armory-toolbar){animation:fs-enter .48s var(--fs-ease) both}
- body .site-shell :is(.cosmetic-card,.person-card,.challenge-card,.achievement-grid>article){animation:fs-enter .42s var(--fs-ease) backwards;animation-delay:calc(min(var(--item-index,0),7)*40ms)}
- body .site-shell .account-table tbody{animation:fs-row .3s ease-out}
- body .site-shell .main>.account-panel,body .site-shell .stat-grid>.stat-card{animation:fs-enter .42s var(--fs-ease) backwards}
- body .site-shell .stat-grid>.stat-card:nth-child(3){animation-delay:80ms}
- body .site-shell .stat-grid>.stat-card:nth-child(4){animation-delay:120ms}
- body .site-shell .social-section{animation:fs-enter .3s var(--fs-ease)}
- body .site-shell .mobile-utility-menu[open]>nav{animation:fs-panel .2s var(--fs-ease)}
- body .site-shell .account-notice{animation:fs-panel .28s var(--fs-ease)}
- body .site-shell .feature-art{animation:fs-image .55s var(--fs-ease)}
- body .site-shell :is(.stat-card,.loadout-card):nth-child(2){animation-delay:40ms}
- body .site-shell progress{animation:fs-progress .65s var(--fs-ease)}
- body .fps-shell .deployment-menu{animation:fs-panel .3s var(--fs-ease)}
- body .fps-shell .loadout-card{animation:fs-enter .35s var(--fs-ease) backwards}
- body .fps-shell .loadout-card:nth-child(2n){animation-delay:35ms}
- body .fps-shell .loadout-card:nth-child(n+3){animation-delay:70ms}
- body .sc-dialog[data-open],body .sc-dialog[data-state=open]{animation:fs-panel .25s var(--fs-ease)}
- @view-transition{navigation:auto}
- ::view-transition-old(root){animation:fs-row .13s reverse ease both}
- ::view-transition-new(root){animation:fs-enter .3s var(--fs-ease) both}
-}
 @media(hover:hover) and (pointer:fine){
  body .arena-navigation>a:hover{color:#f2f4f7;background:#ffffff05;translate:2px 0}
  body .arena-navigation>a:hover>svg:first-child{transform:scale(1.07);color:#ffb48c}

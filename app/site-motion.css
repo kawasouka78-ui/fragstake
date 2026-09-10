@@ -1,35 +1,41 @@
-/* Motion is progressive: content remains fully readable without JavaScript. */
-.site-click-ripple{position:fixed;pointer-events:none;z-index:9999;border-radius:50%;background:radial-gradient(circle,#ffbc95,transparent 68%)}
-html[data-site-motion=on] [data-motion-enter]{animation:none!important}
-html[data-site-motion=on] .site-shell .main>:is(.lobby-layout,.wallet-grid,.stat-grid,.platform-two){animation:none!important}
-@keyframes fs-ambient{0%,100%{opacity:.18;transform:translateX(-3%)}50%{opacity:.42;transform:translateX(3%)}}
-@keyframes fs-action-light{0%,65%,100%{background-position:160% 0}90%{background-position:-60% 0}}
-@keyframes fs-tab-panel{from{opacity:.25;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-@keyframes fs-dialog-in{from{opacity:0;translate:0 22px;scale:.96}to{opacity:1;translate:0 0;scale:1}}
-@keyframes fs-dialog-out{to{opacity:0;translate:0 10px;scale:.97}}
+/* Keep content in place. Motion only clarifies navigation and selection. */
+body .site-shell :is(.page-heading,.account-panel,.mode-card,.feature,.match-panel,.stat-card,.person-card,.challenge-card,.achievement-grid>article,.account-table tbody,.activity-chart i,progress){animation:none}
+body .site-shell .arena-navigation>a:after{animation:none}
+body .site-shell :is(.arena-navigation>a,.cosmetic-card,.person-card,.mode-card,.stat-card,.challenge-card,.achievement-grid>article,.room-main,.quick-duels article),
+body .site-shell :is(.arena-navigation>a,.cosmetic-card,.person-card,.mode-card,.stat-card,.challenge-card,.achievement-grid>article,.room-main,.quick-duels article):hover{translate:none;transform:none!important}
+body .site-shell .cosmetic-inspect:hover .loadout-model{transform:none}
+body .site-shell .arena-navigation>a:hover>svg:first-child{transform:none}
+body .site-shell :is(.primary,.secondary,.icon-button,.text-button),body .site-shell :is(.primary,.secondary,.icon-button,.text-button):hover{transform:none}
+body .site-shell :is(button,a,input,select,textarea){transition-property:color,background-color,border-color,box-shadow,opacity;transition-duration:140ms;transition-timing-function:ease-out}
+body .site-shell :is(.primary,.secondary)>svg:last-child{transform:none!important}
+body .site-shell :is(button,a):active:not(:disabled){transform:none;filter:brightness(.94)}
+body .site-shell .play-main .mode-card{transition:border-color 160ms,background-color 160ms,box-shadow 160ms}
+body .site-shell .feature-art{animation:none;transition:opacity 180ms ease-out;scale:1;filter:none}
+body .site-shell .feature-shade:after{content:none}
+body .site-shell :is(.play-button,.progress-hero .primary){animation:none;background-image:none}
+
+/* Base UI owns the selected tab's bounds, including after responsive resizing. */
+body [data-slot=tabs-list]{position:relative;isolation:isolate}
+body [data-slot=tabs-list]>[data-slot=tabs-trigger]{position:relative;z-index:1}
+body [data-slot=tabs-list]>.tabs-indicator{position:absolute;left:0;top:0;z-index:0;pointer-events:none;width:var(--active-tab-width);height:var(--active-tab-height);transform:translate(var(--active-tab-left),var(--active-tab-top));border:1px solid #ffffff12;border-radius:5px;background:#2a323f}
+body [data-slot=tabs-list]:has(>.tabs-indicator:not([hidden]))>[data-slot=tabs-trigger][data-active]{background:transparent!important;box-shadow:none!important;border-color:transparent!important}
+body .social-section-tabs>.tabs-indicator{background:#ff784912;border-color:#ff784931;border-radius:7px}
+body [data-slot=tabs-list][data-variant=line]>.tabs-indicator{height:2px;top:auto;bottom:-5px;background:#ff9464;border:0;transform:translateX(var(--active-tab-left))}
+body [data-slot=tabs-list]:has(>.tabs-indicator:not([hidden]))>[data-slot=tabs-trigger]:after{display:none}
+
+@keyframes site-soft-in{from{opacity:.65}to{opacity:1}}
+@keyframes site-dialog-in{from{opacity:0;scale:.99}to{opacity:1;scale:1}}
+@keyframes site-dialog-out{from{opacity:1}to{opacity:0}}
+@view-transition{navigation:none}
 @media(prefers-reduced-motion:no-preference){
- body .site-shell .feature-art{transition:filter .5s,scale .9s cubic-bezier(.16,1,.3,1)}
- body .site-shell .feature:hover .feature-art{scale:1.045;filter:brightness(1.12)}
- body .site-shell .feature-shade:after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 80% 10%,#ffc09b38,transparent 55%);animation:fs-ambient 9s ease-in-out infinite;pointer-events:none}
- body .site-shell :is(.play-button,.progress-hero .primary){background-image:linear-gradient(110deg,transparent 38%,#fff4 49%,transparent 60%);background-size:250% 100%;animation:fs-action-light 6s ease-in-out infinite}
- body .site-shell :is(.mode-card,.loadout-card,.tier,.duel-room,.stat-card,.challenge-card,.achievement-grid>article){transition:transform .35s cubic-bezier(.16,1,.3,1),border-color .25s,box-shadow .35s,background-color .25s}
- body .site-shell [role=tabpanel]{animation:fs-tab-panel .42s cubic-bezier(.16,1,.3,1)}
- body .sc-dialog[data-open],body .sc-dialog[data-state=open]{animation:fs-dialog-in .36s cubic-bezier(.16,1,.3,1)!important}
- body .sc-dialog[data-closed],body .sc-dialog[data-state=closed]{animation:fs-dialog-out .18s ease-in!important}
- body .site-shell details[open]>*:not(summary),body .fps-shell details[open]>*:not(summary){animation:fs-tab-panel .3s cubic-bezier(.16,1,.3,1)}
- body .fps-shell .deployment-menu{animation:fs-tab-panel .42s cubic-bezier(.16,1,.3,1)}
- body .fps-shell .loadout-card{transition:background .2s,border-color .2s,translate .3s,box-shadow .3s}
- body .fps-shell .loadout-card.selected{box-shadow:inset 3px 0 #ff9464,0 0 22px #ff94640c}
- @media(hover:hover) and (pointer:fine){
-  body .site-shell :is(.stat-card,.challenge-card,.achievement-grid>article):hover{transform:translateY(-4px);border-color:#ffb08a50;box-shadow:0 12px 24px #0003}
-  body .site-shell :is(.room-main,.quick-duels article){transition:background .25s,box-shadow .25s,translate .3s}
-  body .site-shell :is(.room-main,.quick-duels article):hover{translate:3px 0;box-shadow:inset 2px 0 #ff946480}
-  body .site-shell .account-table tbody tr{transition:background .2s,box-shadow .2s}
-  body .site-shell .account-table tbody tr:hover{box-shadow:inset 2px 0 #ff946470}
-  body .fps-shell .loadout-card:hover{translate:0 -3px;border-color:#ffb48a90}
- }
+ body .site-shell .main{animation:site-soft-in 160ms ease-out}
+ body .site-shell [role=tabpanel]{animation:site-soft-in 140ms ease-out}
+ body [data-slot=tabs-list]>.tabs-indicator{transition:transform 190ms cubic-bezier(.2,.7,.2,1),width 190ms cubic-bezier(.2,.7,.2,1),height 190ms cubic-bezier(.2,.7,.2,1)}
+ body .sc-dialog[data-open],body .sc-dialog[data-state=open]{animation:site-dialog-in 160ms ease-out!important}
+ body .sc-dialog[data-closed],body .sc-dialog[data-state=closed]{animation:site-dialog-out 100ms ease-in!important}
+ body .site-shell .mobile-utility-menu[open]>nav{animation:site-soft-in 120ms ease-out}
 }
 @media(prefers-reduced-motion:reduce){
- .site-click-ripple{display:none}
- body .site-shell .feature-shade:after{animation:none}
+ body [data-slot=tabs-list]>.tabs-indicator{transition:none}
+ body .site-shell .main,body .site-shell [role=tabpanel],body .sc-dialog{animation:none!important}
 }

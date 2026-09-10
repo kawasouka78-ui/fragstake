@@ -7,7 +7,6 @@ import './lobby-polish.css';
 import './game-polish.css';
 import './responsive.css';
 import AccountProviderWrapper from './provider-wrapper';
-import SiteMotion from './site-motion';
 import './fragstake-polish.css';
 import './site-motion.css';
 
@@ -39,7 +38,6 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${displayFont.variable} antialiased`}
       >
-        <SiteMotion/>
         <AccountProviderWrapper>{children}</AccountProviderWrapper>
       </body>
     </html>
