@@ -1,0 +1,59 @@
+/* Shared header controls: quiet party status, prominent wallet balance. */
+body .site-shell .topbar-actions{gap:16px;min-width:0;flex-shrink:0}
+body .site-shell :is(.header-party,.header-wallet){display:flex;align-items:center;height:46px;min-width:0;text-decoration:none;border-radius:10px;white-space:nowrap}
+body .site-shell .header-party{gap:12px;padding:5px 9px;border:1px solid transparent;color:#e5eaf1;background:transparent}
+body .site-shell .header-party-avatars{display:flex;align-items:center;padding-right:1px}
+body .site-shell .header-party-avatars>span{display:grid;place-items:center;width:32px;height:34px;border:2px solid #10141b;border-radius:10px;background:linear-gradient(145deg,#624737,#302720);color:#ffd4b9;font-size:11px;font-weight:750;letter-spacing:.3px}
+body .site-shell .header-party-avatars>span+span{margin-left:-9px;background:linear-gradient(145deg,#34524c,#1c302e);color:#b2e5d4}
+body .site-shell .header-party-copy{display:grid;gap:3px;line-height:1.15}
+body .site-shell .header-party-copy b{font-size:13px;font-weight:650;letter-spacing:.1px}
+body .site-shell .header-party-copy small{font-size:12px;color:#93a0b0}
+body .site-shell .header-party-copy small>span{color:#86b9a8}
+body .site-shell .header-party-chevron{margin-left:3px;color:#738195}
+body .site-shell .header-party-mobile{display:none}
+body .site-shell .header-wallet{gap:12px;padding:5px 6px 5px 13px;border:1px solid #ffffff16;background:linear-gradient(110deg,#1d232d,#161c25);box-shadow:inset 0 1px #ffffff04;color:#f0f3f7}
+body .site-shell .header-wallet-icon{color:#8d9bab;flex-shrink:0}
+body .site-shell .header-wallet-copy{display:grid;gap:2px;min-width:92px;line-height:1.15}
+body .site-shell .header-wallet-copy small{font-size:11px;font-weight:500;color:#9aa6b6;letter-spacing:.1px}
+body .site-shell .header-wallet-copy b{font-size:17px;font-weight:700;letter-spacing:.1px;font-variant-numeric:tabular-nums}
+body .site-shell .header-wallet-add{display:grid;place-items:center;flex-shrink:0;width:34px;height:34px;border:1px solid #ffac7d55;border-radius:7px;background:#ff8755;color:#24160f;box-shadow:inset 0 1px #ffffff21}
+@media(hover:hover){
+ body .site-shell .header-party:hover{background:#ffffff05;border-color:#ffffff12}
+ body .site-shell .header-party:hover .header-party-chevron{color:#c4d1df}
+ body .site-shell .header-wallet:hover{border-color:#ffb08b60;box-shadow:inset 0 1px #ffffff08,0 0 0 3px #ff875508}
+ body .site-shell .header-wallet:hover .header-wallet-add{background:#ffa175}
+}
+@media(max-width:1050px) and (min-width:851px){
+ body .site-shell .topbar-actions{gap:8px}
+ body .site-shell .header-party{gap:9px;padding-inline:5px}
+ body .site-shell .header-party-chevron{display:none}
+}
+@media(max-width:850px){
+ body .site-shell .topbar-actions{gap:8px}
+ body .site-shell .header-party{gap:8px;padding:4px 7px}
+ body .site-shell .header-party-avatars,body .site-shell .header-party-chevron{display:none}
+ body .site-shell .header-party-mobile{display:flex;align-items:center;gap:5px;color:#b2c9c2;font-size:13px}
+ body .site-shell .header-party-mobile>b{display:none}
+ body .site-shell .header-wallet{gap:10px;padding-left:10px}
+ body .site-shell .header-wallet-icon{display:none}
+ body .site-shell .header-wallet-copy{min-width:84px}
+ body .site-shell .topbar-actions .mobile-settings{width:36px;min-width:36px;height:44px;background:transparent;border-color:transparent}
+}
+@media(max-width:600px){
+ body .site-shell .topbar-actions{gap:7px}
+ body .site-shell .header-party{height:44px;gap:0;padding:8px;border-color:#ffffff13;background:#ffffff03}
+ body .site-shell .header-party-copy{display:none}
+ body .site-shell .header-party-mobile>b{display:block;font-size:13px;font-weight:650;font-variant-numeric:tabular-nums}
+ body .site-shell .header-wallet{height:44px;padding:5px 11px}
+ body .site-shell .header-wallet-copy{min-width:0}
+ body .site-shell .header-wallet-copy small{font-size:10px}
+ body .site-shell .header-wallet-copy b{font-size:15px}
+ body .site-shell .header-wallet-copy small>span,body .site-shell .header-wallet-add{display:none}
+ body .site-shell .mobile-brand{gap:6px}
+ body .site-shell .mobile-brand>span{font-size:21px}
+}
+@media(max-width:370px){
+ body .site-shell .mobile-brand>span{display:none}
+ body .site-shell .mobile-brand{min-width:32px;min-height:44px;justify-content:center}
+ body .site-shell .mobile-brand>svg{width:24px;height:24px}
+}

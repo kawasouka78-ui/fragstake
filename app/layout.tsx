@@ -9,6 +9,7 @@ import './responsive.css';
 import AccountProviderWrapper from './provider-wrapper';
 import './fragstake-polish.css';
 import './site-motion.css';
+import './site-header.css';
 
 const displayFont = Barlow_Condensed({ variable: '--font-display', subsets: ['latin'], weight: ['600', '700', '800'], display: 'swap' });
 
