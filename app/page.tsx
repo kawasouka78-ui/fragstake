@@ -686,42 +686,16 @@ export default function Home() {
                   </button>
                 ))}
               </div>
-            ) : mode === 'duel' ? (
-              <>
-                <div className="duel-random-card">
-                  <Swords size={30} />
-                  <div>
-                    <b>QUICK DUEL SEARCH</b>
-                    <p>
-                      The queue picks 1v1 or 2v2 and a map when it finds a
-                      match. You choose your weapon during the countdown.
-                    </p>
-                  </div>
-                </div>
-                {livePlay ? (
-                  <div className="live-mode-summary duel">
-                    <Users size={30} />
-                    <b>QUEUE THEN LOADOUT</b>
-                    <p>
-                      Finds a player duel or creates one for others to join.
-                      <br />
-                      First to 10 after the weapon timer.
-                    </p>
-                    <span>FREE ENTRY</span>
-                  </div>
-                ) : (
-                  <div className="duel-pot">
-                    <span>DEMO DUEL STAKE</span>
-                    <b>
-                      €{duelStake}
-                      <i>.00</i>
-                    </b>
-                    <small>Random format · winner payout shown after search</small>
-                  </div>
-                )}
-              </>
+            ) : mode === 'duel' && !livePlay ? (
+              <div className="duel-pot">
+                <span>DEMO DUEL STAKE</span>
+                <b>
+                  €{duelStake}
+                  <i>.00</i>
+                </b>
+              </div>
             ) : null}
-            {mode !== 'duel' ? <label className="match-map-picker">
+            {mode !== 'duel' && <label className="match-map-picker">
               MAP
               <select
                 value={mapId}
@@ -734,7 +708,7 @@ export default function Home() {
                 ))}
               </select>
               <span>{selectedMap.tagline}</span>
-            </label> : <div className="match-map-picker random-map-lock"><span>MAP</span><b>Random on match found</b><small>No map picking in quick duels.</small></div>}
+            </label>}
             <div className="match-bottom">
               <div className="stake-summary">
                 {livePlay ? (
