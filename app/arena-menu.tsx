@@ -16,24 +16,42 @@ type Preferences={sensitivity:number;fov:number;quality:string;muted:boolean};
 type Props={game:Simulation|undefined;config:MatchConfig;map:ArenaMap;ready:boolean;error:string;settings:boolean;prefs:Preferences;setSettings:(value:boolean)=>void;preference:(value:Partial<Preferences>)=>void;select:(id:WeaponId)=>void;resume:()=>void;leave:()=>void;cashOut:()=>void;};
 
 export function WeaponPreview({id,skin,angle=0,knifeStyle='standard'}:{id:WeaponId;skin?:string;angle?:number;knifeStyle?:'standard'|'karambit'}){
-  const canvas=useRef<HTMLCanvasElement>(null),view=useRef<LoadoutRenderer|null>(null),selection=useRef({id,skin,angle,knifeStyle});
+  const host=useRef<HTMLDivElement>(null),view=useRef<LoadoutRenderer|null>(null),selection=useRef({id,skin,angle,knifeStyle});
+  const label=`${id==='knife'&&knifeStyle==='karambit'?'Obsidian Karambit':weapons[id].name} weapon preview`;
   const [failed,setFailed]=useState(false);
   selection.current={id,skin,angle,knifeStyle};
   useEffect(()=>{
-    let cancelled=false,observer:ResizeObserver|undefined,visibility:IntersectionObserver|undefined;
-    void import('@/lib/fps/loadout-renderer').then(({LoadoutRenderer})=>{
-      if(cancelled||!canvas.current)return;
-      const element=canvas.current,renderer=new LoadoutRenderer(element);view.current=renderer;
-      renderer.setAngle(selection.current.angle);renderer.select(selection.current.id,selection.current.skin,selection.current.knifeStyle);
-      const resize=()=>{const rect=element.getBoundingClientRect();renderer.resize(Math.max(1,rect.width),Math.max(1,rect.height));};
-      observer=new ResizeObserver(resize);observer.observe(element);resize();
-      visibility=new IntersectionObserver(entries=>renderer.setActive(entries.some(entry=>entry.isIntersecting)));visibility.observe(element);
-    }).catch(()=>{if(!cancelled)setFailed(true);});
-    return()=>{cancelled=true;observer?.disconnect();visibility?.disconnect();view.current?.dispose();view.current=null;};
+    const container=host.current;
+    if(!container)return;
+    let cancelled=false,visible=false,generation=0,observer:ResizeObserver|undefined,element:HTMLCanvasElement|undefined;
+    const release=()=>{
+      generation++;observer?.disconnect();observer=undefined;
+      view.current?.dispose();view.current=null;element?.remove();element=undefined;
+    };
+    const mount=async()=>{
+      const current=++generation;
+      try{
+        const {LoadoutRenderer}=await import('@/lib/fps/loadout-renderer');
+        if(cancelled||!visible||generation!==current)return;
+        // Each visit gets a fresh canvas; offscreen previews release their GPU context.
+        element=document.createElement('canvas');element.setAttribute('aria-hidden','true');container.appendChild(element);
+        const renderer=new LoadoutRenderer(element);view.current=renderer;
+        const resize=()=>{const rect=container.getBoundingClientRect();renderer.resize(Math.max(1,rect.width),Math.max(1,rect.height));};
+        resize();renderer.setAngle(selection.current.angle);renderer.select(selection.current.id,selection.current.skin,selection.current.knifeStyle);
+        observer=new ResizeObserver(resize);observer.observe(container);setFailed(false);
+      }catch{release();if(!cancelled)setFailed(true);}
+    };
+    const visibility=new IntersectionObserver(entries=>{
+      const next=entries.some(entry=>entry.isIntersecting);
+      if(next===visible)return;
+      visible=next;if(visible)void mount();else release();
+    },{rootMargin:'80px'});
+    visibility.observe(container);
+    return()=>{cancelled=true;visibility.disconnect();release();};
   },[]);
   useEffect(()=>{try{view.current?.select(id,skin,knifeStyle);}catch{setFailed(true);}},[id,skin,knifeStyle]);
   useEffect(()=>{view.current?.setAngle(angle);},[angle]);
-  return <div className="loadout-model"><canvas ref={canvas} aria-label={`${id==='knife'&&knifeStyle==='karambit'?'Obsidian Karambit':weapons[id].name} weapon preview`} role="img"/>{failed&&<p className="loadout-preview-error">Weapon preview unavailable. You can still choose your loadout.</p>}</div>;
+  return <div ref={host} className="loadout-model" role="img" aria-label={label}>{failed&&<p className="loadout-preview-error">Weapon preview unavailable. You can still choose your loadout.</p>}</div>;
 }
 
 export default function ArenaMenu({game,config,map,ready,error,settings,prefs,setSettings,preference,select,resume,leave,cashOut}:Props){

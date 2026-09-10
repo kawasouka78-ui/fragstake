@@ -64,5 +64,5 @@ export class LoadoutRenderer {
     this.model.traverse(node=>{if(node instanceof THREE.Mesh){node.geometry.dispose();for(const material of Array.isArray(node.material)?node.material:[node.material])materials.add(material);}});
     materials.forEach(material=>material.dispose());this.scene.remove(this.model);this.model=null;
   }
-  dispose(){document.removeEventListener('visibilitychange',this.visibility);this.motion.removeEventListener('change',this.visibility);this.clearModel();this.renderer.dispose();}
+  dispose(){document.removeEventListener('visibilitychange',this.visibility);this.motion.removeEventListener('change',this.visibility);this.clearModel();this.renderer.dispose();this.renderer.forceContextLoss();}
 }

@@ -1,5 +1,11 @@
 export const catalog=[
  {sku:'karambit-obsidian',name:'Obsidian Karambit',kind:'Knife model',price:4999,color:'#667481',model:'karambit',description:'A curved talon blade, sculpted black grip and open finger ring. Same melee damage and reach.'},
+ {sku:'event-horizon',name:'Event Horizon',kind:'Animated finish',price:4499,color:'#a08aff',effect:'vortex',description:'Starlight spirals around a dark violet singularity.'},
+ {sku:'neon-drift',name:'Neon Drift',kind:'Animated finish',price:3499,color:'#ff69c6',effect:'neon',description:'Pink and cyan light trails race across midnight metal.'},
+ {sku:'stormfront',name:'Stormfront',kind:'Animated finish',price:3999,color:'#85b9ff',effect:'storm',description:'Forked lightning crawls across a storm-blue receiver.'},
+ {sku:'solar-flare',name:'Solar Flare',kind:'Animated finish',price:3999,color:'#ffc75e',effect:'solar',description:'Golden energy ripples through a glowing honeycomb shell.'},
+ {sku:'spectral-shift',name:'Spectral Shift',kind:'Animated finish',price:4499,color:'#a0eee4',effect:'prism',description:'Iridescent facets shift from coral to violet to sea green.'},
+ {sku:'cryo-bloom',name:'Cryo Bloom',kind:'Animated finish',price:3499,color:'#b1efff',effect:'frost',description:'Ice crystals grow and shimmer across deep arctic steel.'},
  {sku:'plasma-flow',name:'Plasma Flow',kind:'Animated finish',price:3499,color:'#986bff',effect:'plasma',description:'Violet and cyan ribbons flow across a black receiver.'},
  {sku:'circuit-breaker',name:'Circuit Breaker',kind:'Animated finish',price:2999,color:'#5ce6c0',effect:'circuit',description:'Electric green traces light up with a travelling scan.'},
  {sku:'molten-core',name:'Molten Core',kind:'Animated finish',price:3999,color:'#ff8348',effect:'molten',description:'Glowing lava cracks drift beneath dark cooled metal.'},
