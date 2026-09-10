@@ -1174,7 +1174,7 @@ export default function Home() {
               {result?.live
                 ? result.liveGuest
                   ? 'Guest match · Not saved'
-                  : 'Server result · View Progression'
+                  : 'Server result saved'
                 : busy
                   ? 'Updating…'
                   : result?.walletBalance !== undefined
