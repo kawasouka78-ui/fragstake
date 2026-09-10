@@ -3,28 +3,20 @@ import { mkdirSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { WebSocketServer, WebSocket } from 'ws';
 import { LiveRoom } from '../lib/live/world.ts';
-import { readTicket, signature } from '../lib/live/security.ts';
+import { readTicket } from '../lib/live/security.ts';
+import { initializeOutbox, deliverResults } from '../lib/live/outbox.ts';
+import { liveConfig } from '../lib/live/config.ts';
 import { RECONNECT_MS } from '../lib/live/protocol.ts';
 import { openRooms, findRoom } from '../lib/live/matchmaking.ts';
 import {prepareRematch} from '../lib/live/rematch.ts';
 
-const secret = process.env.LIVE_TICKET_SECRET || '';
-if (secret.length < 32)
-  throw new Error('Run npm run live:setup, then npm run live.');
-const port = Number(process.env.LIVE_PORT || 3010),
-  host = process.env.LIVE_HOST || '127.0.0.1';
-const origins = new Set(
-  (
-    process.env.LIVE_ALLOWED_ORIGINS ||
-    'http://localhost:3000,http://127.0.0.1:3000'
-  ).split(','),
-);
-const site = process.env.LIVE_SITE_URL || 'http://localhost:3000';
+const {secret, port, host, origins, site} = liveConfig(process.env);
 mkdirSync('.wrangler/game', { recursive: true });
 const storage = new DatabaseSync('.wrangler/game/service.sqlite');
 storage.exec(`PRAGMA journal_mode=WAL;
  CREATE TABLE IF NOT EXISTS outbox(id TEXT PRIMARY KEY,body TEXT NOT NULL,delivered INTEGER NOT NULL DEFAULT 0);
  CREATE TABLE IF NOT EXISTS replay(room TEXT,tick INTEGER,body TEXT NOT NULL,created INTEGER NOT NULL,PRIMARY KEY(room,tick));`);
+initializeOutbox(storage);
 const rooms = new Map<string, LiveRoom>(),
   used = new Map<string, number>();
 type Session = {
@@ -123,9 +115,11 @@ server.on('upgrade', (req, socket, head) => {
   }
   wss.handleUpgrade(req, socket, head, (ws) => {
     peers.set(ip, (peers.get(ip) || 0) + 1);
-    ws.once('close', () =>
-      peers.set(ip, Math.max(0, (peers.get(ip) || 1) - 1)),
-    );
+    ws.once('close', () => {
+      const remaining = (peers.get(ip) || 1) - 1;
+      if (remaining > 0) peers.set(ip, remaining);
+      else peers.delete(ip);
+    });
     wss.emit('connection', ws);
   });
 });
@@ -330,27 +324,7 @@ const delivery = setInterval(async () => {
   if (delivering) return;
   delivering = true;
   try {
-    for (const row of storage
-      .prepare('SELECT id,body FROM outbox WHERE delivered=0 LIMIT 10')
-      .all() as { id: string; body: string }[]) {
-      const stamp = String(Date.now()),
-        sig = await signature(secret, 'result', stamp + '\n' + row.body);
-      const response = await fetch(site + '/api/live/results', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Game-Timestamp': stamp,
-          'X-Game-Signature': sig,
-        },
-        body: row.body,
-        signal: AbortSignal.timeout(5000),
-      });
-      if (!response.ok) {
-        deliveryErrors++;
-        continue;
-      }
-      storage.prepare('UPDATE outbox SET delivered=1 WHERE id=?').run(row.id);
-    }
+    deliveryErrors += await deliverResults(storage, site, secret);
     storage
       .prepare('DELETE FROM replay WHERE created<?')
       .run(Date.now() - 7 * 86400000);
@@ -362,7 +336,7 @@ const delivery = setInterval(async () => {
 }, 5000);
 server.listen(port, host, () =>
   console.log(
-    `SkillClash game service listening on ${host}:${(server.address() as { port: number }).port}. Free human matches; 30 ticks/s.`,
+    `FragStake game service listening on ${host}:${(server.address() as { port: number }).port}. Free human matches; 30 ticks/s.`,
   ),
 );
 function shutdown() {

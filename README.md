@@ -1,4 +1,4 @@
-# SkillClash
+# FragStake
 
 A browser FPS platform with free bot practice, free human FFA and duels, demo accounts, animated cosmetics, friend messaging and progression.
 
@@ -28,5 +28,7 @@ npm run ops:backup
 ```
 
 [Platform architecture, deployment instructions and remaining work](docs/PLATFORM-FOUNDATION.md) describe the server boundary, signing keys, persistence, moderation, backup scope and worldwide paid-play prerequisites.
+
+See the [current production readiness report](docs/PRODUCTION-READINESS.md) for verified fixes and outstanding release blockers.
 
 This release is local. Regional production hosting, advanced anti-cheat and real deposits/withdrawals are not active. Demo balances never become real money.

@@ -5,6 +5,13 @@ import {Simulation} from '../lib/fps/simulation.ts';
 import {settlePreviewMatch} from '../lib/preview-match.ts';
 
 const config={mode:'duel',team:'1v1',rate:2,balance:90,stake:10,target:5,bestOf:1,weaponRule:'sniper',mapId:'citadel'};
+void test('unfinished live duels never fabricate a final loss or draw',()=>{
+ const base={live:true,won:false,score:0,enemyScore:0};
+ assert.equal(duelOutcome({...base,reason:'Match cancelled'}).title,'MATCH CANCELLED');
+ assert.equal(duelOutcome({...base,reason:'Left live match'}).title,'MATCH LEFT');
+ assert.equal(duelOutcome({...base,reason:'Connection lost'}).title,'MATCH LEFT');
+ assert.equal(duelOutcome({...base,reason:'Live match complete',enemyScore:10}).title,'YOU LOST');
+});
 test('duel results distinguish profit from total return for wins, losses, draws and forfeits',()=>{
  for(const row of [
   {score:5,enemy:2,tone:'win',title:'YOU WON',net:10,returned:20},

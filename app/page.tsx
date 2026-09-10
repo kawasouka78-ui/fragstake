@@ -943,7 +943,7 @@ export default function Home() {
                 <p>
                   {mode === 'ffa'
                     ? 'Three minutes. Everyone is an opponent. The round starts with 2 ready players.'
-                    : 'Match found: ' +
+                    : 'Selected match: ' +
                       selectedMap.name +
                       ' · ' +
                       team +
@@ -958,7 +958,7 @@ export default function Home() {
                     <Users size={15} />
                     {mode === 'ffa'
                       ? 'Your party stays out of FFA. Everyone joins FFA solo so there is no teaming.'
-                      : `${party?.name} is ready for duels: ${partyNames}.`}
+                      : `${party?.name}: ${partyNames}. This joins only your own seat; party members must join separately.`}
                   </p>
                 )}
                 <span>

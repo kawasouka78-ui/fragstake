@@ -198,7 +198,7 @@ export class NetworkSimulation extends Simulation {
   }
   override leave() {
     this.send({ type: 'leave' });
-    this.end(this.started ? 'Left live match' : 'Match cancelled');
+    this.end(this.latest?.status === 'waiting' || !this.started ? 'Match cancelled' : 'Left live match');
   }
   end(reason: string) {
     if (this.ended) return;
