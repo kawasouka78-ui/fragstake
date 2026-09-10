@@ -5,14 +5,14 @@ import {duelPayout,type MatchConfig,type Result} from '../game-rules.ts';
 export type Vec={x:number;y:number;z:number};
 export type WeaponId='rifle'|'carbine'|'smg'|'vector'|'marksman'|'pistol'|'handcannon'|'shotgun';
 export const weapons={
- rifle:{name:'VANGUARD',type:'ASSAULT RIFLE',mag:30,damage:28,head:2.5,interval:.105,reload:1.65,spread:.012,recoil:.018,auto:true,range:75},
- smg:{name:'PHANTOM',type:'SUBMACHINE GUN',mag:36,damage:19,head:2,interval:.067,reload:1.35,spread:.023,recoil:.013,auto:true,range:45},
- marksman:{name:'LONGSHOT',type:'MARKSMAN RIFLE',mag:10,damage:65,head:1.7,interval:.48,reload:2.05,spread:.003,recoil:.055,auto:false,range:100}
-,carbine:{name:'SENTINEL',type:'ASSAULT RIFLE',mag:30,damage:24,head:2.4,interval:.09,reload:1.7,spread:.009,recoil:.013,auto:true,range:70},
- vector:{name:'VECTOR',type:'SUBMACHINE GUN',mag:24,damage:16,head:2,interval:.055,reload:1.25,spread:.021,recoil:.012,auto:true,range:35},
+ rifle:{name:'VANGUARD',type:'ASSAULT RIFLE',mag:30,damage:25,head:1.9,interval:.14,reload:1.65,spread:.012,recoil:.018,auto:true,range:75},
+ smg:{name:'PHANTOM',type:'SUBMACHINE GUN',mag:34,damage:17,head:1.9,interval:.095,reload:1.35,spread:.026,recoil:.012,auto:true,range:42},
+ marksman:{name:'LONGSHOT',type:'MARKSMAN RIFLE',mag:10,damage:50,head:1.9,interval:.44,reload:2.05,spread:.003,recoil:.055,auto:false,range:100}
+,carbine:{name:'SENTINEL',type:'ASSAULT RIFLE',mag:30,damage:22,head:2.15,interval:.12,reload:1.7,spread:.01,recoil:.014,auto:true,range:70},
+ vector:{name:'VECTOR',type:'SUBMACHINE GUN',mag:28,damage:15,head:1.9,interval:.085,reload:1.25,spread:.028,recoil:.011,auto:true,range:36},
  pistol:{name:'SIDEWINDER',type:'PISTOL',mag:15,damage:30,head:2,interval:.23,reload:1.1,spread:.012,recoil:.021,auto:false,range:40},
  handcannon:{name:'JUDGEMENT',type:'HEAVY PISTOL',mag:7,damage:55,head:2,interval:.4,reload:1.6,spread:.008,recoil:.05,auto:false,range:55},
- shotgun:{name:'BREACHER',type:'SHOTGUN',mag:6,damage:14,head:1.2,interval:.8,reload:2.4,spread:.085,recoil:.07,auto:false,range:20}
+ shotgun:{name:'BREACHER',type:'SHOTGUN',mag:6,damage:10,head:1.15,interval:.58,reload:2.25,spread:.09,recoil:.07,auto:false,range:17}
 } as const;
 export const weaponIds:WeaponId[]=['rifle','smg','marksman','carbine','vector','shotgun'];
 const ammoFor=()=>Object.fromEntries(weaponIds.map(id=>[id,weapons[id].mag])) as Record<WeaponId,number>;
@@ -20,6 +20,8 @@ const reserveFor=()=>Object.fromEntries(weaponIds.map(id=>[id,weapons[id].mag*4]
 export type Actor={id:number;name:string;team:number;x:number;z:number;y:number;vy:number;yaw:number;hp:number;kills:number;deaths:number;respawn:number;shield:number;cooldown:number;crouch:boolean;moving:number;path:{x:number;z:number}[];repath:number;target:number;reaction:number;lastDamage:number};
 export type Controls={forward:number;right:number;fire:boolean;aim:boolean;sprint:boolean;crouch:boolean;jump:boolean;reload:boolean;slide?:boolean;weapon?:WeaponId};
 export const idleInput=():Controls=>({forward:0,right:0,fire:false,aim:false,sprint:false,crouch:false,jump:false,reload:false,slide:false});
+export function shotsToEliminate(damage:number,headMultiplier=1){return Math.ceil(100/Math.max(1,Math.round(damage*headMultiplier)));}
+export function weaponTimeToKill(id:WeaponId,head=false){const gun=weapons[id],perShot=gun.damage*(id==='shotgun'?8:1),shots=shotsToEliminate(perShot,head?gun.head:1);return (shots-1)*gun.interval;}
 export type Shot={from:Vec;to:Vec;friendly:boolean;age:number};
 export type GameEvent={kind:'shot'|'enemyShot'|'footstep'|'hit'|'kill'|'hurt'|'reload'|'pickup'|'spawn';head?:boolean;weapon?:WeaponId;angle?:number;distance?:number};
 export type Feed={id:number;killer:string;victim:string;head:boolean;you:boolean;age:number};
