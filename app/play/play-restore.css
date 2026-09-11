@@ -981,3 +981,41 @@ body .site-shell .restored-play .play-button {
 body .site-shell .restored-play .queue-note {
   margin-top: 11px;
 }
+
+/* Keep every duel control inside the fixed setup-card height. */
+body .site-shell .restored-play .match-panel-duels .match-title {
+  margin: 12px 0 10px;
+}
+
+body .site-shell .restored-play .match-panel-duels .real-formats {
+  margin-bottom: 12px;
+}
+
+body .site-shell .restored-play .match-panel-duels .real-formats button {
+  min-height: 36px;
+}
+
+body .site-shell .restored-play .match-panel-duels .match-map-picker {
+  gap: 6px;
+}
+
+body .site-shell .restored-play .match-panel-duels .match-map-picker select {
+  min-height: 40px;
+}
+
+body .site-shell .restored-play .match-panel-duels .match-bottom {
+  padding-top: 8px;
+}
+
+body .site-shell .restored-play .match-panel-duels .stake-summary {
+  padding: 11px 0 12px;
+}
+
+body .site-shell .restored-play .match-panel-duels .play-button {
+  min-height: 44px;
+  margin-top: 0;
+}
+
+body .site-shell .restored-play .match-panel-duels .queue-note {
+  margin-top: 7px;
+}

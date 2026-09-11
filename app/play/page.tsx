@@ -344,7 +344,7 @@ export default function Play() {
               </span>
             </div>
           </section>
-          <section className="match-panel" aria-label="Match setup">
+          <section className={`match-panel match-panel-${category}`} aria-label="Match setup">
             <div className="match-heading">
               <span className="eyebrow">Match setup</span>
             </div>
