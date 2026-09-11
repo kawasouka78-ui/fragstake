@@ -2,9 +2,12 @@
 
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
 import {
+  createUserWithEmailAndPassword,
   GoogleAuthProvider,
   getAuth,
   onAuthStateChanged,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
   type User,
@@ -45,6 +48,24 @@ export async function signInWithGoogle() {
   const auth = firebaseAuth();
   if (!auth) throw new Error('Firebase sign-in is not configured yet.');
   await signInWithPopup(auth, new GoogleAuthProvider());
+}
+
+export async function signInWithEmail(email: string, password: string) {
+  const auth = firebaseAuth();
+  if (!auth) throw new Error('Firebase sign-in is not configured yet.');
+  await signInWithEmailAndPassword(auth, email.trim(), password);
+}
+
+export async function createEmailAccount(email: string, password: string) {
+  const auth = firebaseAuth();
+  if (!auth) throw new Error('Firebase sign-in is not configured yet.');
+  await createUserWithEmailAndPassword(auth, email.trim(), password);
+}
+
+export async function resetEmailPassword(email: string) {
+  const auth = firebaseAuth();
+  if (!auth) throw new Error('Firebase sign-in is not configured yet.');
+  await sendPasswordResetEmail(auth, email.trim());
 }
 
 export async function signOutFirebase() {

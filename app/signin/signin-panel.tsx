@@ -3,10 +3,13 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { ArrowRight, Check, LogOut, ShieldCheck } from 'lucide-react';
 import {
+  createEmailAccount,
   firebaseEnabled,
   loadFirebaseProfile,
   onFirebaseUserChange,
+  resetEmailPassword,
   saveFirebaseProfile,
+  signInWithEmail,
   signInWithGoogle,
   signOutFirebase,
 } from '@/lib/firebase-client';
@@ -24,6 +27,10 @@ export default function SignInPanel() {
   const [visibility, setVisibility] = useState<'visible' | 'anonymous'>('visible');
   const [adult, setAdult] = useState(false);
   const [terms, setTerms] = useState(false);
+  const [emailMode, setEmailMode] = useState<'signin' | 'create'>('signin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [notice, setNotice] = useState('');
   const { saveProfilePrefs } = useAccount();
   const returnTo = useMemo(() => {
     if (typeof location === 'undefined') return '/play';
@@ -67,6 +74,48 @@ export default function SignInPanel() {
     }
   }
 
+  function friendlyAuthError(value: unknown) {
+    const message = value instanceof Error ? value.message : '';
+    if (message.includes('invalid-credential')) return 'That email or password is incorrect.';
+    if (message.includes('email-already-in-use')) return 'An account already exists for that email. Sign in instead.';
+    if (message.includes('weak-password')) return 'Use a password with at least 6 characters.';
+    if (message.includes('invalid-email')) return 'Enter a valid email address.';
+    if (message.includes('too-many-requests')) return 'Too many attempts. Wait a moment and try again.';
+    if (message.includes('operation-not-allowed')) return 'Email sign-in must be enabled in Firebase Authentication first.';
+    return message || 'Could not sign in. Try again.';
+  }
+
+  async function submitEmail(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError('');
+    setNotice('');
+    try {
+      if (emailMode === 'create') await createEmailAccount(email, password);
+      else await signInWithEmail(email, password);
+    } catch (value) {
+      setError(friendlyAuthError(value));
+      setBusy(false);
+    }
+  }
+
+  async function forgotPassword() {
+    if (!email.trim()) {
+      setError('Enter your email first, then choose Forgot password.');
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      await resetEmailPassword(email);
+      setNotice('Password reset email sent. Check your inbox.');
+    } catch (value) {
+      setError(friendlyAuthError(value));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function finishOnboarding(event: FormEvent) {
     event.preventDefault();
     if (!adult || !terms) {
@@ -106,7 +155,7 @@ export default function SignInPanel() {
       <form className="onboarding-form" onSubmit={finishOnboarding}>
         <div className="onboarding-account">
           <span><Check size={15} /></span>
-          <div><small>GOOGLE ACCOUNT CONNECTED</small><b>{userEmail}</b></div>
+          <div><small>ACCOUNT CONNECTED</small><b>{userEmail}</b></div>
           <button type="button" aria-label="Use a different account" onClick={() => void signOutFirebase()}><LogOut size={16} /></button>
         </div>
         <div className="onboarding-heading">
@@ -138,12 +187,26 @@ export default function SignInPanel() {
 
   return (
     <>
+      <div className="signin-method-tabs" role="tablist" aria-label="Email account action">
+        <button type="button" role="tab" aria-selected={emailMode === 'signin'} onClick={() => { setEmailMode('signin'); setError(''); }}>Sign in</button>
+        <button type="button" role="tab" aria-selected={emailMode === 'create'} onClick={() => { setEmailMode('create'); setError(''); }}>Create account</button>
+      </div>
+      <form className="signin-email-form" onSubmit={submitEmail}>
+        <label><span>Email</span><input type="email" value={email} onChange={event => setEmail(event.target.value)} autoComplete="email" placeholder="you@example.com" required /></label>
+        <label><span>Password</span><input type="password" value={password} onChange={event => setPassword(event.target.value)} autoComplete={emailMode === 'create' ? 'new-password' : 'current-password'} placeholder={emailMode === 'create' ? 'At least 6 characters' : 'Your password'} minLength={6} required /></label>
+        {emailMode === 'signin' && <button className="signin-forgot" type="button" onClick={() => void forgotPassword()} disabled={busy}>Forgot password?</button>}
+        <button className="primary signin-email-submit" disabled={busy}>
+          {busy ? 'Please wait…' : emailMode === 'create' ? 'Create account' : 'Sign in'} <ArrowRight size={18} />
+        </button>
+      </form>
+      <div className="signin-divider"><span>or</span></div>
       <button className="primary signin-google" onClick={() => void signIn()} disabled={busy}>
         <span className="google-mark">G</span>
         {busy ? 'Opening Google…' : 'Continue with Google'}
         <ArrowRight size={18} />
       </button>
       <p className="signin-access-note"><ShieldCheck size={14} /> An account is required to enter the platform.</p>
+      {notice && <p className="signin-notice" role="status">{notice}</p>}
       {error && <p className="error-text" role="alert">{error}</p>}
     </>
   );
