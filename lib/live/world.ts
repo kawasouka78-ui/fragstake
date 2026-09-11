@@ -13,6 +13,7 @@ import {
 } from '../fps/simulation.ts';
 import { parseInput, LIVE_TICK } from './protocol.ts';
 import type { Ticket, LiveMode } from './security.ts';
+import { ffaRotationRemainingSeconds } from './rotation.ts';
 
 // Reuse the tested movement, collision, slide, ammo and recoil rules on the server.
 // Every human owns one simulation. No bot AI or browser result ever runs here.
@@ -211,7 +212,7 @@ export class LiveRoom {
     if (this.status === 'waiting') {
       const enough =
         this.mode === 'ffa'
-          ? ready.length >= 2
+          ? ready.length >= 1
           : ready.length === this.capacity;
       if (enough) {
         this.status = 'playing';
@@ -235,16 +236,20 @@ export class LiveRoom {
       p.input.reload = false;
       p.input.firePressed = false;
       p.input.weapon = undefined;
-      g.time = Math.max(0, 180 - this.elapsed);
+      g.time =
+        this.mode === 'ffa'
+          ? ffaRotationRemainingSeconds()
+          : Math.max(0, 180 - this.elapsed);
     }
     this.feed = this.feed.filter((e) => e.age < 6);
     for (const e of this.feed) e.age += LIVE_TICK;
     if (
-      this.elapsed >= 180 ||
+      (this.mode !== 'ffa' && this.elapsed >= 180) ||
       (this.mode !== 'ffa' && this.score.some((n) => n >= 10))
     )
       this.finish();
-    if (![...this.players.values()].some((p) => !p.left)) this.finish();
+    if (this.mode !== 'ffa' && ![...this.players.values()].some((p) => !p.left))
+      this.finish();
   }
   finish() {
     if (this.status === 'finished') return;
@@ -387,7 +392,10 @@ export class LiveRoom {
       tick: this.tick,
       ack: p.seq,
       elapsed: this.elapsed,
-      time: Math.max(0, 180 - this.elapsed),
+      time:
+        this.mode === 'ffa'
+          ? ffaRotationRemainingSeconds()
+          : Math.max(0, 180 - this.elapsed),
       count: [...this.players.values()].filter((p) => !p.left).length,
       ready: [...this.players.values()].filter(
         (p) => p.ready && !p.left && p.connected,

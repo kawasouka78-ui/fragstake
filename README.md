@@ -32,3 +32,7 @@ npm run ops:backup
 See the [current production readiness report](docs/PRODUCTION-READINESS.md) for verified fixes and outstanding release blockers.
 
 This release is local. Regional production hosting, advanced anti-cheat and real deposits/withdrawals are not active. Legacy demo balances are not exposed or converted into real money. Crypto funding remains unavailable until the provider, network, eligibility and withdrawal integrations are configured.
+
+## Firebase
+
+Firebase config files are included for Hosting, Firestore indexes/rules and Storage rules. Read [Firebase setup](docs/FIREBASE.md) before deploying: the web shell can go to Firebase, but the live FPS WebSocket server still needs separate always-on hosting and real wallet settlement must stay server-side.

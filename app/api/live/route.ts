@@ -6,6 +6,7 @@ import { accountIdentity } from '@/lib/identity';
 import { issueTicket, type LiveMode } from '@/lib/live/security';
 import { InputError } from '@/lib/account-rules';
 import { validRoomId, type OpenRoom } from '@/lib/live/matchmaking';
+import { currentFfaMapId, nextFfaRotationAt } from '@/lib/live/rotation';
 export const dynamic = 'force-dynamic';
 const headers = { 'Cache-Control': 'no-store' };
 export async function GET() {
@@ -14,6 +15,8 @@ export async function GET() {
     players = 0,
     region = 'unavailable';
   let rooms: OpenRoom[] = [];
+  const rotationMapId = currentFfaMapId(),
+    rotationNextAt = nextFfaRotationAt();
   if (enabled)
     try {
       const health = new URL(env.LIVE_SERVER_URL!);
@@ -25,15 +28,28 @@ export async function GET() {
           players: number;
           region: string;
           openRooms?: OpenRoom[];
+          currentFfaMapId?: string;
+          nextFfaRotationAt?: number;
         };
         online = true;
         players = data.players;
         region = data.region;
-        rooms = data.openRooms ?? [];
+        rooms = (data.openRooms ?? []).filter(
+          (room) => room.mode !== 'ffa' || room.mapId === rotationMapId,
+        );
       }
     } catch {}
   return Response.json(
-    { enabled, online, players, region, rooms, paidMatches: false },
+    {
+      enabled,
+      online,
+      players,
+      region,
+      rooms,
+      paidMatches: false,
+      currentFfaMapId: rotationMapId,
+      nextFfaRotationAt: rotationNextAt,
+    },
     { headers },
   );
 }
@@ -51,9 +67,11 @@ export async function POST(request: Request) {
     const raw = await request.text();
     if (raw.length > 1024) throw new InputError('Request too large.', 413);
     const b = JSON.parse(raw);
+    const mode = b.mode as LiveMode,
+      actualMapId = mode === 'ffa' ? currentFfaMapId() : b.mapId;
     if (
       !['ffa', '1v1', '2v2'].includes(b.mode) ||
-      !['citadel', 'depot', 'underpass'].includes(b.mapId)
+      !['citadel', 'depot', 'underpass'].includes(actualMapId)
     )
       throw new InputError('Choose a valid format and map.');
     if (b.roomId !== undefined && !validRoomId(b.roomId))
@@ -72,12 +90,12 @@ export async function POST(request: Request) {
       sub: id || 'guest:' + crypto.randomUUID(),
       name: p?.name || 'Guest ' + Math.floor(1000 + Math.random() * 9000),
       guest: !id,
-      mode: b.mode as LiveMode,
-      mapId: b.mapId,
+      mode,
+      mapId: actualMapId,
       ...(b.roomId ? { roomId: b.roomId } : {}),
     });
     return Response.json(
-      { ticket, url: env.LIVE_SERVER_URL, guest: !id },
+      { ticket, url: env.LIVE_SERVER_URL, guest: !id, mapId: actualMapId },
       { headers },
     );
   } catch (e) {

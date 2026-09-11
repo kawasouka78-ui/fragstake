@@ -1,5 +1,5 @@
 import {InputError,textValue,matchSetup} from '../lib/account-rules.ts';
-import {catalog,cosmeticSlot,demoRating} from '../lib/catalog.ts';
+import {catalog,cosmeticSlot,playerRating} from '../lib/catalog.ts';
 
 export async function platformData(db:D1Database,id:string){
  const membership=await db.prepare("SELECT p.* FROM parties p JOIN party_members m ON m.party_id=p.id WHERE m.player_id=? AND m.status='joined'").bind(id).first<{id:string;owner_id:string;name:string}>();
@@ -11,7 +11,7 @@ export async function platformData(db:D1Database,id:string){
   db.prepare('SELECT * FROM reports WHERE player_id=? ORDER BY created_at DESC LIMIT 30').bind(id).all(),
   db.prepare("SELECT mode,COUNT(*) AS matches,SUM(won) AS wins,SUM(kills) AS kills,SUM(deaths) AS deaths,SUM(delta) AS net FROM matches WHERE player_id=? AND status='completed' GROUP BY mode").bind(id).all<{mode:string;matches:number;wins:number;kills:number;deaths:number;net:number}>()
  ]);
- return {party:membership?{...membership,members:members.results}:null,invites:invites.results,challenges:challengeRows.results,inventory:items.results,reports:cases.results,ratings:ratings.results.map(r=>({...r,...demoRating(r.wins,r.matches)})),catalog};
+ return {party:membership?{...membership,members:members.results}:null,invites:invites.results,challenges:challengeRows.results,inventory:items.results,reports:cases.results,ratings:ratings.results.map(r=>({...r,...playerRating(r.wins,r.matches)})),catalog};
 }
 export async function platformMutation(db:D1Database,id:string,b:Record<string,unknown>){
  const action=String(b.action),now=Date.now();
@@ -46,7 +46,7 @@ export async function platformMutation(db:D1Database,id:string,b:Record<string,u
     db.prepare("INSERT INTO transactions(id,player_id,kind,amount,label,created_at) SELECT ?,?,'cosmetic',?,?,? FROM inventory WHERE id=?").bind(key,id,-item.price,item.name+' cosmetic',now,key),
     db.prepare('UPDATE players SET balance=balance-? WHERE id=? AND EXISTS(SELECT 1 FROM inventory WHERE id=?)').bind(item.price,id,key)
    ]);
-   if(!await db.prepare('SELECT id FROM inventory WHERE id=?').bind(key).first())throw new InputError('Add enough demo credits in your wallet first.',409);
+   if(!await db.prepare('SELECT id FROM inventory WHERE id=?').bind(key).first())throw new InputError('Add enough funds in your wallet first.',409);
   }
  }else if(action==='inventory_equip'){
   const sku=String(b.sku||''),item=catalog.find(item=>item.sku===sku);
@@ -66,3 +66,4 @@ export async function platformMutation(db:D1Database,id:string,b:Record<string,u
  }else return false;
  return true;
 }
+

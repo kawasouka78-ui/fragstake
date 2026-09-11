@@ -1,6 +1,6 @@
 /** Only call behind Sites dispatch (or its local plugin), which owns these headers.
  * Some existing private dispatch sessions forward a verified email without the
- * newer per-site subject ID. Keep those demo accounts isolated in a namespace;
+ * newer per-site subject ID. Keep those legacy accounts isolated in a namespace;
  * never accept identity from request bodies, query strings or ordinary headers.
  * A later subject ID remains authoritative; email accounts are not auto-merged.
  */

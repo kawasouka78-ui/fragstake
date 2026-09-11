@@ -29,6 +29,7 @@ export class ArenaAudio {
   private lastEnemy = -Infinity;
   private lastHurt = -Infinity;
   private lastStep = -Infinity;
+  private lastOpponentStep = -Infinity;
   private readonly level = .34;
 
   unlock() {
@@ -96,7 +97,7 @@ export class ArenaAudio {
   }
 
   private resetGates() {
-    this.lastHit = this.lastHead = this.lastKill = this.lastEnemy = this.lastHurt = this.lastStep = -Infinity;
+    this.lastHit = this.lastHead = this.lastKill = this.lastEnemy = this.lastHurt = this.lastStep = this.lastOpponentStep = -Infinity;
   }
 
   private retire(voice: Voice, time: number) {
@@ -192,13 +193,16 @@ export class ArenaAudio {
       const distance = Number.isFinite(event.distance) ? event.distance! : 20;
       const attenuation = Math.max(0, 1 - Math.max(0, distance) / 30) ** 1.5;
       if (attenuation < .025) return;
-      this.note('enemy', 125, 49, .082, .21 * attenuation, 'triangle');
-      this.burst('enemy', 1150, .055, .22 * attenuation);
+      const sound = SHOTS[event.weapon ?? 'rifle'] ?? SHOTS.rifle;
+      this.note('enemy', sound.body * .85, sound.end, sound.length, sound.weight * .5 * attenuation, 'triangle');
+      this.burst('enemy', sound.crack * .6, .055, .22 * attenuation);
     } else if (event.kind === 'footstep') {
-      if (t - this.lastStep < .13) return;
-      this.lastStep = t;
-      this.note('step', 83, 39, .058, .075);
-      this.burst('step', 340, .04, .05, 'lowpass');
+      const opponent = event.distance !== undefined;
+      if (t - (opponent ? this.lastOpponentStep : this.lastStep) < (opponent ? .075 : .13)) return;
+      if (opponent) this.lastOpponentStep = t; else this.lastStep = t;
+      const attenuation = opponent ? Math.max(0, 1 - event.distance! / 16) ** 1.5 : 1;
+      this.note('step', 83, 39, .058, .075 * attenuation);
+      this.burst('step', 340, .04, .05 * attenuation, 'lowpass');
     } else if (event.kind === 'hit') {
       // Pellet hits in one shot share one tick; a later head hit can still upgrade it.
       if (t - this.lastKill < .075) return;

@@ -1,0 +1,184 @@
+.landing-header {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 5%;
+  color: #edf0f4;
+}
+.landing-header-row {
+  display: flex;
+  align-items: center;
+  gap: 44px;
+  min-height: 88px;
+  border-bottom: 1px solid #ffffff16;
+}
+.landing-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+.landing-brand-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 5px 9px 5px 9px;
+  background: #ff875d;
+  color: #241710;
+}
+.landing-wordmark > span:last-child {
+  font:
+    800 italic 29px/1 var(--font-display),
+    sans-serif;
+  letter-spacing: -0.4px;
+  white-space: nowrap;
+}
+.landing-wordmark em {
+  font-style: inherit;
+  color: #ff875d;
+}
+.landing-desktop-nav {
+  display: flex;
+  align-items: center;
+  gap: 27px;
+}
+.landing-desktop-nav a,
+.landing-account-link {
+  font-size: 13px;
+  font-weight: 500;
+  color: #aeb5c1;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 140ms;
+}
+.landing-desktop-nav a:hover,
+.landing-account-link:hover {
+  color: #fff;
+}
+.landing-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-left: auto;
+}
+.landing-play-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 17px;
+  min-height: 40px;
+  padding: 9px 16px;
+  background: #ff875d;
+  color: #241710;
+  border: 1px solid #ff875d;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 140ms;
+}
+.landing-play-link:hover {
+  background: #ffa17e;
+  border-color: #ffa17e;
+}
+.landing-menu-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #343940;
+  border-radius: 6px;
+  background: transparent;
+  color: #d0d6df;
+  cursor: pointer;
+}
+.landing-mobile-nav {
+  display: none;
+}
+.landing-header :is(a, button):focus-visible {
+  outline: 2px solid #ffc2a9;
+  outline-offset: 4px;
+}
+.launch-site:has(.landing-header) .launch-hero {
+  border-top: 0;
+}
+.launch-site #how-to-play {
+  scroll-margin-top: 24px;
+}
+@media (max-width: 800px) {
+  .landing-header {
+    padding: 0 6%;
+  }
+  .landing-header-row {
+    min-height: 76px;
+    gap: 16px;
+  }
+  .landing-desktop-nav,
+  .landing-account-link {
+    display: none;
+  }
+  .landing-header-actions {
+    gap: 9px;
+  }
+  .landing-menu-toggle {
+    display: flex;
+  }
+  .landing-mobile-nav:not([hidden]) {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 0 15px;
+    border-bottom: 1px solid #ffffff16;
+  }
+  .landing-mobile-nav a {
+    display: block;
+    padding: 14px 8px;
+    font-size: 14px;
+    color: #bac2cf;
+  }
+  .landing-mobile-nav a:hover {
+    background: #ffffff06;
+    color: white;
+    border-radius: 6px;
+  }
+  .landing-wordmark > span:last-child {
+    font-size: 25px;
+  }
+  .landing-brand-icon {
+    width: 30px;
+    height: 30px;
+  }
+  .landing-brand-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+@media (max-width: 380px) {
+  .landing-header {
+    padding: 0 4%;
+  }
+  .landing-wordmark {
+    gap: 6px;
+  }
+  .landing-wordmark > span:last-child {
+    font-size: 22px;
+  }
+  .landing-brand-icon {
+    width: 27px;
+    height: 27px;
+  }
+  .landing-play-link {
+    padding: 9px 12px;
+    gap: 8px;
+  }
+  .landing-play-link svg {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-header :is(a, button) {
+    transition: none;
+  }
+}

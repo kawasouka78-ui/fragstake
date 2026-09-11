@@ -31,7 +31,7 @@ body .site-shell .page-heading{margin-bottom:22px;gap:14px}
 body .site-shell .page-heading h1{font-size:clamp(30px,3vw,40px);letter-spacing:.1px;margin-top:8px;line-height:1}
 body .site-shell .page-heading .eyebrow{font-size:10px;letter-spacing:1.7px;color:#8290a3}
 body .site-shell .account-subtitle{font-size:13px;color:var(--fs-muted);line-height:1.55;margin-top:8px}
-body .site-shell .page-heading>.demo-badge{border-color:#ffffff14;color:#8995a5;background:#ffffff03;font-size:9px;letter-spacing:.8px}
+body .site-shell .page-heading>.status-badge{border-color:#ffffff14;color:#8995a5;background:#ffffff03;font-size:9px;letter-spacing:.8px}
 body :is(.site-shell,.fps-shell) .primary,body .sc-dialog .primary{background:#ff7849;color:#1b110d;border:1px solid #ff936b;border-radius:7px;box-shadow:inset 0 1px #ffffff25,0 4px 14px #ff784910;font-size:13px;font-weight:750;min-height:42px;padding:11px 17px;transition:background .2s,box-shadow .25s,transform .25s var(--fs-ease)}
 body :is(.site-shell,.fps-shell) .secondary,body .sc-dialog .secondary{background:#ffffff04;border:1px solid #ffffff1c;color:#c3cbd7;border-radius:7px;min-height:38px;padding:9px 13px;box-shadow:inset 0 1px #ffffff03;font-size:12px;transition:background .2s,border-color .2s,color .2s,transform .25s var(--fs-ease)}
 body .site-shell .compact{min-height:32px;padding:7px 12px;font-size:12px!important}
@@ -255,7 +255,7 @@ body .fps-shell .deployment-location{background:#1b2430;border-color:#ffffff14}
  body .site-shell .main{padding:18px 14px 0}
  body .site-shell .page-heading{margin-bottom:18px;align-items:center}
  body .site-shell .page-heading h1{font-size:31px}
- body .site-shell .page-heading>.demo-badge{display:none}
+ body .site-shell .page-heading>.status-badge{display:none}
  body .site-shell .page-heading>.secondary{min-height:36px;padding:8px;font-size:11px}
  body .site-shell .page-heading>a.secondary[href='/']{display:none}
  body .site-shell .leader-banner{padding:17px}

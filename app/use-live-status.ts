@@ -6,10 +6,12 @@ export type LiveStatus = {
   players: number;
   region: string;
   rooms: OpenRoom[];
+  currentFfaMapId?: string;
+  nextFfaRotationAt?: number;
 };
 export function useLiveStatus(enabled: boolean) {
   const [status, setStatus] = useState<LiveStatus | null>(null),
-    [checking, setChecking] = useState(false);
+    [checking, setChecking] = useState(true);
   const refresh = useCallback(async (signal?: AbortSignal) => {
     setChecking(true);
     try {

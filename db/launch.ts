@@ -2,7 +2,7 @@ import type {Player} from './service.ts';
 import {InputError} from '../lib/account-rules.ts';
 export function allowLaunchMutation(action:unknown){
  if(typeof action!=='string')throw new InputError('Choose an action.');
- if(['topup','match_start','match_finish','shop_buy'].includes(action)||action.startsWith('lobby_')||action.startsWith('challenge_'))throw new InputError('This feature is not available. Join a free player match from Play.',403);
+ if(['topup','match_start','match_finish','shop_buy'].includes(action))throw new InputError('This feature is not available. Join a player match from Play.',403);
 }
 export async function ensureLaunchPlayer(db:D1Database,id:string){
  const now=Date.now();

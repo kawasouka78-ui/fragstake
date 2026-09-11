@@ -13,6 +13,6 @@ export default function PausedSession({game,config}:{game:Simulation;config:Matc
    <dl className="paused-session-stats">{[['Kills',stats.kills],['Deaths',stats.deaths],['K/D',(stats.kills/Math.max(1,stats.deaths)).toFixed(2)],['Headshots',stats.headshots],['Best streak',stats.maxStreak],['Time played',matchDuration(game.elapsed)]].map(([label,value])=><div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
   </div>
   {config.mode==='ffa'&&game.player.hp<=0&&<p className="paused-death"><Skull size={15}/> Last death <b>{signedEuros(-game.lastDeathLoss)}</b> · Included in your total. You can cash out now.</p>}
-  {config.mode==='duel'&&<p className="paused-forfeit">Leaving forfeits your €{(config.stake??10).toFixed(2)} demo stake. Resume to finish the duel.</p>}
+  {config.mode==='duel'&&<p className="paused-forfeit">Leaving forfeits your €{(config.stake??10).toFixed(2)} stake. Resume to finish the duel.</p>}
  </section>;
 }

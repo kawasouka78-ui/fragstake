@@ -1,75 +1,1072 @@
 'use client';
-import {useEffect,useRef,useState,type PointerEvent as ReactPointerEvent,type CSSProperties} from 'react';
-import {Crosshair,Shield,Heart,ChevronUp,Target,RotateCw,Skull,MoveUpRight} from 'lucide-react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type CSSProperties,
+} from 'react';
+import {
+  Crosshair,
+  Shield,
+  Heart,
+  ChevronUp,
+  Target,
+  RotateCw,
+  Skull,
+  MoveUpRight,
+} from 'lucide-react';
 import ArenaMenu from './arena-menu';
-import LiveRoster from './live-roster';
-import {NetworkSimulation} from '@/lib/live/client';
+import { NetworkSimulation } from '@/lib/live/client';
 
-import {Simulation,idleInput,weapons,type Controls} from '@/lib/fps/simulation';
-import {getMap} from '@/lib/fps/maps';
-import {ArenaAudio} from '@/lib/fps/audio';
-import type {ArenaRenderer} from '@/lib/fps/renderer';
-import type {MatchConfig,Result} from '@/lib/game-rules';
+import {
+  Simulation,
+  idleInput,
+  type Controls,
+} from '@/lib/fps/simulation';
+import { getMap } from '@/lib/fps/maps';
+import { ArenaAudio } from '@/lib/fps/audio';
+import type { ArenaRenderer } from '@/lib/fps/renderer';
+import type { MatchConfig, Result } from '@/lib/game-rules';
 import './arena.css';
-import {MouseLook} from '@/lib/fps/mouse-look';
-type Runtime={game:Simulation;view:ArenaRenderer;audio:ArenaAudio;paused:boolean;input:Controls;keys:Set<string>;finish:()=>void;pause:()=>void;resetClock:()=>void};
-type Preferences={sensitivity:number;fov:number;quality:string;muted:boolean};
-const defaults:Preferences={sensitivity:1,fov:80,quality:'high',muted:false};
-export default function Arena({config,onFinish}:{config:MatchConfig;onFinish:(result:Result)=>void}){
- const canvas=useRef<HTMLCanvasElement>(null),shell=useRef<HTMLDivElement>(null),runtime=useRef<Runtime|null>(null),finishRef=useRef(onFinish),prefsRef=useRef(defaults),mouseLook=useRef(new MouseLook());
- const [ready,setReady]=useState(false),[paused,setPaused]=useState(true),[error,setError]=useState(''),[settings,setSettings]=useState(false),[scores,setScores]=useState(false),[locked,setLocked]=useState(false),[prefs,setPrefs]=useState(defaults),[,redraw]=useState(0);
- const map=getMap(config.mapId);finishRef.current=onFinish;
- useEffect(()=>{try{const saved=JSON.parse(localStorage.getItem('skillclash-controls')??'{}');const next={sensitivity:Math.max(.3,Math.min(2.5,Number(saved.sensitivity)||1)),fov:Math.max(65,Math.min(100,Number(saved.fov)||80)),quality:saved.quality==='low'?'low':'high',muted:saved.muted===true};setPrefs(next);prefsRef.current=next;}catch{}},[]);
- function preference(next:Partial<Preferences>){const updated={...prefsRef.current,...next};prefsRef.current=updated;setPrefs(updated);runtime.current?.audio.volume(updated.muted);try{localStorage.setItem('skillclash-controls',JSON.stringify(updated));}catch{}}
- useEffect(()=>{
-  let disposed=false,frame=0,observer:ResizeObserver|undefined,cleanup=()=>{};
-  async function init(){try{
-   const {ArenaRenderer}=await import('@/lib/fps/renderer');if(disposed||!canvas.current)return;
-   const element=canvas.current,game=config.live?new NetworkSimulation(config):new Simulation(config);if(game instanceof NetworkSimulation){cleanup=()=>game.dispose();await game.connect();if(disposed){game.dispose();return;}}const view=new ArenaRenderer(element,game),audio=new ArenaAudio();cleanup=()=>{view.dispose();audio.dispose();};if(disposed)return;let sent=false,previous=performance.now(),accumulator=0,lastUI=0;
-   function finish(){if(sent||!game.result)return;sent=true;if(document.pointerLockElement===element)document.exitPointerLock();if(document.fullscreenElement===shell.current)void document.exitFullscreen().catch(()=>{});finishRef.current(game.result);}
-   function pause(){const current=runtime.current;if(!current||game.ended)return;current.paused=true;game.pause();setSettings(false);current.input=idleInput();current.keys.clear();mouseLook.current.reset();setPaused(true);setScores(false);if(document.pointerLockElement===element)document.exitPointerLock();}
-   const state:Runtime={game,view,audio,paused:true,input:idleInput(),keys:new Set(),finish,pause,resetClock:()=>{previous=performance.now();accumulator=0;}};runtime.current=state;
-   const resize=()=>{const rect=element.getBoundingClientRect();view.resize(Math.max(1,rect.width),Math.max(1,rect.height));};observer=new ResizeObserver(resize);observer.observe(element);resize();
-   const keydown=(event:KeyboardEvent)=>{if(event.code==='Escape'){event.preventDefault();if(!event.repeat)pause();return;}if(event.code==='KeyP'){pause();return;}if(state.paused)return;if(['Space','Tab','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(event.code))event.preventDefault();state.keys.add(event.code);if(event.code==='KeyF'&&!event.repeat)state.input.firePressed=true;if(event.code==='Tab')setScores(true);if(event.code==='KeyR')state.input.reload=true;if(event.code==='KeyV'&&!event.repeat)view.inspect();if(!event.repeat&&event.code==='Space')state.input.jump=true;if(!event.repeat&&event.code==='KeyC')state.input.slide=true;if(event.code==='KeyX'&&config.mode==='ffa'){game.cashOut();finish();}const index=['Digit1','Digit2'].indexOf(event.code);if(index>=0)state.input.weapon=state.game.switchWeapons[index];};
-   const keyup=(event:KeyboardEvent)=>{state.keys.delete(event.code);if(event.code==='Tab')setScores(false);};
-   const move=(event:MouseEvent)=>{if(state.paused)return;const captured=document.pointerLockElement===element;const delta=captured?{x:event.movementX,y:event.movementY}:event.target===element?mouseLook.current.move(event.clientX,event.clientY,element.getBoundingClientRect()):{x:0,y:0};if(!captured&&event.target!==element)mouseLook.current.reset();const scale=.002*prefsRef.current.sensitivity*(game.aim>.5?.7:1);game.look(delta.x*scale,delta.y*scale);};
-   const down=(event:MouseEvent)=>{if(state.paused||event.target!==element)return;if(event.button===0){state.input.fire=true;state.input.firePressed=true;captureMouse();}if(event.button===2)state.input.aim=true;};
-   const up=(event:MouseEvent)=>{if(event.button===0){state.input.fire=false;mouseLook.current.reset();}if(event.button===2)state.input.aim=false;};
-   let hadLock=false;const lockChange=()=>{const isLocked=document.pointerLockElement===element;const released=hadLock&&!isLocked;hadLock=isLocked;mouseLook.current.reset();setLocked(isLocked);if(released&&!state.paused)pause();};const lockError=()=>{setLocked(false);mouseLook.current.reset();};const mouseLeave=()=>mouseLook.current.reset();
-   const visibility=()=>{if(document.hidden)pause();};const contextLost=(event:Event)=>{event.preventDefault();pause();setError('The graphics connection was interrupted. Leave this match and reopen the arena to continue.');};
-   window.addEventListener('keydown',keydown);window.addEventListener('keyup',keyup);window.addEventListener('mousemove',move);window.addEventListener('mousedown',down);window.addEventListener('mouseup',up);window.addEventListener('blur',pause);document.addEventListener('pointerlockchange',lockChange);document.addEventListener('pointerlockerror',lockError);element.addEventListener('mouseleave',mouseLeave);document.addEventListener('visibilitychange',visibility);element.addEventListener('webglcontextlost',contextLost);
-   function animate(now:number){if(disposed)return;const dt=Math.min(.1,(now-previous)/1000);previous=now;view.fov=prefsRef.current.fov;view.setQuality(prefsRef.current.quality);
-    if(!state.paused&&!game.ended){accumulator=Math.min(.1,accumulator+dt);while(accumulator>=1/60&&!game.ended){const keys=state.keys;const input={...state.input,forward:state.input.forward+Number(keys.has('KeyW'))-Number(keys.has('KeyS')),right:state.input.right+Number(keys.has('KeyD'))-Number(keys.has('KeyA')),jump:state.input.jump||keys.has('Space'),sprint:state.input.sprint||keys.has('ShiftLeft')||keys.has('ShiftRight'),crouch:state.input.crouch||keys.has('ControlLeft')||keys.has('ControlRight'),fire:state.input.fire||keys.has('KeyF')};game.look((Number(keys.has('ArrowRight'))-Number(keys.has('ArrowLeft')))*.025,(Number(keys.has('ArrowDown'))-Number(keys.has('ArrowUp')))*.02);if(document.pointerLockElement!==element&&mouseLook.current.edge)game.look(mouseLook.current.edge*.025*prefsRef.current.sensitivity*(game.aim>.5?.7:1),0);game.step(1/60,input);state.input.reload=false;state.input.firePressed=false;state.input.jump=false;state.input.slide=false;state.input.weapon=undefined;accumulator-=1/60;}}else accumulator=0;
-    if(game instanceof NetworkSimulation)game.updateView(dt);for(const event of game.events){audio.play(event);if(event.kind==='shot')view.shot();}game.events=[];try{view.render(state.paused?0:dt);}catch(renderError){console.error('Arena rendering failed',renderError);pause();setError('The arena stopped rendering. Cancel this match and reopen it to try again.');return;}if(now-lastUI>80){redraw(n=>n+1);lastUI=now;}if(game.ended){finish();return;}frame=requestAnimationFrame(animate);
-   }
-   cleanup=()=>{window.removeEventListener('keydown',keydown);window.removeEventListener('keyup',keyup);window.removeEventListener('mousemove',move);window.removeEventListener('mousedown',down);window.removeEventListener('mouseup',up);window.removeEventListener('blur',pause);document.removeEventListener('pointerlockchange',lockChange);document.removeEventListener('pointerlockerror',lockError);element.removeEventListener('mouseleave',mouseLeave);document.removeEventListener('visibilitychange',visibility);element.removeEventListener('webglcontextlost',contextLost);if(document.pointerLockElement===element)document.exitPointerLock();view.dispose();audio.dispose();if(game instanceof NetworkSimulation)game.dispose();runtime.current=null;};setReady(true);frame=requestAnimationFrame(animate);
-  }catch(initError){console.error('Arena startup failed',initError);if(!disposed)setError(config.live?(initError as Error).message:'The arena could not start. Reopen it in a desktop browser with WebGL 2 and hardware acceleration enabled. Your unplayed match can be cancelled below.');}}
-  void init();return()=>{disposed=true;cancelAnimationFrame(frame);observer?.disconnect();cleanup();};
- },[config]);
- function captureMouse(){if(window.matchMedia('(pointer: coarse)').matches||document.pointerLockElement===canvas.current)return;try{canvas.current?.requestPointerLock()?.catch(()=>setLocked(false));}catch{setLocked(false);}}
- function resume(){const state=runtime.current;if(!state||error)return;state.audio.volume(prefsRef.current.muted);state.audio.unlock();state.game.start();state.resetClock();state.game.slideHeld=false;state.game.jumpHeld=false;state.paused=false;state.input=idleInput();state.keys.clear();setPaused(false);setSettings(false);mouseLook.current.reset();canvas.current?.focus();captureMouse();}
- function leave(){const state=runtime.current;if(state){state.game.leave();state.finish();}else finishRef.current({kills:0,deaths:0,balance:config.balance+(config.mode==='duel'?(config.stake??10):config.entry??0),reason:'Match cancelled',won:false,score:0,enemyScore:0});}
- function hold(key:'fire'|'aim'|'sprint'|'crouch'|'jump'|'slide',value:boolean){if(runtime.current&&(value||!['jump','slide'].includes(key))){runtime.current.input[key]=value;if(key==='fire'&&value)runtime.current.input.firePressed=true;}}
- function touchButton(key:'fire'|'sprint'|'crouch'|'jump'|'slide'){return {onPointerDown:(e:ReactPointerEvent<HTMLButtonElement>)=>{e.preventDefault();e.currentTarget.setPointerCapture(e.pointerId);hold(key,true);},onPointerUp:()=>hold(key,false),onPointerCancel:()=>hold(key,false),onLostPointerCapture:()=>hold(key,false)};}
- const duelHud=config.mode==='duel'||!!config.live&&config.live.mode!=='ffa';
- const game=runtime.current?.game,p=game?.player,gun=game?.gun,zone=p?[...map.landmarks].sort((a,b)=>Math.hypot(a.x-p.x,a.z-p.z)-Math.hypot(b.x-p.x,b.z-p.z))[0]?.label:map.name,clock=game?`${Math.floor(game.time/60)}:${String(Math.floor(game.time%60)).padStart(2,'0')}`:'3:00';
- return <div className="fps-shell" ref={shell}>
-  <div className="fps-viewport"><canvas ref={canvas} className="fps-canvas" tabIndex={0} aria-label="3D FPS arena. WASD to move, mouse to aim, left click to fire, Escape to pause and choose weapons." onContextMenu={e=>e.preventDefault()}/><div className="fps-vignette"/>{game instanceof NetworkSimulation&&<div className="live-game-status" role="status">{game.status}{game.ping>0&&` · ${game.ping} ms`}</div>}
-   {ready&&game&&p&&!paused&&<>
-    <div className="fps-damage" style={{opacity:game.hurt}}/>
-    <div className="fps-top-hud"><div className="fps-radar"><svg viewBox={`${-map.width/2-1} ${-map.depth/2-1} ${map.width+2} ${map.depth+2}`} aria-label="Arena minimap: player, allies and pickups"><rect x={-map.width/2} y={-map.depth/2} width={map.width} height={map.depth} fill="#101b21"/>{map.walls.map((b,i)=><rect key={i} x={b.x-b.w/2} y={b.z-b.d/2} width={b.w} height={b.d} fill={b.h<1.5?'#677479':'#374951'}/>)}{game.pickups.filter(a=>a.ready<=0).map((a,i)=><circle key={'p'+i} cx={a.x} cy={a.z} r=".65" fill={a.kind==='health'?'#72e6b7':'#7dbbff'}/>)}{game.actors.filter(a=>a.hp>0&&a.team===p.team).map(a=><g key={a.id} transform={`translate(${a.x} ${a.z}) rotate(${-a.yaw*180/Math.PI})`}><path d="M 0 -1.6 L 1.1 1.1 L 0 .6 L -1.1 1.1 Z" fill={a.id===0?'#ffffff':'#65dfff'}/></g>)}</svg><span>{zone?.toUpperCase()}</span></div><div className="fps-clock"><small>{config.live&&config.live.mode!=='ffa'?'FIRST TO 10':config.mode==='duel'?(config.bestOf===3?'BEST OF 3 · ROUND '+(game.score+game.enemyScore+1):'FIRST TO '+(config.target??5)):'TIME REMAINING'}</small><div>{duelHud&&<b className="ally">{game.score}</b>}{config.bestOf===3&&<small>{game.roundScore} : {game.roundEnemyScore} / {config.target??5}</small>}<strong className={game.time<30?'urgent':''}>{clock}</strong>{duelHud&&<b className="enemy">{game.enemyScore}</b>}</div></div><div className="fps-feed">{game.feed.map(f=><div key={f.id} className={f.you?'involved':''}><b>{f.killer}</b>{f.head?<Target size={13}/>:<Crosshair size={13}/>}<span>{f.victim}</span></div>)}</div></div>
-    {p.hp>0?<><div className={'fps-crosshair '+(game.aim>.5?'aiming':'')} style={{'--gap':`${5+game.bloom*90+(game.sprinting?10:0)}px`} as CSSProperties}><i/><i/><i/><i/><span/></div>{game.hitMarker>0&&<div className={'fps-hitmarker '+(game.headMarker?'head':'')}>×</div>}{game.killConfirm&&<div key={game.killConfirm.id} className={'fps-kill-confirm '+(game.killConfirm.head?'head':'')} role="status"><Skull size={19}/><span><small>{game.killConfirm.head?'HEADSHOT':'ELIMINATED'}</small><b>{game.killConfirm.victim}</b></span>{config.mode==='ffa'&&<strong>+€{config.rate}</strong>}</div>}{game.hurt>0&&<div className="fps-hit-direction" style={{transform:`translate(-50%,-50%) rotate(${-game.hurtAngle*180/Math.PI}deg)`}}><span/></div>}{p.shield>0&&<div className="fps-protection"><Shield size={14}/> SPAWN PROTECTION · {p.shield.toFixed(1)}s</div>}{game.combo>=2&&<div className="fps-streak">{game.combo} ELIMINATION STREAK</div>}</>:<div className="fps-respawn"><Skull size={28}/><small>ELIMINATED</small>{config.mode==='ffa'&&<strong className="fps-death-cost">−€{game.lastDeathLoss.toFixed(2)}<small>DEMO CREDITS</small></strong>}<h2>BACK IN {Math.max(1,Math.ceil(p.respawn))}</h2><p>Finding a safer spawn…</p></div>}
-    {game.reloadLeft>0&&<div className="fps-reloading">RELOADING <span>{game.reloadLeft.toFixed(1)}s</span><div><i style={{width:`${(1-game.reloadLeft/game.gun.reload)*100}%`}}/></div></div>}
-    <div className="fps-bottom-hud"><div className="fps-vitals"><div className={p.hp<30?'urgent':''}><Heart size={23}/><strong>{Math.ceil(p.hp)}</strong><span>HEALTH</span></div><div className="fps-health-track"><i style={{width:p.hp+'%',background:p.hp<30?'#ff6d5b':undefined}}/></div><div className={"fps-stamina"+(game.sprintExhausted?" exhausted":"")} aria-label={game.sprintExhausted?"Sprint recovering":"Sprint stamina"}><i style={{width:game.stamina+'%'}}/></div><small>{game.sliding?'SLIDING':p.crouch?'CROUCHED':game.sprinting?'SPRINTING':game.sprintExhausted?'SPRINT RECOVERING · '+game.sprintRecoveryWait.toFixed(1)+'s':game.elapsed-p.lastDamage<7&&p.hp<100?'HEALING AFTER 7s OUT OF COMBAT':'READY'}</small></div><div className="fps-round-stats">{config.mode==='ffa'&&<button className="secondary compact" disabled={game.cashOutWait>0||p.hp<=0} onClick={()=>{game.cashOut();runtime.current?.finish();}}>{game.cashOutWait>0?'CASH OUT IN '+Math.ceil(game.cashOutWait)+'s':config.entry?'CASH OUT €'+game.balance.toFixed(2)+' · X':'CASH OUT · X'}</button>}<span><b>{p.kills}</b> KILLS <i/> <b>{p.deaths}</b> DEATHS</span>{config.mode==='ffa'?<strong>€{game.balance.toFixed(2)} <small>DEMO</small></strong>:<small>{config.live?'FREE LIVE MATCH':config.mode==='duel'?'WINNING TEAM · €'+((config.stake??10)*2)+' EACH':'PRACTICE · NO STAKES'}</small>}</div><div className="fps-ammo"><small>{gun?.type}</small><div>{game.weapon==='knife'?<strong>∞</strong>:<><strong className={game.ammo[game.weapon]<6?'urgent':''}>{game.ammo[game.weapon]}</strong><span>/ {game.reserve[game.weapon]}</span></>}</div><b>{game.weapon==='knife'&&config.knifeStyle==='karambit'?'KARAMBIT':gun?.name}</b><span className="fps-reload-hint">{game.weapon==='knife'?'HOLD CLICK — SLASH · V INSPECT':game.ammo[game.weapon]===0?'R — RELOAD':gun?.auto?'FULL AUTO · 1':'SEMI AUTO · 1'}</span></div></div>
-    <div className="fps-mobile"><TouchPad kind="move" label="Move" onMove={(x,y)=>{if(runtime.current){runtime.current.input.right=x;runtime.current.input.forward=-y;}}}/><TouchPad kind="look" label="Look" onMove={(x,y)=>game.look(x*.004*prefs.sensitivity,y*.004*prefs.sensitivity)}/><div className="fps-mobile-actions"><button className="fps-weapon-toggle" aria-label={game.weapon==='knife'?'Switch to gun':'Switch to knife'} onClick={()=>{if(runtime.current)runtime.current.input.weapon=game.weapon==='knife'?game.matchWeapon:'knife';}}>{game.weapon==='knife'?'GUN':'KNIFE'}</button><button aria-label="Jump" {...touchButton('jump')}><ChevronUp/></button><button aria-label="Sprint" {...touchButton('sprint')}><MoveUpRight/></button><button aria-label="Crouch" {...touchButton('crouch')}>LOW</button><button aria-label="Slide" className="fps-slide-touch" {...touchButton('slide')}>SLIDE</button><button aria-label="Aim" aria-pressed={game.aim>.5} onClick={()=>hold('aim',!runtime.current?.input.aim)}><Target/></button><button aria-label="Reload" onClick={()=>{if(runtime.current)runtime.current.input.reload=true;}}><RotateCw/></button><button className="fps-fire" aria-label="Fire" {...touchButton('fire')}><Crosshair/></button></div></div>{!locked&&<div className="fps-drag-tip">Move mouse to look · Hold cursor at either edge to keep turning · Click to fire · P to pause</div>}
-   </>}
-   {!paused&&game instanceof NetworkSimulation&&game.latest?.status==='waiting'&&<div className="fps-waiting-room"><span className="eyebrow">YOU’RE READY</span><h2>WAITING FOR OPPONENTS</h2><p>The round starts automatically when enough players are ready.</p><LiveRoster game={game}/><button className="secondary" onClick={()=>runtime.current?.pause()}>Change loadout</button></div>}
-   {scores&&!paused&&game&&<div className="fps-scoreboard"><div><small>LIVE MATCH</small><h2>SCOREBOARD</h2></div><table><thead><tr><th>PLAYER</th><th>KILLS</th><th>DEATHS</th><th>K/D</th></tr></thead><tbody>{[...(game instanceof NetworkSimulation?game.latest?.actors??[]:game.actors)].sort((a,b)=>b.kills-a.kills||a.deaths-b.deaths).map(a=><tr key={a.id} className={a.id===0?'is-you':a.team===p?.team?'is-ally':''}><td>{a.name}<small>{a.id===0?'YOU':config.live?(a.team===p?.team?'ALLY':'PLAYER'):a.team===p?.team?'ALLY · BOT':'BOT'}</small></td><td>{a.kills}</td><td>{a.deaths}</td><td>{(a.kills/Math.max(1,a.deaths)).toFixed(1)}</td></tr>)}</tbody></table><span>Hold TAB to view</span></div>}
-   {(paused||!ready||error)&&<ArenaMenu game={game} config={config} map={map} ready={ready} error={error} settings={settings} prefs={prefs} setSettings={setSettings} preference={preference} select={id=>{game?.switchWeapon(id);redraw(n=>n+1);}} resume={resume} leave={leave} cashOut={()=>{game?.cashOut();runtime.current?.finish();}}/>}
-  </div>
- </div>;
+import { MouseLook } from '@/lib/fps/mouse-look';
+type Runtime = {
+  game: Simulation;
+  view: ArenaRenderer;
+  audio: ArenaAudio;
+  paused: boolean;
+  input: Controls;
+  keys: Set<string>;
+  finish: () => void;
+  pause: () => void;
+  resetClock: () => void;
+};
+type Preferences = {
+  sensitivity: number;
+  fov: number;
+  quality: string;
+  muted: boolean;
+  crosshair?: string;
+  hitmarker?: boolean;
+  hudScale?: number;
+  weaponBob?: string;
+  announcer?: boolean;
+  motion?: string;
+};
+const defaults: Preferences = {
+  sensitivity: 1,
+  fov: 80,
+  quality: 'high',
+  muted: false,
+  crosshair: 'classic',
+  hitmarker: true,
+  hudScale: 100,
+  weaponBob: 'medium',
+  announcer: true,
+  motion: 'full',
+};
+export default function Arena({
+  config,
+  onFinish,
+}: {
+  config: MatchConfig;
+  onFinish: (result: Result) => void;
+}) {
+  const canvas = useRef<HTMLCanvasElement>(null),
+    shell = useRef<HTMLDivElement>(null),
+    runtime = useRef<Runtime | null>(null),
+    finishRef = useRef(onFinish),
+    prefsRef = useRef(defaults),
+    mouseLook = useRef(new MouseLook());
+  const [ready, setReady] = useState(false),
+    [paused, setPaused] = useState(true),
+    [error, setError] = useState(''),
+    [settings, setSettings] = useState(false),
+    [scores, setScores] = useState(false),
+    [locked, setLocked] = useState(false),
+    [prefs, setPrefs] = useState(defaults),
+    [, redraw] = useState(0);
+  const map = getMap(config.mapId);
+  finishRef.current = onFinish;
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(
+        localStorage.getItem('skillclash-controls') ?? '{}',
+      );
+      const next = {
+        sensitivity: Math.max(
+          0.3,
+          Math.min(2.5, Number(saved.sensitivity) || 1),
+        ),
+        fov: Math.max(65, Math.min(100, Number(saved.fov) || 80)),
+        quality: saved.quality === 'low' ? 'low' : 'high',
+        muted: saved.muted === true,
+        crosshair:
+          saved.crosshair === 'dot' || saved.crosshair === 'tight'
+            ? saved.crosshair
+            : 'classic',
+        hitmarker: saved.hitmarker !== false,
+        hudScale: Math.max(80, Math.min(115, Number(saved.hudScale) || 100)),
+        weaponBob:
+          saved.weaponBob === 'low' || saved.weaponBob === 'high'
+            ? saved.weaponBob
+            : 'medium',
+        announcer: saved.announcer !== false,
+        motion: saved.motion === 'reduced' ? 'reduced' : 'full',
+      };
+      setPrefs(next);
+      prefsRef.current = next;
+    } catch {}
+  }, []);
+  function preference(next: Partial<Preferences>) {
+    const updated = { ...prefsRef.current, ...next };
+    prefsRef.current = updated;
+    setPrefs(updated);
+    runtime.current?.audio.volume(updated.muted);
+    try {
+      localStorage.setItem('skillclash-controls', JSON.stringify(updated));
+    } catch {}
+  }
+  useEffect(() => {
+    let disposed = false,
+      frame = 0,
+      observer: ResizeObserver | undefined,
+      cleanup = () => {};
+    async function init() {
+      try {
+        const { ArenaRenderer } = await import('@/lib/fps/renderer');
+        if (disposed || !canvas.current) return;
+        const element = canvas.current,
+          game = config.live
+            ? new NetworkSimulation(config)
+            : new Simulation(config);
+        if (game instanceof NetworkSimulation) {
+          cleanup = () => game.dispose();
+          await game.connect();
+          if (disposed) {
+            game.dispose();
+            return;
+          }
+        }
+        const view = new ArenaRenderer(element, game),
+          audio = new ArenaAudio();
+        cleanup = () => {
+          view.dispose();
+          audio.dispose();
+        };
+        if (disposed) return;
+        let sent = false,
+          previous = performance.now(),
+          accumulator = 0,
+          lastUI = 0;
+        function finish() {
+          if (sent || !game.result) return;
+          sent = true;
+          if (document.pointerLockElement === element)
+            document.exitPointerLock();
+          if (document.fullscreenElement === shell.current)
+            void document.exitFullscreen().catch(() => {});
+          finishRef.current(game.result);
+        }
+        function pause() {
+          const current = runtime.current;
+          if (!current || game.ended) return;
+          current.paused = true;
+          game.pause();
+          setSettings(false);
+          current.input = idleInput();
+          current.keys.clear();
+          mouseLook.current.reset();
+          setPaused(true);
+          setScores(false);
+          if (document.pointerLockElement === element)
+            document.exitPointerLock();
+        }
+        const state: Runtime = {
+          game,
+          view,
+          audio,
+          paused: true,
+          input: idleInput(),
+          keys: new Set(),
+          finish,
+          pause,
+          resetClock: () => {
+            previous = performance.now();
+            accumulator = 0;
+          },
+        };
+        runtime.current = state;
+        const resize = () => {
+          const rect = element.getBoundingClientRect();
+          view.resize(Math.max(1, rect.width), Math.max(1, rect.height));
+        };
+        observer = new ResizeObserver(resize);
+        observer.observe(element);
+        resize();
+        const keydown = (event: KeyboardEvent) => {
+          if (event.code === 'Escape') {
+            event.preventDefault();
+            if (!event.repeat) pause();
+            return;
+          }
+          if (event.code === 'KeyP') {
+            pause();
+            return;
+          }
+          if (state.paused) return;
+          if (
+            [
+              'Space',
+              'Tab',
+              'ArrowUp',
+              'ArrowDown',
+              'ArrowLeft',
+              'ArrowRight',
+            ].includes(event.code)
+          )
+            event.preventDefault();
+          state.keys.add(event.code);
+          if (event.code === 'KeyF' && !event.repeat)
+            state.input.firePressed = true;
+          if (event.code === 'Tab') setScores(true);
+          if (event.code === 'KeyR') state.input.reload = true;
+          if (event.code === 'KeyV' && !event.repeat) view.inspect();
+          if (!event.repeat && event.code === 'Space') state.input.jump = true;
+          if (!event.repeat && event.code === 'KeyC') state.input.slide = true;
+          if (event.code === 'KeyX' && config.mode === 'ffa') {
+            game.cashOut();
+            finish();
+          }
+          const index = ['Digit1', 'Digit2'].indexOf(event.code);
+          if (index >= 0) state.input.weapon = state.game.switchWeapons[index];
+        };
+        const keyup = (event: KeyboardEvent) => {
+          state.keys.delete(event.code);
+          if (event.code === 'Tab') setScores(false);
+        };
+        const move = (event: MouseEvent) => {
+          if (state.paused) return;
+          const captured = document.pointerLockElement === element;
+          const delta = captured
+            ? { x: event.movementX, y: event.movementY }
+            : event.target === element
+              ? mouseLook.current.move(
+                  event.clientX,
+                  event.clientY,
+                  element.getBoundingClientRect(),
+                )
+              : { x: 0, y: 0 };
+          if (!captured && event.target !== element) mouseLook.current.reset();
+          const scale =
+            0.002 * prefsRef.current.sensitivity * (game.aim > 0.5 ? 0.7 : 1);
+          game.look(delta.x * scale, delta.y * scale);
+        };
+        const down = (event: MouseEvent) => {
+          if (state.paused || event.target !== element) return;
+          if (event.button === 0) {
+            state.input.fire = true;
+            state.input.firePressed = true;
+            captureMouse();
+          }
+          if (event.button === 2) state.input.aim = true;
+        };
+        const up = (event: MouseEvent) => {
+          if (event.button === 0) {
+            state.input.fire = false;
+            mouseLook.current.reset();
+          }
+          if (event.button === 2) state.input.aim = false;
+        };
+        let hadLock = false;
+        const lockChange = () => {
+          const isLocked = document.pointerLockElement === element;
+          const released = hadLock && !isLocked;
+          hadLock = isLocked;
+          mouseLook.current.reset();
+          setLocked(isLocked);
+          if (released && !state.paused) pause();
+        };
+        const lockError = () => {
+          setLocked(false);
+          mouseLook.current.reset();
+        };
+        const mouseLeave = () => mouseLook.current.reset();
+        const visibility = () => {
+          if (document.hidden) pause();
+        };
+        const contextLost = (event: Event) => {
+          event.preventDefault();
+          pause();
+          setError(
+            'The graphics connection was interrupted. Leave this match and reopen the arena to continue.',
+          );
+        };
+        window.addEventListener('keydown', keydown);
+        window.addEventListener('keyup', keyup);
+        window.addEventListener('mousemove', move);
+        window.addEventListener('mousedown', down);
+        window.addEventListener('mouseup', up);
+        window.addEventListener('blur', pause);
+        document.addEventListener('pointerlockchange', lockChange);
+        document.addEventListener('pointerlockerror', lockError);
+        element.addEventListener('mouseleave', mouseLeave);
+        document.addEventListener('visibilitychange', visibility);
+        element.addEventListener('webglcontextlost', contextLost);
+        function animate(now: number) {
+          if (disposed) return;
+          const dt = Math.min(0.1, (now - previous) / 1000);
+          previous = now;
+          view.fov = prefsRef.current.fov;
+          view.weaponBob =
+            prefsRef.current.motion === 'reduced'
+              ? 0
+              : prefsRef.current.weaponBob === 'low'
+                ? 0.35
+                : prefsRef.current.weaponBob === 'high'
+                  ? 1.3
+                  : 0.85;
+          view.setQuality(prefsRef.current.quality);
+          if (!state.paused && !game.ended) {
+            accumulator = Math.min(0.1, accumulator + dt);
+            while (accumulator >= 1 / 60 && !game.ended) {
+              const keys = state.keys;
+              const input = {
+                ...state.input,
+                forward:
+                  state.input.forward +
+                  Number(keys.has('KeyW')) -
+                  Number(keys.has('KeyS')),
+                right:
+                  state.input.right +
+                  Number(keys.has('KeyD')) -
+                  Number(keys.has('KeyA')),
+                jump: state.input.jump || keys.has('Space'),
+                sprint:
+                  state.input.sprint ||
+                  keys.has('ShiftLeft') ||
+                  keys.has('ShiftRight'),
+                crouch:
+                  state.input.crouch ||
+                  keys.has('ControlLeft') ||
+                  keys.has('ControlRight'),
+                fire: state.input.fire || keys.has('KeyF'),
+              };
+              game.look(
+                (Number(keys.has('ArrowRight')) -
+                  Number(keys.has('ArrowLeft'))) *
+                  0.025,
+                (Number(keys.has('ArrowDown')) - Number(keys.has('ArrowUp'))) *
+                  0.02,
+              );
+              if (
+                document.pointerLockElement !== element &&
+                mouseLook.current.edge
+              )
+                game.look(
+                  mouseLook.current.edge *
+                    0.025 *
+                    prefsRef.current.sensitivity *
+                    (game.aim > 0.5 ? 0.7 : 1),
+                  0,
+                );
+              game.step(1 / 60, input);
+              state.input.reload = false;
+              state.input.firePressed = false;
+              state.input.jump = false;
+              state.input.slide = false;
+              state.input.weapon = undefined;
+              accumulator -= 1 / 60;
+            }
+          } else accumulator = 0;
+          if (game instanceof NetworkSimulation) game.updateView(dt);
+          for (const event of game.events) {
+            audio.play(event);
+            if (event.kind === 'shot') view.shot();
+          }
+          game.events = [];
+          try {
+            view.render(state.paused ? 0 : dt);
+          } catch (renderError) {
+            console.error('Arena rendering failed', renderError);
+            pause();
+            setError(
+              'The arena stopped rendering. Cancel this match and reopen it to try again.',
+            );
+            return;
+          }
+          if (now - lastUI > 80) {
+            redraw((n) => n + 1);
+            lastUI = now;
+          }
+          if (game.ended) {
+            finish();
+            return;
+          }
+          frame = requestAnimationFrame(animate);
+        }
+        cleanup = () => {
+          window.removeEventListener('keydown', keydown);
+          window.removeEventListener('keyup', keyup);
+          window.removeEventListener('mousemove', move);
+          window.removeEventListener('mousedown', down);
+          window.removeEventListener('mouseup', up);
+          window.removeEventListener('blur', pause);
+          document.removeEventListener('pointerlockchange', lockChange);
+          document.removeEventListener('pointerlockerror', lockError);
+          element.removeEventListener('mouseleave', mouseLeave);
+          document.removeEventListener('visibilitychange', visibility);
+          element.removeEventListener('webglcontextlost', contextLost);
+          if (document.pointerLockElement === element)
+            document.exitPointerLock();
+          view.dispose();
+          audio.dispose();
+          if (game instanceof NetworkSimulation) game.dispose();
+          runtime.current = null;
+        };
+        setReady(true);
+        frame = requestAnimationFrame(animate);
+      } catch (initError) {
+        console.error('Arena startup failed', initError);
+        if (!disposed)
+          setError(
+            config.live
+              ? (initError as Error).message
+              : 'The arena could not start. Reopen it in a desktop browser with WebGL 2 and hardware acceleration enabled. Your unplayed match can be cancelled below.',
+          );
+      }
+    }
+    void init();
+    return () => {
+      disposed = true;
+      cancelAnimationFrame(frame);
+      observer?.disconnect();
+      cleanup();
+    };
+  }, [config]);
+  function captureMouse() {
+    if (
+      window.matchMedia('(pointer: coarse)').matches ||
+      document.pointerLockElement === canvas.current
+    )
+      return;
+    try {
+      canvas.current?.requestPointerLock()?.catch(() => setLocked(false));
+    } catch {
+      setLocked(false);
+    }
+  }
+  function resume() {
+    const state = runtime.current;
+    if (!state || error) return;
+    state.audio.volume(prefsRef.current.muted);
+    state.audio.unlock();
+    state.game.start();
+    state.resetClock();
+    state.game.slideHeld = false;
+    state.game.jumpHeld = false;
+    state.paused = false;
+    state.input = idleInput();
+    state.keys.clear();
+    setPaused(false);
+    setSettings(false);
+    mouseLook.current.reset();
+    canvas.current?.focus();
+    captureMouse();
+  }
+  function leave() {
+    const state = runtime.current;
+    if (state) {
+      state.game.leave();
+      state.finish();
+    } else
+      finishRef.current({
+        kills: 0,
+        deaths: 0,
+        balance:
+          config.balance +
+          (config.mode === 'duel' ? (config.stake ?? 10) : (config.entry ?? 0)),
+        reason: 'Match cancelled',
+        won: false,
+        score: 0,
+        enemyScore: 0,
+      });
+  }
+  function hold(
+    key: 'fire' | 'aim' | 'sprint' | 'crouch' | 'jump' | 'slide',
+    value: boolean,
+  ) {
+    if (runtime.current && (value || !['jump', 'slide'].includes(key))) {
+      runtime.current.input[key] = value;
+      if (key === 'fire' && value) runtime.current.input.firePressed = true;
+    }
+  }
+  function touchButton(key: 'fire' | 'sprint' | 'crouch' | 'jump' | 'slide') {
+    return {
+      onPointerDown: (e: ReactPointerEvent<HTMLButtonElement>) => {
+        e.preventDefault();
+        e.currentTarget.setPointerCapture(e.pointerId);
+        hold(key, true);
+      },
+      onPointerUp: () => hold(key, false),
+      onPointerCancel: () => hold(key, false),
+      onLostPointerCapture: () => hold(key, false),
+    };
+  }
+  const duelHud =
+    config.mode === 'duel' || (!!config.live && config.live.mode !== 'ffa');
+  const game = runtime.current?.game,
+    p = game?.player,
+    gun = game?.gun,
+    zone = p
+      ? [...map.landmarks].sort(
+          (a, b) =>
+            Math.hypot(a.x - p.x, a.z - p.z) - Math.hypot(b.x - p.x, b.z - p.z),
+        )[0]?.label
+      : map.name,
+    clock = game
+      ? `${Math.floor(game.time / 60)}:${String(Math.floor(game.time % 60)).padStart(2, '0')}`
+      : '3:00';
+  return (
+    <div
+      className={
+        'fps-shell' +
+        ' crosshair-' +
+        (prefs.crosshair ?? 'classic') +
+        ' weapon-bob-' +
+        (prefs.weaponBob ?? 'medium') +
+        (prefs.motion === 'reduced' ? ' reduced-motion' : '')
+      }
+      ref={shell}
+      style={{ '--hud-scale': (prefs.hudScale ?? 100) / 100 } as CSSProperties}
+    >
+      <div className="fps-viewport">
+        <canvas
+          ref={canvas}
+          className="fps-canvas"
+          tabIndex={0}
+          aria-label="3D FPS arena. WASD to move, mouse to aim, left click to fire, Escape to pause and choose weapons."
+          onContextMenu={(e) => e.preventDefault()}
+        />
+        <div className="fps-vignette" />
+        {game instanceof NetworkSimulation && (
+          <div className="live-game-status" role="status">
+            {game.status}
+            {game.ping > 0 && ` · ${game.ping} ms`}
+          </div>
+        )}
+        {ready && game && p && !paused && (
+          <>
+            <div className="fps-damage" style={{ opacity: game.hurt }} />
+            <div className="fps-top-hud fps-hud-scaled">
+              <div className="fps-radar-stack">
+              <div className="fps-radar">
+                <svg
+                  viewBox={`${-map.width / 2 - 1} ${-map.depth / 2 - 1} ${map.width + 2} ${map.depth + 2}`}
+                  aria-label="Arena minimap: player, allies and pickups"
+                >
+                  <rect
+                    x={-map.width / 2}
+                    y={-map.depth / 2}
+                    width={map.width}
+                    height={map.depth}
+                    fill="#101b21"
+                  />
+                  {map.walls.map((b, i) => (
+                    <rect
+                      key={i}
+                      x={b.x - b.w / 2}
+                      y={b.z - b.d / 2}
+                      width={b.w}
+                      height={b.d}
+                      fill={b.h < 1.5 ? '#677479' : '#374951'}
+                    />
+                  ))}
+                  {game.pickups
+                    .filter((a) => a.ready <= 0)
+                    .map((a, i) => (
+                      <circle
+                        key={'p' + i}
+                        cx={a.x}
+                        cy={a.z}
+                        r=".65"
+                        fill={a.kind === 'health' ? '#72e6b7' : '#7dbbff'}
+                      />
+                    ))}
+                  {game.actors
+                    .filter((a) => a.hp > 0 && a.team === p.team)
+                    .map((a) => (
+                      <g
+                        key={a.id}
+                        transform={`translate(${a.x} ${a.z}) rotate(${(-a.yaw * 180) / Math.PI})`}
+                      >
+                        <path
+                          d="M 0 -1.6 L 1.1 1.1 L 0 .6 L -1.1 1.1 Z"
+                          fill={a.id === 0 ? '#ffffff' : '#65dfff'}
+                        />
+                      </g>
+                    ))}
+                </svg>
+                <span>{zone?.toUpperCase()}</span>
+              </div>
+                <dl className="fps-personal-stats" aria-label="Your match stats">
+                  <div><dt>Kills</dt><dd>{p.kills}</dd></div>
+                  <div><dt>Deaths</dt><dd>{p.deaths}</dd></div>
+                </dl>
+                {config.mode !== 'ffa' && (
+                  <small className="fps-personal-context">
+                    {config.live
+                      ? 'Player match'
+                      : config.mode === 'duel'
+                        ? 'Winning team · €' + (config.stake ?? 10) * 2 + ' each'
+                        : 'Practice · No stakes'}
+                  </small>
+                )}
+              </div>
+              <div className="fps-clock">
+                <small>
+                  {config.live && config.live.mode !== 'ffa'
+                    ? 'FIRST TO 10'
+                    : config.mode === 'duel'
+                      ? config.bestOf === 3
+                        ? 'BEST OF 3 · ROUND ' +
+                          (game.score + game.enemyScore + 1)
+                        : 'FIRST TO ' + (config.target ?? 5)
+                      : 'TIME REMAINING'}
+                </small>
+                <div>
+                  {duelHud && <b className="ally">{game.score}</b>}
+                  {config.bestOf === 3 && (
+                    <small>
+                      {game.roundScore} : {game.roundEnemyScore} /{' '}
+                      {config.target ?? 5}
+                    </small>
+                  )}
+                  <strong className={game.time < 30 ? 'urgent' : ''}>
+                    {clock}
+                  </strong>
+                  {duelHud && <b className="enemy">{game.enemyScore}</b>}
+                </div>
+              </div>
+              <div className="fps-feed">
+                {game.feed.map((f) => (
+                  <div key={f.id} className={f.you ? 'involved' : ''}>
+                    <b>{f.killer}</b>
+                    {f.head ? <Target size={13} /> : <Crosshair size={13} />}
+                    <span>{f.victim}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {p.hp > 0 ? (
+              <>
+                <div
+                  className={
+                    'fps-crosshair ' + (game.aim > 0.5 ? 'aiming' : '')
+                  }
+                  style={
+                    {
+                      '--gap': `${5 + game.bloom * 90 + (game.sprinting ? 10 : 0)}px`,
+                    } as CSSProperties
+                  }
+                >
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <span />
+                </div>
+                {prefs.hitmarker !== false && game.hitMarker > 0 && (
+                  <div
+                    className={
+                      'fps-hitmarker ' + (game.headMarker ? 'head' : '')
+                    }
+                  >
+                    ×
+                  </div>
+                )}
+                {game.killConfirm && (
+                  <div
+                    key={game.killConfirm.id}
+                    className={
+                      'fps-kill-confirm ' +
+                      (game.killConfirm.head ? 'head' : '')
+                    }
+                    role="status"
+                  >
+                    <Skull size={19} />
+                    <span>
+                      <small>
+                        {game.killConfirm.head ? 'HEADSHOT' : 'ELIMINATED'}
+                      </small>
+                      <b>{game.killConfirm.victim}</b>
+                    </span>
+                    {config.mode === 'ffa' && <strong>+€{config.rate}</strong>}
+                  </div>
+                )}
+                {game.hurt > 0 && (
+                  <div
+                    className="fps-hit-direction"
+                    style={{
+                      transform: `translate(-50%,-50%) rotate(${(-game.hurtAngle * 180) / Math.PI}deg)`,
+                    }}
+                  >
+                    <span />
+                  </div>
+                )}
+                {p.shield > 0 && (
+                  <div className="fps-protection">
+                    <Shield size={14} /> SPAWN PROTECTION ·{' '}
+                    {p.shield.toFixed(1)}s
+                  </div>
+                )}
+                {game.combo >= 2 && (
+                  <div className="fps-streak">
+                    {game.combo} ELIMINATION STREAK
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="fps-respawn">
+                <Skull size={28} />
+                <small>ELIMINATED</small>
+                {config.mode === 'ffa' && (
+                  <strong className="fps-death-cost">
+                    −€{game.lastDeathLoss.toFixed(2)}
+                    <small>MATCH FUNDS</small>
+                  </strong>
+                )}
+                <h2>BACK IN {Math.max(1, Math.ceil(p.respawn))}</h2>
+                <p>Finding a safer spawn…</p>
+              </div>
+            )}
+            {game.reloadLeft > 0 && (
+              <div className="fps-reloading">
+                RELOADING <span>{game.reloadLeft.toFixed(1)}s</span>
+                <div>
+                  <i
+                    style={{
+                      width: `${(1 - game.reloadLeft / game.gun.reload) * 100}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+            <div className="fps-bottom-hud fps-hud-scaled">
+              <div className="fps-vitals">
+                <div className={p.hp < 30 ? 'urgent' : ''}>
+                  <Heart size={23} />
+                  <strong>{Math.ceil(p.hp)}</strong>
+                  <span>HEALTH</span>
+                </div>
+                <div className="fps-health-track">
+                  <i
+                    style={{
+                      width: p.hp + '%',
+                      background: p.hp < 30 ? '#ff6d5b' : undefined,
+                    }}
+                  />
+                </div>
+                <div
+                  className={
+                    'fps-stamina' + (game.sprintExhausted ? ' exhausted' : '')
+                  }
+                  aria-label={
+                    game.sprintExhausted
+                      ? 'Sprint recovering'
+                      : 'Sprint stamina'
+                  }
+                >
+                  <i style={{ width: game.stamina + '%' }} />
+                </div>
+                <small>
+                  {game.sliding
+                    ? 'SLIDING'
+                    : p.crouch
+                      ? 'CROUCHED'
+                      : game.sprinting
+                        ? 'SPRINTING'
+                        : game.sprintExhausted
+                          ? 'SPRINT RECOVERING · ' +
+                            game.sprintRecoveryWait.toFixed(1) +
+                            's'
+                          : game.elapsed - p.lastDamage < 7 && p.hp < 100
+                            ? 'HEALING AFTER 7s OUT OF COMBAT'
+                            : 'READY'}
+                </small>
+              </div>
+              {config.mode === 'ffa' && (
+                <div className="fps-round-stats">
+                  <button
+                    className="secondary compact"
+                    disabled={game.cashOutWait > 0 || p.hp <= 0}
+                    onClick={() => {
+                      game.cashOut();
+                      runtime.current?.finish();
+                    }}
+                  >
+                    {game.cashOutWait > 0
+                      ? 'CASH OUT IN ' + Math.ceil(game.cashOutWait) + 's'
+                      : config.entry
+                        ? 'CASH OUT €' + game.balance.toFixed(2) + ' · X'
+                        : 'CASH OUT · X'}
+                  </button>
+                  <strong>
+                    €{game.balance.toFixed(2)} <small>BALANCE</small>
+                  </strong>
+                </div>
+              )}
+              <div className="fps-ammo">
+                <small>{gun?.type}</small>
+                <div>
+                  {game.weapon === 'knife' ? (
+                    <strong>∞</strong>
+                  ) : (
+                    <>
+                      <strong
+                        className={game.ammo[game.weapon] < 6 ? 'urgent' : ''}
+                      >
+                        {game.ammo[game.weapon]}
+                      </strong>
+                      <span>/ {game.reserve[game.weapon]}</span>
+                    </>
+                  )}
+                </div>
+                <b>
+                  {game.weapon === 'knife' && config.knifeStyle === 'karambit'
+                    ? 'KARAMBIT'
+                    : gun?.name}
+                </b>
+                <span className="fps-reload-hint">
+                  {game.weapon === 'knife'
+                    ? 'HOLD CLICK — SLASH · V INSPECT'
+                    : game.ammo[game.weapon] === 0
+                      ? 'R — RELOAD'
+                      : gun?.auto
+                        ? 'FULL AUTO · 1'
+                        : 'SEMI AUTO · 1'}
+                </span>
+              </div>
+            </div>
+            <div className="fps-mobile">
+              <TouchPad
+                kind="move"
+                label="Move"
+                onMove={(x, y) => {
+                  if (runtime.current) {
+                    runtime.current.input.right = x;
+                    runtime.current.input.forward = -y;
+                  }
+                }}
+              />
+              <TouchPad
+                kind="look"
+                label="Look"
+                onMove={(x, y) =>
+                  game.look(
+                    x * 0.004 * prefs.sensitivity,
+                    y * 0.004 * prefs.sensitivity,
+                  )
+                }
+              />
+              <div className="fps-mobile-actions">
+                <button
+                  className="fps-weapon-toggle"
+                  aria-label={
+                    game.weapon === 'knife'
+                      ? 'Switch to gun'
+                      : 'Switch to knife'
+                  }
+                  onClick={() => {
+                    if (runtime.current)
+                      runtime.current.input.weapon =
+                        game.weapon === 'knife' ? game.matchWeapon : 'knife';
+                  }}
+                >
+                  {game.weapon === 'knife' ? 'GUN' : 'KNIFE'}
+                </button>
+                <button aria-label="Jump" {...touchButton('jump')}>
+                  <ChevronUp />
+                </button>
+                <button aria-label="Sprint" {...touchButton('sprint')}>
+                  <MoveUpRight />
+                </button>
+                <button aria-label="Crouch" {...touchButton('crouch')}>
+                  LOW
+                </button>
+                <button
+                  aria-label="Slide"
+                  className="fps-slide-touch"
+                  {...touchButton('slide')}
+                >
+                  SLIDE
+                </button>
+                <button
+                  aria-label="Aim"
+                  aria-pressed={game.aim > 0.5}
+                  onClick={() => hold('aim', !runtime.current?.input.aim)}
+                >
+                  <Target />
+                </button>
+                <button
+                  aria-label="Reload"
+                  onClick={() => {
+                    if (runtime.current) runtime.current.input.reload = true;
+                  }}
+                >
+                  <RotateCw />
+                </button>
+                <button
+                  className="fps-fire"
+                  aria-label="Fire"
+                  {...touchButton('fire')}
+                >
+                  <Crosshair />
+                </button>
+              </div>
+            </div>
+            {!locked && (
+              <div className="fps-drag-tip">
+                Move mouse to look · Hold cursor at either edge to keep turning
+                · Click to fire · P to pause
+              </div>
+            )}
+          </>
+        )}
+        {scores && !paused && game && (
+          <div className="fps-scoreboard">
+            <div>
+              <small>LIVE MATCH</small>
+              <h2>SCOREBOARD</h2>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>PLAYER</th>
+                  <th>KILLS</th>
+                  <th>DEATHS</th>
+                  <th>K/D</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ...(game instanceof NetworkSimulation
+                    ? (game.latest?.actors ?? [])
+                    : game.actors),
+                ]
+                  .sort((a, b) => b.kills - a.kills || a.deaths - b.deaths)
+                  .map((a) => (
+                    <tr
+                      key={a.id}
+                      className={
+                        a.id === 0
+                          ? 'is-you'
+                          : a.team === p?.team
+                            ? 'is-ally'
+                            : ''
+                      }
+                    >
+                      <td>
+                        {a.name}
+                        <small>
+                          {a.id === 0
+                            ? 'YOU'
+                            : config.live
+                              ? a.team === p?.team
+                                ? 'ALLY'
+                                : 'PLAYER'
+                              : a.team === p?.team
+                                ? 'ALLY'
+                                : 'OPPONENT'}
+                        </small>
+                      </td>
+                      <td>{a.kills}</td>
+                      <td>{a.deaths}</td>
+                      <td>{(a.kills / Math.max(1, a.deaths)).toFixed(1)}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+            <span>Hold TAB to view</span>
+          </div>
+        )}
+        {(paused || !ready || error) && (
+          <ArenaMenu
+            game={game}
+            config={config}
+            map={map}
+            ready={ready}
+            error={error}
+            settings={settings}
+            prefs={prefs}
+            setSettings={setSettings}
+            preference={preference}
+            select={(id) => {
+              game?.switchWeapon(id);
+              redraw((n) => n + 1);
+            }}
+            resume={resume}
+            leave={leave}
+            cashOut={() => {
+              game?.cashOut();
+              runtime.current?.finish();
+            }}
+          />
+        )}
+      </div>
+    </div>
+  );
 }
-function TouchPad({kind,label,onMove}:{kind:'move'|'look';label:string;onMove:(x:number,y:number)=>void}){
- const pointer=useRef<{id:number;x:number;y:number}|null>(null);const [position,setPosition]=useState({x:0,y:0});function reset(){pointer.current=null;setPosition({x:0,y:0});if(kind==='move')onMove(0,0);}
- return <div className={'fps-touch-pad '+kind} role="group" aria-label={label} onPointerDown={e=>{e.preventDefault();e.currentTarget.setPointerCapture(e.pointerId);pointer.current={id:e.pointerId,x:e.clientX,y:e.clientY};}} onPointerMove={e=>{const p=pointer.current;if(!p||p.id!==e.pointerId)return;const x=e.clientX-p.x,y=e.clientY-p.y;if(kind==='look'){onMove(x,y);pointer.current={id:e.pointerId,x:e.clientX,y:e.clientY};}else{const length=Math.max(40,Math.hypot(x,y));onMove(x/length,y/length);setPosition({x:x/length*32,y:y/length*32});}}} onPointerUp={reset} onPointerCancel={reset} onLostPointerCapture={reset}><span>{label}</span>{kind==='move'&&<i style={{transform:`translate(${position.x}px,${position.y}px)`}}/>}</div>;
+function TouchPad({
+  kind,
+  label,
+  onMove,
+}: {
+  kind: 'move' | 'look';
+  label: string;
+  onMove: (x: number, y: number) => void;
+}) {
+  const pointer = useRef<{ id: number; x: number; y: number } | null>(null);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  function reset() {
+    pointer.current = null;
+    setPosition({ x: 0, y: 0 });
+    if (kind === 'move') onMove(0, 0);
+  }
+  return (
+    <div
+      className={'fps-touch-pad ' + kind}
+      role="group"
+      aria-label={label}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        e.currentTarget.setPointerCapture(e.pointerId);
+        pointer.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
+      }}
+      onPointerMove={(e) => {
+        const p = pointer.current;
+        if (!p || p.id !== e.pointerId) return;
+        const x = e.clientX - p.x,
+          y = e.clientY - p.y;
+        if (kind === 'look') {
+          onMove(x, y);
+          pointer.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
+        } else {
+          const length = Math.max(40, Math.hypot(x, y));
+          onMove(x / length, y / length);
+          setPosition({ x: (x / length) * 32, y: (y / length) * 32 });
+        }
+      }}
+      onPointerUp={reset}
+      onPointerCancel={reset}
+      onLostPointerCapture={reset}
+    >
+      <span>{label}</span>
+      {kind === 'move' && (
+        <i
+          style={{ transform: `translate(${position.x}px,${position.y}px)` }}
+        />
+      )}
+    </div>
+  );
 }

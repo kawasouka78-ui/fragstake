@@ -65,12 +65,12 @@ test('inputs accept controls only; reject replay, non-finite aim and forged move
     null,
   );
 });
-test('FFA waits for two ready humans; ten-player capacity is enforced', () => {
+test('FFA starts as a drop-in arena and ten-player capacity is enforced', () => {
   const r = new LiveRoom('ffa', 'citadel');
   r.add(claims('a'));
   r.ready('a');
   r.step();
-  assert.equal(r.status, 'waiting');
+  assert.equal(r.status, 'playing');
   r.add(claims('b'));
   r.ready('b');
   r.step();
@@ -198,7 +198,7 @@ test('leaving a live duel forfeits to the opposing team and ends the shared matc
   assert.equal(p.find((p) => p.id === 'a').completed, false);
   assert.equal(p.find((p) => p.id === 'b').won, true);
 });
-test('live server ends FFA at the common deadline', () => {
+test('FFA keeps running after the old round timer', () => {
   const r = new LiveRoom('ffa', 'underpass');
   for (const id of ['a', 'b']) {
     r.add(claims(id));
@@ -207,8 +207,8 @@ test('live server ends FFA at the common deadline', () => {
   r.step();
   r.elapsed = 180 - LIVE_TICK / 2;
   r.step();
-  assert.equal(r.status, 'finished');
-  assert.equal(r.result().players.length, 0);
+  assert.equal(r.status, 'playing');
+  assert.ok(r.snapshot('a').time > 0);
 });
 test('real payments fail closed and ledger movements must balance', () => {
   const p = {

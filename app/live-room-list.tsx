@@ -1,6 +1,7 @@
 'use client';
-import { ArrowRight, Users, Radio } from 'lucide-react';
+import { ArrowRight, Users } from 'lucide-react';
 import { getMap } from '@/lib/fps/maps';
+import { instantDuelRooms } from '@/lib/live/instant-rooms';
 import type { OpenRoom } from '@/lib/live/matchmaking';
 import type { LiveStatus } from './use-live-status';
 
@@ -8,24 +9,50 @@ export default function LiveRoomList({
   status,
   checking,
   filter,
+  instantMapId = 'citadel',
+  standingFfaMapId = status?.currentFfaMapId ?? 'citadel',
+  instantStake = 10,
   onJoin,
 }: {
   status: LiveStatus | null;
   checking: boolean;
   filter: string;
+  instantMapId?: string;
+  standingFfaMapId?: string;
+  instantStake?: number;
   onJoin: (room: OpenRoom) => void;
 }) {
-  const rooms = (status?.rooms ?? []).filter(
+  const realRooms = (status?.rooms ?? []).filter(
     (room) => filter === 'all' || room.mode === filter,
   );
+  const hasStandingFfa = realRooms.some(
+    (room) => room.mode === 'ffa' && room.mapId === standingFfaMapId,
+  );
+  const standingFfaRooms: OpenRoom[] =
+    !!status?.online && (filter === 'all' || filter === 'ffa') && !hasStandingFfa
+      ? [
+          {
+            id: `standing-ffa-${standingFfaMapId}`,
+            mode: 'ffa',
+            mapId: standingFfaMapId,
+            status: 'playing',
+            players: 0,
+            ready: 0,
+            capacity: 10,
+            openSlots: 10,
+            standing: true,
+          },
+        ]
+      : [];
+  const instantRooms =
+    filter === 'ffa'
+      ? []
+      : instantDuelRooms(instantMapId, instantStake).filter(
+          (room) => filter === 'all' || room.mode === filter,
+        );
+  const rooms = [...realRooms, ...standingFfaRooms, ...instantRooms];
   return (
     <div className="available-matches" aria-label="Available player matches">
-      <div className="duel-list-caption">
-        <span>
-          <Radio size={13} /> PLAYER MATCHES
-        </span>
-        <span>FREE ENTRY</span>
-      </div>
       {rooms.length ? (
         rooms.map((room) => (
           <article className="available-match" key={room.id}>
@@ -39,41 +66,78 @@ export default function LiveRoomList({
               <h3>
                 {getMap(room.mapId).name}{' '}
                 <small>
-                  {room.mode === 'ffa' ? 'Free-for-all' : room.mode + ' duel'}
+                  {room.standing
+                    ? 'Always-on Cash FFA'
+                    : room.instantFill
+                      ? room.mode + ' instant duel'
+                      : room.mode === 'ffa'
+                        ? 'Cash FFA'
+                        : room.mode + ' money duel'}
                 </small>
               </h3>
               <p>
                 <i className={room.status} />
-                {room.status === 'waiting'
-                  ? 'Waiting for players'
-                  : 'Round in progress'}{' '}
-                · {room.ready} ready
+                {room.standing
+                  ? 'Always open'
+                  : room.instantFill
+                    ? 'Instant opponent ready'
+                    : room.status === 'waiting'
+                      ? 'Waiting for players'
+                      : room.mode === 'ffa'
+                        ? 'Drop in anytime'
+                        : 'Match in progress'}{' '}
+                · {room.standing
+                  ? 'map rotates every 10 min'
+                  : room.instantFill
+                    ? `€${room.stake} buy-in`
+                    : room.ready + ' ready'}
               </p>
             </div>
             <span className="available-slots">
               <Users size={16} />
-              {room.players}/{room.capacity}
-              <small>{room.openSlots} open</small>
+              {room.standing
+                ? 'OPEN'
+                : room.instantFill
+                  ? 'INSTANT'
+                  : `${room.players}/${room.capacity}`}
+              <small>
+                {room.standing
+                  ? 'drop in'
+                  : room.instantFill
+                    ? 'instant'
+                    : room.openSlots + ' open'}
+              </small>
             </span>
             <button
               className="primary compact"
-              aria-label={`Join ${getMap(room.mapId).name} ${room.mode} match`}
+              aria-label={`${room.instantFill ? 'Play' : 'Join'} ${getMap(room.mapId).name} ${room.mode} match`}
               onClick={() => onJoin(room)}
             >
-              Join <ArrowRight size={16} />
+              {room.instantFill ? 'Play' : 'Join'} <ArrowRight size={16} />
             </button>
           </article>
         ))
       ) : (
-        <p className="available-empty" role="status">
-          {checking && !status
-            ? 'Finding open matches…'
-            : !status?.online
-              ? 'Match server unavailable. Try Refresh shortly.'
-              : 'No open matches' +
-                (filter !== 'all' ? ' in this format' : '') +
-                ' yet. Start a match above.'}
-        </p>
+        <div className="available-empty" role="status">
+          <Users size={22} aria-hidden="true" />
+          <div>
+            <strong>
+              {checking && !status
+                ? 'Finding matches…'
+                : !status?.online
+                  ? 'Unable to reach the match server'
+                  : 'No open matches' +
+                    (filter !== 'all' ? ' in this format' : '')}
+            </strong>
+            <p>
+              {checking && !status
+                ? 'Checking available rooms.'
+                : !status?.online
+                  ? 'Try refreshing in a moment.'
+                  : 'Choose a mode above to start a match, or play an instant duel while you wait.'}
+            </p>
+          </div>
+        </div>
       )}
     </div>
   );

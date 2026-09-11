@@ -50,7 +50,6 @@ type Room = {
   members: number;
   joined: number;
   expires_at: number;
-  mock?: boolean;
 };
 type LobbyData = {
   rooms: Room[];
@@ -62,62 +61,6 @@ type LobbyData = {
     ready: number;
   }[];
 };
-const mockRooms: Room[] = [
-  {
-    id: 'preview-ace',
-    owner_id: 'preview-ace',
-    host_name: 'AceNova',
-    host_handle: '@acenova',
-    rules: JSON.stringify({
-      mapId: 'citadel',
-      stake: 10,
-      target: 10,
-      bestOf: 1,
-      team: '1v1',
-      weaponRule: 'standard',
-    }),
-    members: 1,
-    joined: 0,
-    expires_at: 0,
-    mock: true,
-  },
-  {
-    id: 'preview-vex',
-    owner_id: 'preview-vex',
-    host_name: 'Vex',
-    host_handle: '@vexfps',
-    rules: JSON.stringify({
-      mapId: 'depot',
-      stake: 25,
-      target: 10,
-      bestOf: 3,
-      team: '2v2',
-      weaponRule: 'rifle',
-    }),
-    members: 3,
-    joined: 0,
-    expires_at: 0,
-    mock: true,
-  },
-  {
-    id: 'preview-mira',
-    owner_id: 'preview-mira',
-    host_name: 'Mira',
-    host_handle: '@mira',
-    rules: JSON.stringify({
-      mapId: 'underpass',
-      stake: 5,
-      target: 5,
-      bestOf: 1,
-      team: '1v1',
-      weaponRule: 'sniper',
-    }),
-    members: 1,
-    joined: 0,
-    expires_at: 0,
-    mock: true,
-  },
-];
 export function DuelFields({
   rules,
   onChange,
@@ -128,7 +71,7 @@ export function DuelFields({
   return (
     <div className="duel-fields">
       <label>
-        Stake per player · demo €
+        Stake per player · €
         <input
           type="number"
           min={5}
@@ -248,7 +191,7 @@ export default function OpenDuels({
       setBusy(false);
     }
   }
-  const visibleRooms = [...lobbies.rooms, ...mockRooms].filter(
+  const visibleRooms = lobbies.rooms.filter(
     (room) => filter === 'all' || JSON.parse(room.rules).team === filter,
   );
   const visibleMembers = lobbies.members;
@@ -263,7 +206,7 @@ export default function OpenDuels({
           <h2>
             <Swords size={23} /> OPEN MATCHES
           </h2>
-          <p>Find a player match or warm up against bots.</p>
+          <p>Find a player match or start an instant warm-up.</p>
         </div>
         {data ? (
           <button
@@ -322,7 +265,7 @@ export default function OpenDuels({
         <>
           <div className="duel-list-caption">
             <span>QUICK MATCH</span>
-            <span>BOT OPPONENTS · DEMO CREDITS</span>
+            <span>TRAINING MATCH</span>
           </div>
           <div className="quick-duels">
             {['1v1', '2v2']
@@ -340,19 +283,19 @@ export default function OpenDuels({
                   <div className="quick-duel-details">
                     <h3>
                       {team === '1v1' ? 'Solo duel' : 'Team duel'}
-                      <span className="duel-bot-tag">BOTS</span>
+                      <span className="duel-practice-tag">PRACTICE</span>
                     </h3>
                     <p>
                       {getMap(mapId).name}
                       <span>·</span>First to 10<span>·</span>
                       {team === '1v1'
-                        ? 'You vs. 1 bot'
-                        : 'You + bot vs. 2 bots'}
+                        ? 'Instant opponent'
+                        : 'Instant team match'}
                     </p>
                   </div>
                   <div className="quick-duel-stake">
                     <b>€10</b>
-                    <span>DEMO ENTRY</span>
+                    <span>ENTRY</span>
                   </div>
                   <button
                     className="primary compact"
@@ -366,7 +309,7 @@ export default function OpenDuels({
           </div>
           <div className="duel-list-caption duel-player-caption">
             <span>PLAYER LOBBIES</span>
-            <span>LOBBY PREVIEW</span>
+            <span>PLAYER QUEUE</span>
           </div>
           {failure && (
             <p role="alert" className="error-text">
@@ -379,17 +322,13 @@ export default function OpenDuels({
             <div className="duel-room-list">
               {visibleRooms.map((room) => {
                 const r = JSON.parse(room.rules) as DuelRules,
-                  capacity = r.team === '2v2' ? 4 : 2,
+                  capacity = r.team === '2v2' ? 4 : r.team === 'ffa' ? 10 : 2,
                   people = visibleMembers.filter((m) => m.lobby_id === room.id),
                   me = people.find((m) => m.player_id === data?.player.id),
                   host = room.owner_id === data?.player.id;
                 return (
                   <article
-                    className={
-                      'duel-room ' +
-                      (room.joined ? 'joined' : '') +
-                      (room.mock ? ' preview-room' : '')
-                    }
+                    className={'duel-room ' + (room.joined ? 'joined' : '')}
                     key={room.id}
                   >
                     <div className="room-main">
@@ -398,12 +337,7 @@ export default function OpenDuels({
                         <b>{r.team}</b>
                       </div>
                       <div className="room-description">
-                        <h3>
-                          {room.host_name}’s duel{' '}
-                          {room.mock && (
-                            <span className="preview-badge">PREVIEW</span>
-                          )}
-                        </h3>
+                        <h3>{room.host_name}’s duel</h3>
                         <p>
                           {getMap(r.mapId).name} <i /> First to {r.target} <i />{' '}
                           {r.bestOf === 3 ? 'Best of 3' : 'Single round'} <i />{' '}
@@ -416,17 +350,9 @@ export default function OpenDuels({
                       </span>
                       <div className="room-stake">
                         <b>{euro(r.stake * 100)}</b>
-                        <small>DEMO STAKE</small>
+                        <small>BUY-IN</small>
                       </div>
-                      {room.mock ? (
-                        <button
-                          className="primary compact"
-                          onClick={() => onPractice(r)}
-                        >
-                          Preview
-                          <ArrowRight size={16} />
-                        </button>
-                      ) : room.joined ? (
+                      {room.joined ? (
                         <span className="joined-label">
                           <Check size={16} />
                           JOINED
@@ -474,7 +400,7 @@ export default function OpenDuels({
                             className="secondary compact"
                             onClick={() => onPractice(r)}
                           >
-                            Bot warm-up
+                            Practice match
                           </button>
                           <button
                             className="text-button"
@@ -491,9 +417,8 @@ export default function OpenDuels({
                           </button>
                         </div>
                         <small>
-                          Lobby saved. This saved lobby uses demo rules; bot
-                          warm-up opens a separate match. Joining or readying
-                          does not reserve credits.
+                          Lobby saved. When the live match server is connected,
+                          ready players can be moved into the arena.
                         </small>
                       </div>
                     )}
@@ -503,8 +428,7 @@ export default function OpenDuels({
             </div>
           )}
           <p className="lobby-footnote">
-            These saved lobbies use demo rules. Select Players in the match
-            setup above for free FFA and duels.
+            Player lobbies are saved and ready for live-server matchmaking.
           </p>
         </>
       )}
@@ -512,9 +436,8 @@ export default function OpenDuels({
         <DialogContent className="sc-dialog">
           <DialogTitle>Open a Duel lobby</DialogTitle>
           <DialogDescription>
-            Choose your map and rules. Players can join and ready up here for a
-            demo bot warm-up. For free player matches, use Players in the main
-            setup.
+            Choose your map and rules. Players can join, ready up, and launch
+            when the live match server is connected.
           </DialogDescription>
           <label className="match-map-picker">
             Map

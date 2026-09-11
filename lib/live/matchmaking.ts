@@ -1,5 +1,19 @@
 import type { LiveRoom } from './world.ts';
-import type { Ticket } from './security.ts';
+import type { LiveMode, Ticket } from './security.ts';
+
+export type OpenRoom = {
+  id: string;
+  mode: LiveMode;
+  mapId: string;
+  status: 'waiting' | 'playing';
+  players: number;
+  ready: number;
+  capacity: number;
+  openSlots: number;
+  instantFill?: boolean;
+  standing?: boolean;
+  stake?: number;
+};
 
 export const validRoomId = (value: unknown): value is string =>
   typeof value === 'string' &&
@@ -14,7 +28,7 @@ export function canJoinRoom(room: LiveRoom) {
 }
 
 /** Public listing deliberately excludes identities, claims, and reconnect tokens. */
-export function openRooms(rooms: Iterable<LiveRoom>) {
+export function openRooms(rooms: Iterable<LiveRoom>): OpenRoom[] {
   return [...rooms]
     .filter(
       (room) =>
@@ -26,7 +40,7 @@ export function openRooms(rooms: Iterable<LiveRoom>) {
       id: room.id,
       mode: room.mode,
       mapId: room.mapId,
-      status: room.status,
+      status: room.status === 'finished' ? 'waiting' : room.status,
       players: [...room.players.values()].filter((p) => !p.left).length,
       ready: [...room.players.values()].filter(
         (p) => !p.left && p.connected && p.ready,
@@ -35,7 +49,6 @@ export function openRooms(rooms: Iterable<LiveRoom>) {
       openSlots: room.capacity - room.players.size,
     }));
 }
-export type OpenRoom = ReturnType<typeof openRooms>[number];
 
 export function findRoom(
   rooms: Iterable<LiveRoom>,

@@ -25,7 +25,7 @@ void test('launch accounts have no welcome funds and never expose legacy demo mo
   const records=await launchRecords(db,null);assert.deepEqual(records.leaders,[]);assert.deepEqual(records.recent,[]);assert.equal(records.stats,null);
  }finally{sql.close()}
 });
-void test('launch rejects demo money, client-authored results and legacy stake lobbies',()=>{
- for(const action of ['topup','match_start','match_finish','shop_buy','lobby_create','lobby_join','challenge_send'])assert.throws(()=>allowLaunchMutation(action),/not available/);
- for(const action of ['profile','friend_send','party_create','inventory_equip','report_create'])assert.doesNotThrow(()=>allowLaunchMutation(action));
+void test('launch rejects wallet simulation but allows social multiplayer state',()=>{
+ for(const action of ['topup','match_start','match_finish','shop_buy'])assert.throws(()=>allowLaunchMutation(action),/not available/);
+ for(const action of ['profile','friend_send','party_create','lobby_create','lobby_join','challenge_create','inventory_equip','report_create'])assert.doesNotThrow(()=>allowLaunchMutation(action));
 });

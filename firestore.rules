@@ -1,0 +1,113 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(playerId) {
+      return signedIn() && request.auth.uid == playerId;
+    }
+
+    function ownsCreate(playerId) {
+      return isSelf(playerId) && request.resource.data.playerId == playerId;
+    }
+
+    match /publicConfig/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /players/{playerId} {
+      allow read: if true;
+      allow create: if isSelf(playerId)
+        && request.resource.data.keys().hasOnly([
+          'handle',
+          'displayName',
+          'avatarPath',
+          'anonymous',
+          'country',
+          'createdAt',
+          'lastSeen',
+          'walletStatus',
+          'stats'
+        ]);
+      allow update: if isSelf(playerId)
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          'handle',
+          'displayName',
+          'avatarPath',
+          'anonymous',
+          'lastSeen'
+        ]);
+      allow delete: if false;
+    }
+
+    match /wallets/{playerId} {
+      allow read: if isSelf(playerId);
+      allow write: if false;
+    }
+
+    match /ledgerEntries/{entryId} {
+      allow read: if signedIn()
+        && resource.data.visibleTo is list
+        && request.auth.uid in resource.data.visibleTo;
+      allow write: if false;
+    }
+
+    match /inventory/{itemId} {
+      allow read: if signedIn() && resource.data.playerId == request.auth.uid;
+      allow write: if false;
+    }
+
+    match /matches/{matchId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /duelLobbies/{lobbyId} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.status == 'open';
+      allow update: if signedIn()
+        && resource.data.ownerId == request.auth.uid
+        && request.resource.data.diff(resource.data).changedKeys().hasOnly([
+          'status',
+          'updatedAt'
+        ]);
+      allow delete: if false;
+    }
+
+    match /friends/{friendshipId} {
+      allow read: if signedIn()
+        && (resource.data.senderId == request.auth.uid
+          || resource.data.receiverId == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.senderId == request.auth.uid;
+      allow update: if signedIn()
+        && (resource.data.senderId == request.auth.uid
+          || resource.data.receiverId == request.auth.uid);
+      allow delete: if false;
+    }
+
+    match /messages/{messageId} {
+      allow read: if signedIn()
+        && (resource.data.senderId == request.auth.uid
+          || resource.data.receiverId == request.auth.uid);
+      allow create: if signedIn()
+        && request.resource.data.senderId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    match /reports/{reportId} {
+      allow create: if ownsCreate(request.resource.data.playerId);
+      allow read, update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

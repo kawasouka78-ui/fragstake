@@ -1,5 +1,5 @@
 /** Paid play fails closed until market, identity and provider reviews are complete.
- * Demo balances are deliberately excluded from this contract. */
+ * Practice balances are deliberately excluded from this contract. */
 export type PaymentEligibility = {
   country: string | null;
   ageVerified: boolean;
@@ -38,3 +38,4 @@ export function validateJournal(entries: LedgerEntry[]) {
     );
   return entries;
 }
+

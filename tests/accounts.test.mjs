@@ -1,64 +1,549 @@
 import assert from 'node:assert/strict';
-import {test,beforeEach} from 'node:test';
-import {DatabaseSync} from 'node:sqlite';
-import {readdirSync,readFileSync} from 'node:fs';
-import {ensurePlayer,state,getData,mutate} from '../db/service.ts';
-let sql,db;
-test('selected maps persist through match history and idempotent start retries',async()=>{
- const body={action:'match_start',mode:'practice',rate:2,team:'1v1',key:'map-round-01',mapId:'relay'};
- const first=await mutate(db,'alice',body);assert.equal(first.match.map_id,'relay');
- const retry=await mutate(db,'alice',{...body,mapId:'drydock'});assert.equal(retry.match.map_id,'relay');
- await finish('alice',first.match);assert.equal((await state(db,'alice')).matches[0].map_id,'relay');
- const fallback=await start('bob','practice');assert.equal(fallback.match.map_id,'citadel');
- await assert.rejects(mutate(db,'charlie',{...body,mapId:'unknown'}),/Invalid match/);
+import { test, beforeEach } from 'node:test';
+import { DatabaseSync } from 'node:sqlite';
+import { readdirSync, readFileSync } from 'node:fs';
+import { ensurePlayer, state, getData, mutate } from '../db/service.ts';
+let sql, db;
+test('selected maps persist through match history and idempotent start retries', async () => {
+  const body = {
+    action: 'match_start',
+    mode: 'practice',
+    rate: 2,
+    team: '1v1',
+    key: 'map-round-01',
+    mapId: 'relay',
+  };
+  const first = await mutate(db, 'alice', body);
+  assert.equal(first.match.map_id, 'relay');
+  const retry = await mutate(db, 'alice', { ...body, mapId: 'drydock' });
+  assert.equal(retry.match.map_id, 'relay');
+  await finish('alice', first.match);
+  assert.equal((await state(db, 'alice')).matches[0].map_id, 'relay');
+  const fallback = await start('bob', 'practice');
+  assert.equal(fallback.match.map_id, 'citadel');
+  await assert.rejects(
+    mutate(db, 'charlie', { ...body, mapId: 'unknown' }),
+    /Invalid match/,
+  );
 });
-function statement(query,values=[]){return {bind(...args){return statement(query,args)},async first(column){const row=sql.prepare(query).get(...values);return column?row?.[column]:row??null},async all(){return {results:sql.prepare(query).all(...values),success:true}},async run(){const r=sql.prepare(query).run(...values);return {success:true,meta:{changes:Number(r.changes)}}},query,values};}
-beforeEach(async()=>{sql?.close();sql=new DatabaseSync(':memory:');sql.exec('PRAGMA foreign_keys=ON');for(const file of readdirSync(new URL('../drizzle/',import.meta.url)).filter(f=>f.endsWith('.sql')).sort()){sql.exec(readFileSync(new URL('../drizzle/'+file,import.meta.url),'utf8'))}db={prepare:statement,async batch(items){sql.exec('BEGIN');try{const result=[];for(const item of items)result.push(await item.run());sql.exec('COMMIT');return result}catch(e){sql.exec('ROLLBACK');throw e}}};for(const id of ['alice','bob','charlie'])await ensurePlayer(db,id);});
-const view=(id,query='')=>getData(db,id,new URL('http://localhost/?'+query));
-const start=(id,mode='ffa',rate=2,team='1v1',key='round-key-01')=>mutate(db,id,{action:'match_start',mode,rate,team,key});
-const finish=(id,match,extra={})=>mutate(db,id,{action:'match_finish',id:match.id,kills:3,deaths:1,score:0,enemyScore:0,ending:'complete',...extra});
-test('accounts and welcome credits persist without duplicate grants',async()=>{await ensurePlayer(db,'alice');const s=await state(db,'alice');assert.equal(s.player.balance,10000);assert.equal(s.transactions.length,1);assert.equal(s.stats.matches,0);assert.equal((await state(db,'bob')).player.balance,10000)});
-test('demo top-ups are idempotent and cannot affect another wallet',async()=>{const body={action:'topup',amount:5000,key:'credit-key-1'};await mutate(db,'alice',body);await mutate(db,'alice',body);assert.equal((await state(db,'alice')).player.balance,15000);assert.equal((await state(db,'bob')).player.balance,10000);assert.equal((await state(db,'alice')).transactions.length,2);await assert.rejects(mutate(db,'alice',{...body,amount:999}),/Choose/)});
-test('friend requests support receiving, acceptance and removal with ownership checks',async()=>{await mutate(db,'alice',{action:'friend_send',target:'bob'});const rows=await view('bob','action=friends');assert.equal(rows.friends.length,1);const id=rows.friends[0].friendship_id;assert.equal((await state(db,'bob')).pending,1);await assert.rejects(mutate(db,'charlie',{action:'friend_accept',id}),/recipient/);await assert.rejects(mutate(db,'alice',{action:'friend_accept',id}),/recipient/);await mutate(db,'bob',{action:'friend_accept',id});assert.equal((await view('alice','action=friends')).friends[0].status,'accepted');await assert.rejects(mutate(db,'charlie',{action:'friend_remove',id}),/cannot/);await mutate(db,'alice',{action:'friend_remove',id});assert.equal((await view('bob','action=friends')).friends.length,0);await assert.rejects(mutate(db,'alice',{action:'friend_send',target:'alice'}),/yourself/)});
-test('profiles enforce unique handles and search exposes no wallet',async()=>{await mutate(db,'bob',{action:'profile',name:'Bob',handle:'bob_fps',bio:'Aim daily',color:'blue'});await assert.rejects(mutate(db,'alice',{action:'profile',name:'Alice',handle:'bob_fps',bio:'',color:'orange'}),/taken/);const r=await view('alice','action=search&q=bob');assert.equal(r.players[0].handle,'bob_fps');assert.equal(r.players[0].balance,undefined);assert.equal(r.players[0].email,undefined);assert.equal((await view('alice','action=search&q=%25%25')).players.length,0)});
-test('FFA settlement uses stored stakes, records history and settles once',async()=>{const {match}=await start('alice');const payload={rate:1000,balance:999999};await finish('alice',match,payload);await finish('alice',match,payload);const s=await state(db,'alice');assert.equal(s.player.balance,10400);assert.equal(s.matches.length,1);assert.equal(s.stats.kills,3);assert.equal(s.stats.net,400);assert.equal(s.transactions.filter(t=>t.kind==='match').length,1);assert.equal(s.active,null)});
-test('duels reserve stakes and pay each winner twenty euros once',async()=>{const {match}=await start('alice','duel',2,'2v2');assert.equal((await state(db,'alice')).player.balance,9000);await finish('alice',match,{kills:5,deaths:2,score:5,enemyScore:2});const s=await state(db,'alice');assert.equal(s.player.balance,11000);assert.equal(s.stats.net,1000);assert.equal(s.stats.wins,1);assert.equal(s.transactions.find(t=>t.kind==='stake').amount,-1000)});
-test('cancelled duels refund the reserved stake and do not rank',async()=>{const {match}=await start('alice','duel');await finish('alice',match,{kills:0,deaths:0,score:0,enemyScore:0,ending:'cancel'});const s=await state(db,'alice');assert.equal(s.player.balance,10000);assert.equal(s.stats.matches,0);assert.equal((await view('alice','action=leaderboard')).total,0)});
-test('early-leave duels forfeit stakes, and draws refund them',async()=>{const a=await start('alice','duel');await finish('alice',a.match,{kills:0,deaths:0,score:0,enemyScore:0,ending:'leave'});assert.equal((await state(db,'alice')).player.balance,9000);const b=await start('bob','duel');await finish('bob',b.match,{kills:2,deaths:2,score:2,enemyScore:2});assert.equal((await state(db,'bob')).player.balance,10000)});
-test('only match owners settle and only one match can be active',async()=>{const {match}=await start('alice');await assert.rejects(finish('bob',match),/not found/);await assert.rejects(start('alice','ffa',2,'1v1','different-key'),/unfinished/);await assert.rejects(mutate(db,'alice',{action:'topup',amount:2000,key:'blocked-key'}),/active/);await assert.rejects(finish('alice',match,{kills:-1}),/Invalid/);assert.equal((await state(db,'alice')).active.id,match.id)});
-test('practice records scores but does not change wallet balance; leaderboard filters work',async()=>{const a=await start('alice','practice');await finish('alice',a.match,{kills:10,deaths:2});const b=await start('bob','ffa');await finish('bob',b.match,{kills:2,deaths:1});assert.equal((await state(db,'alice')).player.balance,10000);let r=await view('alice','action=leaderboard');assert.equal(r.total,2);assert.equal(r.players[0].id,'alice');assert.equal(r.players[0].points,200);r=await view('alice','action=leaderboard&mode=ffa');assert.equal(r.total,1);r=await view('alice','action=leaderboard&scope=friends');assert.equal(r.total,1);await mutate(db,'alice',{action:'friend_send',target:'bob'});const f=(await view('bob','action=friends')).friends[0];await mutate(db,'bob',{action:'friend_accept',id:f.friendship_id});assert.equal((await view('alice','action=leaderboard&scope=friends')).total,2)});
-
-test('custom series stake pays once and records combat statistics',async()=>{const {match}=await mutate(db,'alice',{action:'match_start',mode:'duel',rate:2,team:'1v1',key:'custom-duel',stake:25,target:10,bestOf:3,weaponRule:'pistol'});assert.equal(match.stake,2500);assert.equal(match.target,10);assert.equal((await state(db,'alice')).player.balance,7500);await finish('alice',match,{kills:20,deaths:3,score:2,enemyScore:0,headshots:5,maxStreak:7});const s=await state(db,'alice');assert.equal(s.player.balance,12500);assert.equal(s.stats.net,2500);assert.equal(s.matches[0].max_streak,7)});
-test('funded Arena cash-out settles once and early leave forfeits only entry',async()=>{const body={action:'match_start',mode:'ffa',rate:2,team:'1v1',key:'funded-arena',entry:20};const {match}=await mutate(db,'alice',body);assert.equal((await state(db,'alice')).player.balance,8000);await finish('alice',match,{kills:12,deaths:7,ending:'cashout',maxStreak:4});await finish('alice',match,{kills:12,deaths:7,ending:'cashout'});assert.equal((await state(db,'alice')).player.balance,11000);assert.equal((await state(db,'alice')).stats.net,1000);const b=await mutate(db,'bob',body);await finish('bob',b.match,{kills:0,deaths:0,ending:'leave'});assert.equal((await state(db,'bob')).player.balance,8000)});
-test('cosmetic purchase retries do not double charge and skins can be preview-equipped directly',async()=>{await mutate(db,'alice',{action:'shop_buy',sku:'inferno'});await mutate(db,'alice',{action:'shop_buy',sku:'inferno'});assert.equal((await state(db,'alice')).player.balance,8501);await mutate(db,'bob',{action:'inventory_equip',sku:'inferno'});assert.equal((await view('bob','action=platform')).inventory.find(i=>i.sku==='inferno').equipped,1);await mutate(db,'alice',{action:'inventory_equip',sku:'inferno'});assert.equal((await view('alice','action=platform')).inventory.find(i=>i.sku==='inferno').equipped,1);await mutate(db,'alice',{action:'inventory_equip',sku:''});assert.equal((await view('alice','action=platform')).inventory.find(i=>i.sku==='inferno').equipped,0)});
-test('karambit requires ownership, charges once and equips independently of gun finishes',async()=>{
- const sku='karambit-obsidian';
- await assert.rejects(mutate(db,'alice',{action:'inventory_equip',sku}),/Buy this knife/);
- await mutate(db,'alice',{action:'inventory_equip',sku:'plasma-flow'});
- await mutate(db,'alice',{action:'shop_buy',sku});await mutate(db,'alice',{action:'shop_buy',sku});
- assert.equal((await state(db,'alice')).player.balance,5001);
- await mutate(db,'alice',{action:'inventory_equip',sku});
- let inventory=(await view('alice','action=platform')).inventory;
- assert.equal(inventory.filter(i=>i.equipped).length,2);
- await mutate(db,'alice',{action:'inventory_equip',sku:'inferno'});
- inventory=(await view('alice','action=platform')).inventory;
- assert.equal(inventory.find(i=>i.sku===sku).equipped,1);
- await mutate(db,'alice',{action:'inventory_equip',slot:'knife',sku:''});
- inventory=(await view('alice','action=platform')).inventory;
- assert.equal(inventory.find(i=>i.sku==='inferno').equipped,1);assert.equal(inventory.find(i=>i.sku===sku).equipped,0);
- await assert.rejects(mutate(db,'bob',{action:'inventory_equip',sku}),/Buy this knife/);
- await mutate(db,'bob',{action:'shop_buy',sku:'molten-core'});await mutate(db,'bob',{action:'shop_buy',sku:'plasma-flow'});
- await assert.rejects(mutate(db,'bob',{action:'shop_buy',sku}),/credits/);
- assert.ok(!(await view('bob','action=platform')).inventory.some(i=>i.sku===sku));
+function statement(query, values = []) {
+  return {
+    bind(...args) {
+      return statement(query, args);
+    },
+    async first(column) {
+      const row = sql.prepare(query).get(...values);
+      return column ? row?.[column] : (row ?? null);
+    },
+    async all() {
+      return { results: sql.prepare(query).all(...values), success: true };
+    },
+    async run() {
+      const r = sql.prepare(query).run(...values);
+      return { success: true, meta: { changes: Number(r.changes) } };
+    },
+    query,
+    values,
+  };
+}
+beforeEach(async () => {
+  sql?.close();
+  sql = new DatabaseSync(':memory:');
+  sql.exec('PRAGMA foreign_keys=ON');
+  for (const file of readdirSync(new URL('../drizzle/', import.meta.url))
+    .filter((f) => f.endsWith('.sql'))
+    .sort()) {
+    sql.exec(
+      readFileSync(new URL('../drizzle/' + file, import.meta.url), 'utf8'),
+    );
+  }
+  db = {
+    prepare: statement,
+    async batch(items) {
+      sql.exec('BEGIN');
+      try {
+        const result = [];
+        for (const item of items) result.push(await item.run());
+        sql.exec('COMMIT');
+        return result;
+      } catch (e) {
+        sql.exec('ROLLBACK');
+        throw e;
+      }
+    },
+  };
+  for (const id of ['alice', 'bob', 'charlie']) await ensurePlayer(db, id);
 });
-test('party and challenge invitations enforce recipient ownership',async()=>{await mutate(db,'alice',{action:'party_create',name:'Test squad'});const handle=(await state(db,'bob')).player.handle;await mutate(db,'alice',{action:'party_invite',handle});const invitation=(await view('bob','action=platform')).invites[0];await assert.rejects(mutate(db,'charlie',{action:'party_accept',id:invitation.id}),/not found/);await mutate(db,'bob',{action:'party_accept',id:invitation.id});assert.equal((await view('alice','action=platform')).party.members.filter(m=>m.status==='joined').length,2);await mutate(db,'alice',{action:'challenge_create',handle,stake:25,target:10,bestOf:3,weaponRule:'sniper',team:'1v1'});const c=(await view('bob','action=platform')).challenges[0];await assert.rejects(mutate(db,'charlie',{action:'challenge_accept',id:c.id}),/not yours/);await mutate(db,'bob',{action:'challenge_accept',id:c.id});assert.equal((await view('alice','action=platform')).challenges[0].status,'accepted');assert.equal((await state(db,'bob')).player.balance,10000)});
-test('reports stay private and can reference only owned matches',async()=>{const {match}=await start('alice','practice');await assert.rejects(mutate(db,'bob',{action:'report_create',category:'bug',details:'A test report for this match.',matchId:match.id}),/not found/);await mutate(db,'alice',{action:'report_create',category:'bug',details:'A test report for this match.',matchId:match.id});assert.equal((await view('alice','action=platform')).reports.length,1);assert.equal((await view('bob','action=platform')).reports.length,0)});
-
-test('open lobbies are saved, capacity limited and host controlled without reserving funds',async()=>{const c={action:'lobby_create',key:'new-room-01',stake:25,target:10,bestOf:3,weaponRule:'rifle',team:'1v1'};await mutate(db,'alice',c);await mutate(db,'alice',c);let rooms=await view('bob','action=lobbies');assert.equal(rooms.rooms.length,1);const room=rooms.rooms[0];assert.equal(JSON.parse(room.rules).mapId,'citadel');assert.equal(room.joined,0);await mutate(db,'bob',{action:'lobby_join',id:room.id});await mutate(db,'bob',{action:'lobby_join',id:room.id});await assert.rejects(mutate(db,'charlie',{action:'lobby_join',id:room.id}),/full/);await assert.rejects(mutate(db,'charlie',{action:'lobby_ready',id:room.id,ready:true}),/Join/);await assert.rejects(mutate(db,'bob',{action:'lobby_close',id:room.id}),/host/);await mutate(db,'bob',{action:'lobby_ready',id:room.id,ready:true});assert.equal((await view('bob','action=lobbies')).members.find(m=>m.player_id==='bob').ready,1);assert.equal((await state(db,'bob')).player.balance,10000);await mutate(db,'bob',{action:'lobby_leave',id:room.id});await mutate(db,'charlie',{action:'lobby_join',id:room.id});await mutate(db,'alice',{action:'lobby_close',id:room.id});assert.equal((await view('bob','action=lobbies')).rooms.length,0);await assert.rejects(mutate(db,'bob',{action:'lobby_join',id:room.id}),/closed/)});
-
-test('closing a saved match allows immediate FFA and duel entry with one reservation',async()=>{
- for(const mode of ['ffa','duel']){const prior=await mutate(db,'alice',{action:'match_start',mode:'ffa',rate:2,team:'1v1',entry:20,key:'prior-'+mode,mapId:'citadel'});await finish('alice',prior.match,{kills:0,deaths:0,ending:'cancel'});const body={action:'match_start',mode,rate:2,team:'2v2',entry:20,stake:10,key:'new-match-'+mode,mapId:'underpass'};const next=await mutate(db,'alice',body);const retry=await mutate(db,'alice',body);assert.equal(next.match.id,retry.match.id);assert.equal(next.match.map_id,'underpass');assert.equal(retry.player.balance,mode==='ffa'?8000:9000);await finish('alice',next.match,{kills:0,deaths:0,ending:'cancel'});assert.equal((await state(db,'alice')).player.balance,10000);}
+const view = (id, query = '') =>
+  getData(db, id, new URL('http://localhost/?' + query));
+const start = (
+  id,
+  mode = 'ffa',
+  rate = 2,
+  team = '1v1',
+  key = 'round-key-01',
+) => mutate(db, id, { action: 'match_start', mode, rate, team, key });
+const finish = (id, match, extra = {}) =>
+  mutate(db, id, {
+    action: 'match_finish',
+    id: match.id,
+    kills: 3,
+    deaths: 1,
+    score: 0,
+    enemyScore: 0,
+    ending: 'complete',
+    ...extra,
+  });
+test('accounts and welcome credits persist without duplicate grants', async () => {
+  await ensurePlayer(db, 'alice');
+  const s = await state(db, 'alice');
+  assert.equal(s.player.balance, 10000);
+  assert.equal(s.transactions.length, 1);
+  assert.equal(s.stats.matches, 0);
+  assert.equal((await state(db, 'bob')).player.balance, 10000);
 });
-test('new lobby maps persist and removed pistol rules normalize to the six weapon pool',async()=>{
- await mutate(db,'alice',{action:'lobby_create',key:'depot-lobby',stake:10,target:10,bestOf:1,team:'2v2',weaponRule:'pistol',mapId:'depot'});const rules=JSON.parse((await view('bob','action=lobbies')).rooms[0].rules);assert.equal(rules.mapId,'depot');assert.equal(rules.weaponRule,'standard');
+test('demo top-ups are idempotent and cannot affect another wallet', async () => {
+  const body = { action: 'topup', amount: 5000, key: 'credit-key-1' };
+  await mutate(db, 'alice', body);
+  await mutate(db, 'alice', body);
+  assert.equal((await state(db, 'alice')).player.balance, 15000);
+  assert.equal((await state(db, 'bob')).player.balance, 10000);
+  assert.equal((await state(db, 'alice')).transactions.length, 2);
+  await assert.rejects(mutate(db, 'alice', { ...body, amount: 999 }), /Choose/);
+});
+test('friend requests support receiving, acceptance and removal with ownership checks', async () => {
+  await mutate(db, 'alice', { action: 'friend_send', target: 'bob' });
+  const rows = await view('bob', 'action=friends');
+  assert.equal(rows.friends.length, 1);
+  const id = rows.friends[0].friendship_id;
+  assert.equal((await state(db, 'bob')).pending, 1);
+  await assert.rejects(
+    mutate(db, 'charlie', { action: 'friend_accept', id }),
+    /recipient/,
+  );
+  await assert.rejects(
+    mutate(db, 'alice', { action: 'friend_accept', id }),
+    /recipient/,
+  );
+  await mutate(db, 'bob', { action: 'friend_accept', id });
+  assert.equal(
+    (await view('alice', 'action=friends')).friends[0].status,
+    'accepted',
+  );
+  await assert.rejects(
+    mutate(db, 'charlie', { action: 'friend_remove', id }),
+    /cannot/,
+  );
+  await mutate(db, 'alice', { action: 'friend_remove', id });
+  assert.equal((await view('bob', 'action=friends')).friends.length, 0);
+  await assert.rejects(
+    mutate(db, 'alice', { action: 'friend_send', target: 'alice' }),
+    /yourself/,
+  );
+});
+test('profiles enforce unique handles and search exposes no wallet', async () => {
+  await mutate(db, 'bob', {
+    action: 'profile',
+    name: 'Bob',
+    handle: 'bob_fps',
+    bio: 'Aim daily',
+    color: 'blue',
+  });
+  await assert.rejects(
+    mutate(db, 'alice', {
+      action: 'profile',
+      name: 'Alice',
+      handle: 'bob_fps',
+      bio: '',
+      color: 'orange',
+    }),
+    /taken/,
+  );
+  const r = await view('alice', 'action=search&q=bob');
+  assert.equal(r.players[0].handle, 'bob_fps');
+  assert.equal(r.players[0].balance, undefined);
+  assert.equal(r.players[0].email, undefined);
+  assert.equal(
+    (await view('alice', 'action=search&q=%25%25')).players.length,
+    0,
+  );
+});
+test('FFA settlement uses stored stakes, records history and settles once', async () => {
+  const { match } = await start('alice');
+  const payload = { rate: 1000, balance: 999999 };
+  await finish('alice', match, payload);
+  await finish('alice', match, payload);
+  const s = await state(db, 'alice');
+  assert.equal(s.player.balance, 10400);
+  assert.equal(s.matches.length, 1);
+  assert.equal(s.stats.kills, 3);
+  assert.equal(s.stats.net, 400);
+  assert.equal(s.transactions.filter((t) => t.kind === 'match').length, 1);
+  assert.equal(s.active, null);
+});
+test('duels reserve stakes and pay each winner twenty euros once', async () => {
+  const { match } = await start('alice', 'duel', 2, '2v2');
+  assert.equal((await state(db, 'alice')).player.balance, 9000);
+  await finish('alice', match, {
+    kills: 5,
+    deaths: 2,
+    score: 5,
+    enemyScore: 2,
+  });
+  const s = await state(db, 'alice');
+  assert.equal(s.player.balance, 11000);
+  assert.equal(s.stats.net, 1000);
+  assert.equal(s.stats.wins, 1);
+  assert.equal(s.transactions.find((t) => t.kind === 'stake').amount, -1000);
+});
+test('cancelled duels refund the reserved stake and do not rank', async () => {
+  const { match } = await start('alice', 'duel');
+  await finish('alice', match, {
+    kills: 0,
+    deaths: 0,
+    score: 0,
+    enemyScore: 0,
+    ending: 'cancel',
+  });
+  const s = await state(db, 'alice');
+  assert.equal(s.player.balance, 10000);
+  assert.equal(s.stats.matches, 0);
+  assert.equal((await view('alice', 'action=leaderboard')).total, 0);
+});
+test('early-leave duels forfeit stakes, and draws refund them', async () => {
+  const a = await start('alice', 'duel');
+  await finish('alice', a.match, {
+    kills: 0,
+    deaths: 0,
+    score: 0,
+    enemyScore: 0,
+    ending: 'leave',
+  });
+  assert.equal((await state(db, 'alice')).player.balance, 9000);
+  const b = await start('bob', 'duel');
+  await finish('bob', b.match, {
+    kills: 2,
+    deaths: 2,
+    score: 2,
+    enemyScore: 2,
+  });
+  assert.equal((await state(db, 'bob')).player.balance, 10000);
+});
+test('only match owners settle and only one match can be active', async () => {
+  const { match } = await start('alice');
+  await assert.rejects(finish('bob', match), /not found/);
+  await assert.rejects(
+    start('alice', 'ffa', 2, '1v1', 'different-key'),
+    /unfinished/,
+  );
+  await assert.rejects(
+    mutate(db, 'alice', { action: 'topup', amount: 2000, key: 'blocked-key' }),
+    /active/,
+  );
+  await assert.rejects(finish('alice', match, { kills: -1 }), /Invalid/);
+  assert.equal((await state(db, 'alice')).active.id, match.id);
+});
+test('practice records scores but does not change wallet balance; leaderboard filters work', async () => {
+  const a = await start('alice', 'practice');
+  await finish('alice', a.match, { kills: 10, deaths: 2 });
+  const b = await start('bob', 'ffa');
+  await finish('bob', b.match, { kills: 2, deaths: 1 });
+  assert.equal((await state(db, 'alice')).player.balance, 10000);
+  let r = await view('alice', 'action=leaderboard');
+  assert.equal(r.total, 2);
+  assert.equal(r.players[0].id, 'alice');
+  assert.equal(r.players[0].points, 200);
+  r = await view('alice', 'action=leaderboard&mode=ffa');
+  assert.equal(r.total, 1);
+  r = await view('alice', 'action=leaderboard&scope=friends');
+  assert.equal(r.total, 1);
+  await mutate(db, 'alice', { action: 'friend_send', target: 'bob' });
+  const f = (await view('bob', 'action=friends')).friends[0];
+  await mutate(db, 'bob', { action: 'friend_accept', id: f.friendship_id });
+  assert.equal(
+    (await view('alice', 'action=leaderboard&scope=friends')).total,
+    2,
+  );
+});
+
+test('custom series stake pays once and records combat statistics', async () => {
+  const { match } = await mutate(db, 'alice', {
+    action: 'match_start',
+    mode: 'duel',
+    rate: 2,
+    team: '1v1',
+    key: 'custom-duel',
+    stake: 25,
+    target: 10,
+    bestOf: 3,
+    weaponRule: 'pistol',
+  });
+  assert.equal(match.stake, 2500);
+  assert.equal(match.target, 10);
+  assert.equal((await state(db, 'alice')).player.balance, 7500);
+  await finish('alice', match, {
+    kills: 20,
+    deaths: 3,
+    score: 2,
+    enemyScore: 0,
+    headshots: 5,
+    maxStreak: 7,
+  });
+  const s = await state(db, 'alice');
+  assert.equal(s.player.balance, 12500);
+  assert.equal(s.stats.net, 2500);
+  assert.equal(s.matches[0].max_streak, 7);
+});
+test('funded Arena cash-out settles once and early leave forfeits only entry', async () => {
+  const body = {
+    action: 'match_start',
+    mode: 'ffa',
+    rate: 2,
+    team: '1v1',
+    key: 'funded-arena',
+    entry: 20,
+  };
+  const { match } = await mutate(db, 'alice', body);
+  assert.equal((await state(db, 'alice')).player.balance, 8000);
+  await finish('alice', match, {
+    kills: 12,
+    deaths: 7,
+    ending: 'cashout',
+    maxStreak: 4,
+  });
+  await finish('alice', match, { kills: 12, deaths: 7, ending: 'cashout' });
+  assert.equal((await state(db, 'alice')).player.balance, 11000);
+  assert.equal((await state(db, 'alice')).stats.net, 1000);
+  const b = await mutate(db, 'bob', body);
+  await finish('bob', b.match, { kills: 0, deaths: 0, ending: 'leave' });
+  assert.equal((await state(db, 'bob')).player.balance, 8000);
+});
+test('cosmetic purchase retries do not double charge and skins can be preview-equipped directly', async () => {
+  await mutate(db, 'alice', { action: 'shop_buy', sku: 'glacier' });
+  await mutate(db, 'alice', { action: 'shop_buy', sku: 'glacier' });
+  assert.equal((await state(db, 'alice')).player.balance, 8701);
+  await mutate(db, 'bob', { action: 'inventory_equip', sku: 'inferno' });
+  assert.equal(
+    (await view('bob', 'action=platform')).inventory.find(
+      (i) => i.sku === 'inferno',
+    ).equipped,
+    1,
+  );
+  await mutate(db, 'alice', { action: 'inventory_equip', sku: 'glacier' });
+  assert.equal(
+    (await view('alice', 'action=platform')).inventory.find(
+      (i) => i.sku === 'glacier',
+    ).equipped,
+    1,
+  );
+  await mutate(db, 'alice', { action: 'inventory_equip', sku: '' });
+  assert.equal(
+    (await view('alice', 'action=platform')).inventory.find(
+      (i) => i.sku === 'glacier',
+    ).equipped,
+    0,
+  );
+});
+test('karambit requires ownership, charges once and equips independently of gun finishes', async () => {
+  const sku = 'karambit-obsidian';
+  await assert.rejects(
+    mutate(db, 'alice', { action: 'inventory_equip', sku }),
+    /Buy this knife/,
+  );
+  await mutate(db, 'alice', { action: 'inventory_equip', sku: 'plasma-flow' });
+  await mutate(db, 'alice', { action: 'shop_buy', sku });
+  await mutate(db, 'alice', { action: 'shop_buy', sku });
+  assert.equal((await state(db, 'alice')).player.balance, 5001);
+  await mutate(db, 'alice', { action: 'inventory_equip', sku });
+  let inventory = (await view('alice', 'action=platform')).inventory;
+  assert.equal(inventory.filter((i) => i.equipped).length, 2);
+  await mutate(db, 'alice', { action: 'inventory_equip', sku: 'inferno' });
+  inventory = (await view('alice', 'action=platform')).inventory;
+  assert.equal(inventory.find((i) => i.sku === sku).equipped, 1);
+  await mutate(db, 'alice', {
+    action: 'inventory_equip',
+    slot: 'knife',
+    sku: '',
+  });
+  inventory = (await view('alice', 'action=platform')).inventory;
+  assert.equal(inventory.find((i) => i.sku === 'inferno').equipped, 1);
+  assert.equal(inventory.find((i) => i.sku === sku).equipped, 0);
+  await assert.rejects(
+    mutate(db, 'bob', { action: 'inventory_equip', sku }),
+    /Buy this knife/,
+  );
+  await mutate(db, 'bob', { action: 'shop_buy', sku: 'molten-core' });
+  await mutate(db, 'bob', { action: 'shop_buy', sku: 'plasma-flow' });
+  await assert.rejects(
+    mutate(db, 'bob', { action: 'shop_buy', sku }),
+    /funds/,
+  );
+  assert.ok(
+    !(await view('bob', 'action=platform')).inventory.some(
+      (i) => i.sku === sku,
+    ),
+  );
+});
+test('party and challenge invitations enforce recipient ownership', async () => {
+  await mutate(db, 'alice', { action: 'party_create', name: 'Test squad' });
+  const handle = (await state(db, 'bob')).player.handle;
+  await mutate(db, 'alice', { action: 'party_invite', handle });
+  const invitation = (await view('bob', 'action=platform')).invites[0];
+  await assert.rejects(
+    mutate(db, 'charlie', { action: 'party_accept', id: invitation.id }),
+    /not found/,
+  );
+  await mutate(db, 'bob', { action: 'party_accept', id: invitation.id });
+  assert.equal(
+    (await view('alice', 'action=platform')).party.members.filter(
+      (m) => m.status === 'joined',
+    ).length,
+    2,
+  );
+  await mutate(db, 'alice', {
+    action: 'challenge_create',
+    handle,
+    stake: 25,
+    target: 10,
+    bestOf: 3,
+    weaponRule: 'sniper',
+    team: '1v1',
+  });
+  const c = (await view('bob', 'action=platform')).challenges[0];
+  await assert.rejects(
+    mutate(db, 'charlie', { action: 'challenge_accept', id: c.id }),
+    /not yours/,
+  );
+  await mutate(db, 'bob', { action: 'challenge_accept', id: c.id });
+  assert.equal(
+    (await view('alice', 'action=platform')).challenges[0].status,
+    'accepted',
+  );
+  assert.equal((await state(db, 'bob')).player.balance, 10000);
+});
+test('reports stay private and can reference only owned matches', async () => {
+  const { match } = await start('alice', 'practice');
+  await assert.rejects(
+    mutate(db, 'bob', {
+      action: 'report_create',
+      category: 'bug',
+      details: 'A test report for this match.',
+      matchId: match.id,
+    }),
+    /not found/,
+  );
+  await mutate(db, 'alice', {
+    action: 'report_create',
+    category: 'bug',
+    details: 'A test report for this match.',
+    matchId: match.id,
+  });
+  assert.equal((await view('alice', 'action=platform')).reports.length, 1);
+  assert.equal((await view('bob', 'action=platform')).reports.length, 0);
+});
+
+test('open lobbies are saved, capacity limited and host controlled without reserving funds', async () => {
+  const c = {
+    action: 'lobby_create',
+    key: 'new-room-01',
+    stake: 25,
+    target: 10,
+    bestOf: 3,
+    weaponRule: 'rifle',
+    team: '1v1',
+  };
+  await mutate(db, 'alice', c);
+  await mutate(db, 'alice', c);
+  let rooms = await view('bob', 'action=lobbies');
+  assert.equal(rooms.rooms.length, 1);
+  const room = rooms.rooms[0];
+  assert.equal(JSON.parse(room.rules).mapId, 'citadel');
+  assert.equal(room.joined, 0);
+  await mutate(db, 'bob', { action: 'lobby_join', id: room.id });
+  await mutate(db, 'bob', { action: 'lobby_join', id: room.id });
+  await assert.rejects(
+    mutate(db, 'charlie', { action: 'lobby_join', id: room.id }),
+    /full/,
+  );
+  await assert.rejects(
+    mutate(db, 'charlie', { action: 'lobby_ready', id: room.id, ready: true }),
+    /Join/,
+  );
+  await assert.rejects(
+    mutate(db, 'bob', { action: 'lobby_close', id: room.id }),
+    /host/,
+  );
+  await mutate(db, 'bob', { action: 'lobby_ready', id: room.id, ready: true });
+  assert.equal(
+    (await view('bob', 'action=lobbies')).members.find(
+      (m) => m.player_id === 'bob',
+    ).ready,
+    1,
+  );
+  assert.equal((await state(db, 'bob')).player.balance, 10000);
+  await mutate(db, 'bob', { action: 'lobby_leave', id: room.id });
+  await mutate(db, 'charlie', { action: 'lobby_join', id: room.id });
+  await mutate(db, 'alice', { action: 'lobby_close', id: room.id });
+  assert.equal((await view('bob', 'action=lobbies')).rooms.length, 0);
+  await assert.rejects(
+    mutate(db, 'bob', { action: 'lobby_join', id: room.id }),
+    /closed/,
+  );
+});
+
+test('closing a saved match allows immediate FFA and duel entry with one reservation', async () => {
+  for (const mode of ['ffa', 'duel']) {
+    const prior = await mutate(db, 'alice', {
+      action: 'match_start',
+      mode: 'ffa',
+      rate: 2,
+      team: '1v1',
+      entry: 20,
+      key: 'prior-' + mode,
+      mapId: 'citadel',
+    });
+    await finish('alice', prior.match, {
+      kills: 0,
+      deaths: 0,
+      ending: 'cancel',
+    });
+    const body = {
+      action: 'match_start',
+      mode,
+      rate: 2,
+      team: '2v2',
+      entry: 20,
+      stake: 10,
+      key: 'new-match-' + mode,
+      mapId: 'underpass',
+    };
+    const next = await mutate(db, 'alice', body);
+    const retry = await mutate(db, 'alice', body);
+    assert.equal(next.match.id, retry.match.id);
+    assert.equal(next.match.map_id, 'underpass');
+    assert.equal(retry.player.balance, mode === 'ffa' ? 8000 : 9000);
+    await finish('alice', next.match, {
+      kills: 0,
+      deaths: 0,
+      ending: 'cancel',
+    });
+    assert.equal((await state(db, 'alice')).player.balance, 10000);
+  }
+});
+test('new lobby maps persist and removed pistol rules normalize to the six weapon pool', async () => {
+  await mutate(db, 'alice', {
+    action: 'lobby_create',
+    key: 'depot-lobby',
+    stake: 10,
+    target: 10,
+    bestOf: 1,
+    team: '2v2',
+    weaponRule: 'pistol',
+    mapId: 'depot',
+  });
+  const rules = JSON.parse(
+    (await view('bob', 'action=lobbies')).rooms[0].rules,
+  );
+  assert.equal(rules.mapId, 'depot');
+  assert.equal(rules.weaponRule, 'standard');
 });

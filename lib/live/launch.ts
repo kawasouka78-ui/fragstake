@@ -1,7 +1,7 @@
 import type { MatchConfig } from '../game-rules.ts';
 import type { LiveMode } from './security.ts';
 
-/** Live entry never uses the demo-wallet start or settlement routes. */
+/** Live entry uses the multiplayer service only. */
 export async function requestLiveMatch(
   mode: LiveMode,
   mapId: string,
@@ -27,13 +27,15 @@ export async function requestLiveMatch(
     ticket?: string;
     url?: string;
     guest?: boolean;
+    mapId?: string;
   } | null;
-  if (!response.ok)
+  if (!response.ok) {
     throw new Error(
       typeof data?.error === 'string'
         ? data.error
         : 'Could not join this match. Please try again.',
     );
+  }
   if (
     !data ||
     typeof data.ticket !== 'string' ||
@@ -45,7 +47,7 @@ export async function requestLiveMatch(
     throw new Error('The match connection is unavailable. Please try again.');
   return {
     mode: 'practice',
-    mapId,
+    mapId: data.mapId || mapId,
     team: mode === '2v2' ? '2v2' : '1v1',
     rate: 0,
     balance: 0,

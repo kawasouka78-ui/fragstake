@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { MessageSquare, Send, ShieldBan } from 'lucide-react';
-import { accountApi, useAccount } from './account-context';
+import { accountApi, dateLabel, useAccount } from './account-context';
 import './live-platform.css';
 type Friend = {
   id: string;
@@ -24,8 +24,14 @@ export default function SocialChat() {
     [target, setTarget] = useState(''),
     [draft, setDraft] = useState(''),
     [error, setError] = useState(''),
-    [busy, setBusy] = useState(false);
+    [busy, setBusy] = useState(false),
+    [currentTime, setCurrentTime] = useState(0);
   const key = useRef('');
+  useEffect(() => {
+    setCurrentTime(Date.now());
+    const timer = setInterval(() => setCurrentTime(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, []);
   useEffect(() => {
     if (!data) return;
     let cancelled = false;
@@ -42,7 +48,11 @@ export default function SocialChat() {
           setError('');
         }
       } catch (e) {
-        if (!cancelled) setError((e as Error).message);
+        if (!cancelled) {
+          setFriends([]);
+          setMessages([]);
+          setError(e instanceof Error ? e.message : 'Could not load chat.');
+        }
       }
     };
     void load();
@@ -134,12 +144,14 @@ export default function SocialChat() {
                   <span>
                     <i
                       className={
-                        Date.now() - friend.updated_at < 70000 ? 'online' : ''
+                        currentTime && currentTime - friend.updated_at < 70000
+                          ? 'online'
+                          : ''
                       }
                     />
                     {friend.blocked
                       ? 'Blocked'
-                      : Date.now() - friend.updated_at < 70000
+                      : currentTime && currentTime - friend.updated_at < 70000
                         ? friend.activity
                         : 'Offline'}
                   </span>
@@ -174,12 +186,7 @@ export default function SocialChat() {
                   key={m.id}
                 >
                   <p>{m.body}</p>
-                  <small>
-                    {new Date(m.created_at).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </small>
+                  <small>{dateLabel(m.created_at)}</small>
                 </div>
               ))
             ) : (

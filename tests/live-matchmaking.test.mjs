@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { LiveRoom } from '../lib/live/world.ts';
 import { findRoom, openRooms } from '../lib/live/matchmaking.ts';
+import { instantDuelRooms } from '../lib/live/instant-rooms.ts';
 import { liveResultDetails } from '../lib/live/result.ts';
 import { issueTicket, readTicket } from '../lib/live/security.ts';
 
@@ -86,6 +87,38 @@ test('in-progress FFA can be joined but consumed slots are not advertised as ava
   assert.equal(openRooms([value])[0].players, 1);
   assert.equal(openRooms([value])[0].openSlots, 8);
   assert.equal(findRoom([value], claims('c', 'ffa')), value);
+});
+
+test('instant-fill duel rows are deterministic and marked below real rooms by the UI', () => {
+  const rows = instantDuelRooms('underpass', 25);
+  assert.deepEqual(
+    rows.map(({ id, mode, mapId, instantFill, stake, openSlots }) => ({
+      id,
+      mode,
+      mapId,
+      instantFill,
+      stake,
+      openSlots,
+    })),
+    [
+      {
+        id: 'instant-fill-1v1-underpass-25',
+        mode: '1v1',
+        mapId: 'underpass',
+        instantFill: true,
+        stake: 25,
+        openSlots: 0,
+      },
+      {
+        id: 'instant-fill-2v2-underpass-25',
+        mode: '2v2',
+        mapId: 'underpass',
+        instantFill: true,
+        stake: 25,
+        openSlots: 0,
+      },
+    ],
+  );
 });
 
 test('room targeting is signed and malformed room ids are rejected', async () => {

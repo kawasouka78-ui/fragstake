@@ -9,6 +9,7 @@ import { liveConfig } from '../lib/live/config.ts';
 import { RECONNECT_MS } from '../lib/live/protocol.ts';
 import { openRooms, findRoom } from '../lib/live/matchmaking.ts';
 import {prepareRematch} from '../lib/live/rematch.ts';
+import { currentFfaMapId, nextFfaRotationAt } from '../lib/live/rotation.ts';
 
 const {secret, port, host, origins, site} = liveConfig(process.env);
 mkdirSync('.wrangler/game', { recursive: true });
@@ -46,7 +47,11 @@ const server = createServer((req, res) => {
         players: [...sessions.values()].filter((s) => s.socket).length,
         tickRate: 30,
         payments: false,
-        openRooms: openRooms(rooms.values()),
+        currentFfaMapId: currentFfaMapId(),
+        nextFfaRotationAt: nextFfaRotationAt(),
+        openRooms: openRooms(rooms.values()).filter(
+          (room) => room.mode !== 'ffa' || room.mapId === currentFfaMapId(),
+        ),
       }),
     );
     return;
@@ -205,7 +210,10 @@ wss.on('connection', (ws: WebSocket) => {
           if (!room) {
             if (rooms.size >= 24)
               throw new Error('All servers are busy. Try again soon.');
-            room = new LiveRoom(claims.mode, claims.mapId);
+            room = new LiveRoom(
+              claims.mode,
+              claims.mode === 'ffa' ? currentFfaMapId() : claims.mapId,
+            );
             rooms.set(room.id, room);
           }
           room.add(claims);
@@ -287,8 +295,19 @@ const timer = setInterval(() => {
       sessions.delete(key);
     }
   }
+  const activeFfaMap = currentFfaMapId();
   for (const [id, room] of rooms) {
-    if (room.status === 'waiting' && Date.now() - room.created > 300000)
+    if (
+      room.mode === 'ffa' &&
+      room.mapId !== activeFfaMap &&
+      ![...room.players.values()].some((p) => !p.left && p.connected)
+    )
+      room.finish();
+    if (
+      room.mode !== 'ffa' &&
+      room.status === 'waiting' &&
+      Date.now() - room.created > 300000
+    )
       room.finish();
     if(room.status==='waiting'&&room.inviteExpiresAt&&Date.now()>room.inviteExpiresAt&&room.players.size<room.capacity)room.finish();
     room.step();

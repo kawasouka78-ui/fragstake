@@ -1,6 +1,8 @@
 import {collisionBoxes,getMap,type ArenaMap,type Box} from './maps.ts';
 import {matchOutcome} from '../match-summary.ts';
 import {duelPayout,type MatchConfig,type Result} from '../game-rules.ts';
+import {BotController} from './bot-controller.ts';
+import {assignBotSkills,type BotDifficulty} from './bot-skills.ts';
 
 export type Vec={x:number;y:number;z:number};
 export type WeaponId='rifle'|'carbine'|'smg'|'vector'|'marksman'|'pistol'|'handcannon'|'shotgun'|'knife';
@@ -19,7 +21,8 @@ export const weaponIds:WeaponId[]=['rifle','smg','marksman','carbine','vector','
 export const matchWeaponIds:WeaponId[]=[...weaponIds,'knife'];
 const ammoFor=()=>Object.fromEntries(matchWeaponIds.map(id=>[id,id==='knife'?1:weapons[id].mag])) as Record<WeaponId,number>;
 const reserveFor=()=>Object.fromEntries(matchWeaponIds.map(id=>[id,id==='knife'?0:weapons[id].mag*4])) as Record<WeaponId,number>;
-export type Actor={id:number;name:string;team:number;x:number;z:number;y:number;vy:number;yaw:number;hp:number;kills:number;deaths:number;respawn:number;shield:number;cooldown:number;crouch:boolean;moving:number;path:{x:number;z:number}[];repath:number;target:number;reaction:number;lastDamage:number};
+export type ActorMotion={vx:number;vz:number;pitch:number;sprinting:boolean;sliding:boolean;reloading:boolean;weapon:WeaponId;firing:boolean};
+export type Actor={id:number;name:string;team:number;x:number;z:number;y:number;vy:number;yaw:number;hp:number;kills:number;deaths:number;respawn:number;shield:number;cooldown:number;crouch:boolean;moving:number;path:{x:number;z:number}[];repath:number;target:number;reaction:number;lastDamage:number;motion?:ActorMotion};
 export type Controls={forward:number;right:number;fire:boolean;firePressed?:boolean;aim:boolean;sprint:boolean;crouch:boolean;jump:boolean;reload:boolean;slide?:boolean;weapon?:WeaponId};
 export const idleInput=():Controls=>({forward:0,right:0,fire:false,aim:false,sprint:false,crouch:false,jump:false,reload:false,slide:false});
 export const sprintRecovery={cooldown:1.5,restartStamina:35,drain:24,regen:18} as const;
@@ -43,7 +46,13 @@ export function moveActor(actor:Actor,dx:number,dz:number,boxes:Box[]){
  const steps=Math.max(1,Math.ceil(Math.hypot(dx,dz)/.16));
  for(let i=0;i<steps;i++){if(clearAt(boxes,actor.x+dx/steps,actor.z))actor.x+=dx/steps;if(clearAt(boxes,actor.x,actor.z+dz/steps))actor.z+=dz/steps;}
 }
-export function visible(boxes:Box[],a:Vec,b:Vec){const d={x:b.x-a.x,y:b.y-a.y,z:b.z-a.z},len=Math.hypot(d.x,d.y,d.z);return len<.01||wallDistance(boxes,a,{x:d.x/len,y:d.y/len,z:d.z/len})>len-.05;}
+export function visible(boxes:Box[],a:Vec,b:Vec){
+ const d={x:b.x-a.x,y:b.y-a.y,z:b.z-a.z},len=Math.hypot(d.x,d.y,d.z);if(len<.01)return true;
+ const ray={x:d.x/len,y:d.y/len,z:d.z/len};
+ // Visibility only needs one obstruction; distant awareness must not scan the rest of the map after a wall blocks sight.
+ for(const box of boxes)if(rayBox(a,ray,{x:box.x-box.w/2,y:box.y??0,z:box.z-box.d/2},{x:box.x+box.w/2,y:(box.y??0)+box.h,z:box.z+box.d/2})<=len-.05)return false;
+ return true;
+}
 /** A short forward slash, shared by bot matches and the authoritative player server. */
 export function meleeTarget(boxes:Box[],from:Vec,dir:Vec,actors:Actor[],range=weapons.knife.range){
  let closest=Infinity,result:{actor:Actor;head:boolean}|undefined;
@@ -77,6 +86,8 @@ export class Navigation{
 }
 const names=['Viper','Ghost','Nova','Rook','Echo','Blaze','Atlas','Jinx','Cipher'];
 export class Simulation{
+ bots=new Map<number,BotController>();
+ botSkills=new Map<number,BotDifficulty>();
  config:MatchConfig;map:ArenaMap;boxes:Box[];nav:Navigation;rng:()=>number;actors:Actor[]=[];time=180;elapsed=0;balance:number;score=0;enemyScore=0;ended=false;result:Result|null=null;started=false;
  yaw=0;pitch=0;vx=0;vz=0;weapon:WeaponId='rifle';matchWeapon:WeaponId='rifle';ammo=ammoFor();reserve=reserveFor();roundScore=0;roundEnemyScore=0;headshots=0;maxStreak=0;combatAt=-99;reloadLeft=0;shotCooldown=0;switchLeft=0;aim=0;recoil=0;bloom=0;stamina=100;sprinting=false;fireHeld=false;jumpHeld=false;combo=0;hitMarker=0;headMarker=false;hurt=0;hurtAngle=0;events:GameEvent[]=[];shots:Shot[]=[];feed:Feed[]=[];pickups:Pickup[]=[];feedId=0;
  constructor(config:MatchConfig,rng:()=>number=Math.random){
@@ -92,6 +103,7 @@ export class Simulation{
    starts=[{...home,yaw:face(home,rival)},{...rival,yaw:face(rival,home)},{...enemyBuddy,yaw:face(enemyBuddy,home)},{...ally,yaw:face(ally,rival)}];
   }
   for(let id=0;id<count;id++){const spawn=starts[id];this.actors.push({id,name:id===0?'You':names[id-1],team:config.mode==='duel'?(id===0||id===3?0:1):id,x:spawn.x,z:spawn.z,y:0,vy:0,yaw:spawn.yaw,hp:100,kills:0,deaths:0,respawn:0,shield:2,cooldown:1+this.rng(),crouch:false,moving:0,path:[],repath:0,target:-1,reaction:.5,lastDamage:-99});}
+  this.botSkills=assignBotSkills(this.actors.slice(1).map(actor=>actor.id),this.rng);
   this.yaw=this.player.yaw;this.pickups=this.map.landmarks.map((p,i)=>({x:p.x,z:p.z,kind:i%2?'ammo':'health',ready:0}));
  }
  lastDeathLoss=0;
@@ -121,11 +133,13 @@ export class Simulation{
   const enemies=this.actors.filter(b=>b.id!==a.id&&b.team!==a.team&&b.hp>0);
   const ranked=this.map.spawns.map(s=>{const distance=Math.min(80,...enemies.map(e=>Math.hypot(e.x-s.x,e.z-s.z))),exposure=enemies.some(e=>Math.hypot(e.x-s.x,e.z-s.z)<28&&visible(this.boxes,{x:s.x,y:1.6,z:s.z},this.eye(e)))?9:0;return {s,value:Math.min(25,distance)-Math.max(0,distance-32)*.7-exposure-this.actors.filter(b=>b.id!==a.id&&b.hp>0&&Math.hypot(b.x-s.x,b.z-s.z)<2).length*20+this.rng()*2};}).sort((a,b)=>b.value-a.value);
   const s=ranked[0].s;Object.assign(a,{x:s.x,z:s.z,y:0,vy:0,yaw:s.yaw,hp:100,shield:1.8,respawn:0,path:[],repath:0,cooldown:.8,reaction:.6});
+  this.bots.get(a.id)?.reset(a);
   if(a.id===0){this.lastDeathLoss=0;this.yaw=s.yaw;this.pitch=0;this.vx=this.vz=0;this.slideLeft=this.slideCooldown=this.slideSpeed=0;this.slideQueued=false;this.sprinting=false;this.playerEyeHeight=1.62;a.crouch=false;a.moving=0;this.reloadLeft=0;this.ammo=ammoFor();this.reserve=reserveFor();this.stamina=100;this.sprintExhausted=false;this.sprintCooldown=0;this.events.push({kind:'spawn'});}
  }
  damage(victim:Actor,attacker:Actor,amount:number,head=false){
   if(this.ended||this.paused||victim.hp<=0||victim.shield>0||victim.team===attacker.team||(this.config.weaponRule==='headshots'&&!head))return;if(victim.id===0||attacker.id===0)this.combatAt=this.elapsed;
   victim.hp=Math.max(0,victim.hp-amount);victim.lastDamage=this.elapsed;
+  this.bots.get(victim.id)?.onDamage(this,victim,attacker);
   if(attacker.id===0){this.hitMarker=.17;this.headMarker=head;this.events.push({kind:'hit',head});}
   if(victim.id===0){this.hurt=.6;this.hurtAngle=Math.atan2(attacker.x-victim.x,attacker.z-victim.z)+this.yaw;this.events.push({kind:'hurt',angle:this.hurtAngle});}
   if(victim.hp>0)return;
@@ -154,7 +168,7 @@ export class Simulation{
   if(this.ended||this.paused||this.player.hp<=0||this.reloadLeft>0||this.shotCooldown>0||this.switchLeft>0||this.sprinting)return false;
   if(this.weapon==='knife'){this.combatAt=this.elapsed;this.shotCooldown=this.gun.interval;this.player.shield=0;this.melee();this.events.push({kind:'shot',weapon:this.weapon});return true;}
   if(this.ammo[this.weapon]===0){this.reload();return false;}
-  this.combatAt=this.elapsed;this.ammo[this.weapon]--;this.shotCooldown=this.gun.interval;this.player.shield=0;
+  this.combatAt=this.elapsed;this.ammo[this.weapon]--;this.shotCooldown=this.gun.interval;this.player.shield=0;this.notifyBotSound(this.player,32);
   const spread=this.gun.spread*(1-this.aim*.82)*(this.player.crouch?.7:1)*(this.player.y>0?3:1)+(Math.hypot(this.vx,this.vz)>.5?.009*(1-this.aim*.5):0)+this.bloom*.08;
   const dir=direction(this.yaw+(this.rng()-.5)*spread*2,this.pitch+this.recoil+(this.rng()-.5)*spread*2);
   if(this.weapon==='shotgun'){for(let pellet=0;pellet<8;pellet++)this.cast(this.player,direction(this.yaw+(this.rng()-.5)*spread*2,this.pitch+this.recoil+(this.rng()-.5)*spread*2),this.gun.damage,this.gun.head,this.gun.range);}else this.cast(this.player,dir,this.gun.damage,this.gun.head,this.gun.range);this.recoil=Math.min(.12,this.recoil+this.gun.recoil*(this.aim>.5?.75:1));this.bloom=Math.min(.12,this.bloom+.018);this.events.push({kind:'shot',weapon:this.weapon});return true;
@@ -213,32 +227,16 @@ export class Simulation{
    }
   }else{this.sprinting=false;this.slideQueued=false;this.slideLeft=this.slideSpeed=0;this.vx=this.vz=0;this.reloadLeft=0;this.knifeBuffer=0;}
   this.fireHeld=input.fire;this.jumpHeld=input.jump;this.crouchHeld=input.crouch;this.slideHeld=!!input.slide;
+  p.motion={vx:this.vx,vz:this.vz,pitch:this.pitch,sprinting:this.sprinting,sliding:this.sliding,reloading:this.reloadLeft>0,weapon:this.weapon,firing:this.shotCooldown>this.gun.interval-.06};
   if(this.ended)return;
   for(const bot of this.actors.slice(1)){if(bot.hp>0)this.botStep(bot,dt);if(this.ended)return;}
  }
  botStep(bot:Actor,dt:number){
-  bot.cooldown-=dt;bot.repath-=dt;
-  const enemies=this.actors.filter(a=>a.team!==bot.team&&a.hp>0);
-  const seen=enemies.filter(a=>Math.hypot(a.x-bot.x,a.z-bot.z)<38&&visible(this.boxes,this.eye(bot),this.eye(a))).sort((a,b)=>Math.hypot(a.x-bot.x,a.z-bot.z)-Math.hypot(b.x-bot.x,b.z-bot.z));
-  const target=seen[0]??enemies.sort((a,b)=>Math.hypot(a.x-bot.x,a.z-bot.z)-Math.hypot(b.x-bot.x,b.z-bot.z))[0];
-  if(!target)return;
-  const dx=target.x-bot.x,dz=target.z-bot.z,distance=Math.max(.001,Math.hypot(dx,dz)),canSee=seen.includes(target);
-  if(bot.target!==target.id){bot.target=target.id;bot.reaction=.35+this.rng()*.4;bot.repath=0;}bot.reaction-=dt;
-  bot.yaw=Math.atan2(-dx,-dz);
-  let mx=0,mz=0;
-  if(canSee&&distance<19){const side=Math.sin(this.elapsed*.85+bot.id*2)>0?1:-1;const approach=distance>12?.65:distance<5?-.6:0;mx=(dx/distance*approach+dz/distance*side*.65)*2.7;mz=(dz/distance*approach-dx/distance*side*.65)*2.7;bot.path=[];}
-  else{
-   if(bot.repath<=0||!bot.path.length){bot.path=this.nav.route(bot,target);bot.repath=.8+this.rng()*.65;}
-   while(bot.path.length&&Math.hypot(bot.path[0].x-bot.x,bot.path[0].z-bot.z)<.22)bot.path.shift();
-   if(bot.path.length){const next=bot.path[0],length=Math.hypot(next.x-bot.x,next.z-bot.z);mx=(next.x-bot.x)/length*3.2;mz=(next.z-bot.z)/length*3.2;}
-  }
-  moveActor(bot,mx*dt,mz*dt,this.boxes);bot.moving=Math.hypot(mx,mz);
-  if(canSee&&bot.reaction<=0&&bot.cooldown<=0&&bot.shield<=.8){
-   const restricted=this.config.weaponRule==='sniper'?weapons.marksman:null;bot.shield=0;bot.cooldown=restricted?restricted.interval+.15+this.rng()*.2:.27+this.rng()*.32;
-   const from=this.eye(bot),aimY=target.y+(this.config.weaponRule==='headshots'?(target.crouch?1.04:1.52):(target.crouch?.82:1.18)),pitch=Math.atan2(aimY-from.y,Math.max(.1,distance));
-   const error=(this.config.mode==='practice'?.055:.038)*(distance<5?.65:1);
-   this.cast(bot,direction(bot.yaw+(this.rng()-.5)*error*2,pitch+(this.rng()-.5)*error*2),restricted?restricted.damage:(this.config.mode==='practice'?13:17),1.5,50);
-   const listenerDistance=Math.hypot(bot.x-this.player.x,bot.z-this.player.z);if(listenerDistance<28)this.events.push({kind:'enemyShot',distance:listenerDistance});
-  }
+  let controller=this.bots.get(bot.id);
+  if(!controller){controller=new BotController(this,bot);this.bots.set(bot.id,controller);}
+  controller.step(this,bot,clamp(dt,0,1/30));
+ }
+ notifyBotSound(source:Actor,range:number){
+  for(const actor of this.actors)if(actor.hp>0)this.bots.get(actor.id)?.hear(this,actor,source,range);
  }
 }
