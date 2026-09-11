@@ -3,9 +3,14 @@ export async function requestAccount<T>(body?: Record<string, unknown>, query = 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
+    const { firebaseIdToken } = await import('./firebase-client');
+    const token = await firebaseIdToken();
     const response = await fetch('/api/community' + query, {
       method: body ? 'POST' : 'GET',
-      headers: body ? {'Content-Type': 'application/json'} : undefined,
+      headers: {
+        ...(body ? {'Content-Type': 'application/json'} : {}),
+        ...(token ? {Authorization: 'Bearer ' + token} : {}),
+      },
       body: body ? JSON.stringify(body) : undefined,
       credentials: 'same-origin', cache: 'no-store', signal: controller.signal,
     });

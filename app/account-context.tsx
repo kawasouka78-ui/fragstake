@@ -8,6 +8,7 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
+import { onFirebaseUserChange } from '@/lib/firebase-client';
 import type { Player, MatchRow } from '@/db/service';
 export type Summary = {
   matches: number;
@@ -107,11 +108,14 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     setProfilePrefs(readProfilePrefs());
   }, []);
   useEffect(() => {
-    void refresh();
+    const unsubscribe = onFirebaseUserChange(() => void refresh());
     const timer = setInterval(() => {
       if (document.visibilityState === 'visible') void refresh();
     }, 45000);
-    return () => clearInterval(timer);
+    return () => {
+      unsubscribe();
+      clearInterval(timer);
+    };
   }, [refresh]);
   return (
     <Context.Provider
