@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, LogOut, ShieldCheck, UserRound } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import {
   createEmailAccount,
   firebaseEnabled,
@@ -11,7 +11,6 @@ import {
   saveFirebaseProfile,
   signInWithEmail,
   signInWithGoogle,
-  signOutFirebase,
 } from '@/lib/firebase-client';
 import { useAccount } from '../account-context';
 import { safeReturnTo } from '@/lib/onboarding';
@@ -20,7 +19,6 @@ export default function SignInPanel() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [checking, setChecking] = useState(true);
-  const [userEmail, setUserEmail] = useState('');
   const [onboarding, setOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState<1 | 2 | 3>(1);
   const [displayName, setDisplayName] = useState('');
@@ -40,7 +38,6 @@ export default function SignInPanel() {
 
   useEffect(() => onFirebaseUserChange(async (user) => {
     setChecking(true);
-    setUserEmail(user?.email ?? '');
     if (!user) {
       setOnboarding(false);
       setChecking(false);
@@ -171,11 +168,6 @@ export default function SignInPanel() {
               return <li key={label} data-active={number === onboardingStep} data-complete={number < onboardingStep}><span>{number < onboardingStep ? <Check size={12} /> : `0${number}`}</span><b>{label}</b></li>;
             })}
           </ol>
-          <div className="onboarding-account">
-            <span><Check size={14} /></span>
-            <div><small>CONNECTED AS</small><b>{userEmail}</b></div>
-            <button type="button" aria-label="Use a different account" title="Use a different account" onClick={() => void signOutFirebase()}><LogOut size={16} /></button>
-          </div>
         </header>
 
         <div className="onboarding-step-content">
@@ -186,21 +178,15 @@ export default function SignInPanel() {
                 <h2 id="callsign-title">Choose your callsign.</h2>
                 <p>Set the name other players will remember.</p>
               </div>
-              <div className="callsign-layout">
-                <div className="onboarding-fields" aria-label="Player identity details">
-                  <label>
-                    <span>Display name <small>2–32 characters</small></span>
-                    <input value={displayName} onChange={e => setDisplayName(e.target.value)} minLength={2} maxLength={32} autoComplete="nickname" placeholder="How players know you" required autoFocus />
-                  </label>
-                  <label>
-                    <span>Player handle <small>Unique account tag</small></span>
-                    <div className="handle-field"><i>@</i><input value={handle} onChange={e => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} minLength={3} maxLength={20} pattern="[a-z0-9_]+" placeholder="your_handle" required /></div>
-                  </label>
-                </div>
-                <aside className="step-player-preview" aria-label="Player card preview">
-                  <div className="step-preview-avatar"><UserRound size={30} /></div>
-                  <div className="preview-identity"><small>YOUR PLAYER CARD</small><strong>{displayName.trim() || 'YOUR CALLSIGN'}</strong><span>@{handle || 'your_handle'}</span></div>
-                </aside>
+              <div className="onboarding-fields callsign-fields" aria-label="Player identity details">
+                <label>
+                  <span>Display name <small>2–32 characters</small></span>
+                  <input value={displayName} onChange={e => setDisplayName(e.target.value)} minLength={2} maxLength={32} autoComplete="nickname" placeholder="How players know you" required autoFocus />
+                </label>
+                <label>
+                  <span>Player handle <small>Unique account tag</small></span>
+                  <div className="handle-field"><i>@</i><input value={handle} onChange={e => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} minLength={3} maxLength={20} pattern="[a-z0-9_]+" placeholder="your_handle" required /></div>
+                </label>
               </div>
             </section>
           )}
