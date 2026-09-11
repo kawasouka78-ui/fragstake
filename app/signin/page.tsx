@@ -11,8 +11,8 @@ export default function Page() {
       </a>
       <div className="signin-stage" aria-hidden="true">
         <span>01</span><span>IDENTITY</span><i />
-        <strong>YOUR NAME.<br />YOUR RECORD.<br /><em>YOUR STAKES.</em></strong>
-        <p>One verified player account connects your matches, inventory and squad across every device.</p>
+        <strong>MAKE A NAME.<br />TAKE THE <em>POT.</em></strong>
+        <p>Your callsign follows every match, win and payout.</p>
       </div>
       <div className="signin-card">
         <div className="signin-card-mark"><Crosshair size={28} /></div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { ArrowRight, Check, Eye, EyeOff, LogOut, ShieldCheck, Swords, UserRound } from 'lucide-react';
+import { ArrowRight, Check, Eye, EyeOff, LogOut, ShieldCheck, UserRound } from 'lucide-react';
 import {
   createEmailAccount,
   firebaseEnabled,
@@ -152,7 +152,7 @@ export default function SignInPanel() {
 
   if (onboarding) {
     return (
-      <form className="onboarding-form" onSubmit={finishOnboarding}>
+      <form className="onboarding-form onboarding-compact" onSubmit={finishOnboarding}>
         <header className="onboarding-topline">
           <div className="onboarding-step"><span>02</span><i /><b>PLAYER SETUP</b></div>
           <div className="onboarding-account">
@@ -164,44 +164,39 @@ export default function SignInPanel() {
 
         <div className="onboarding-heading">
           <small>FINAL STEP</small>
-          <h2>Choose your callsign.</h2>
-          <p>This is how you appear in matches, results and the leaderboard.</p>
+          <h2>Pick your callsign.</h2>
         </div>
 
-        <div className="onboarding-layout">
-          <section className="onboarding-fields" aria-label="Player identity details">
-            <label>
-              <span>Display name <small>2–32 characters</small></span>
-              <input value={displayName} onChange={e => setDisplayName(e.target.value)} minLength={2} maxLength={32} autoComplete="nickname" placeholder="How players know you" required autoFocus />
-            </label>
-            <label>
-              <span>Player handle <small>Your account tag</small></span>
-              <div className="handle-field"><i>@</i><input value={handle} onChange={e => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} minLength={3} maxLength={20} pattern="[a-z0-9_]+" placeholder="your_handle" required /></div>
-            </label>
+        <aside className="compact-player-preview" aria-label="Player card preview">
+          <div className="compact-avatar"><UserRound size={25} /></div>
+          <div className="preview-identity">
+            <small>PLAYER CARD</small>
+            <strong>{visibility === 'anonymous' ? 'ANONYMOUS PLAYER' : displayName.trim() || 'YOUR CALLSIGN'}</strong>
+            <span>{visibility === 'anonymous' ? 'IDENTITY HIDDEN' : `@${handle || 'your_handle'}`}</span>
+          </div>
+          <div className="compact-ready"><i /> READY</div>
+        </aside>
 
-            <fieldset className="visibility-choice">
-              <legend>Match visibility</legend>
-              <button type="button" aria-pressed={visibility === 'visible'} onClick={() => setVisibility('visible')}>
-                <Eye size={18} /><span><b>Public callsign</b><small>Players see your name and handle</small></span><Check className="choice-check" size={15} />
-              </button>
-              <button type="button" aria-pressed={visibility === 'anonymous'} onClick={() => setVisibility('anonymous')}>
-                <EyeOff size={18} /><span><b>Anonymous</b><small>Your identity stays hidden in matches</small></span><Check className="choice-check" size={15} />
-              </button>
-            </fieldset>
-          </section>
-
-          <aside className="onboarding-preview" aria-label="Player card preview">
-            <div className="preview-grid" aria-hidden="true" />
-            <span className="preview-label">LIVE PLAYER CARD</span>
-            <div className="preview-emblem"><UserRound size={30} /></div>
-            <div className="preview-identity">
-              <strong>{visibility === 'anonymous' ? 'ANONYMOUS PLAYER' : displayName.trim() || 'YOUR CALLSIGN'}</strong>
-              <span>{visibility === 'anonymous' ? 'IDENTITY HIDDEN' : `@${handle || 'your_handle'}`}</span>
-            </div>
-            <div className="preview-status"><i /> READY FOR MATCHMAKING</div>
-            <Swords className="preview-mark" size={108} strokeWidth={1} aria-hidden="true" />
-          </aside>
+        <div className="compact-fields" aria-label="Player identity details">
+          <label>
+            <span>Display name <small>2–32 characters</small></span>
+            <input value={displayName} onChange={e => setDisplayName(e.target.value)} minLength={2} maxLength={32} autoComplete="nickname" placeholder="How players know you" required autoFocus />
+          </label>
+          <label>
+            <span>Player handle <small>Account tag</small></span>
+            <div className="handle-field"><i>@</i><input value={handle} onChange={e => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} minLength={3} maxLength={20} pattern="[a-z0-9_]+" placeholder="your_handle" required /></div>
+          </label>
         </div>
+
+        <fieldset className="visibility-choice compact-visibility">
+          <legend>Shown in matches</legend>
+          <button type="button" aria-pressed={visibility === 'visible'} onClick={() => setVisibility('visible')}>
+            <Eye size={17} /><span><b>Public</b><small>Name and handle visible</small></span><Check className="choice-check" size={14} />
+          </button>
+          <button type="button" aria-pressed={visibility === 'anonymous'} onClick={() => setVisibility('anonymous')}>
+            <EyeOff size={17} /><span><b>Anonymous</b><small>Identity hidden</small></span><Check className="choice-check" size={14} />
+          </button>
+        </fieldset>
 
         <div className="onboarding-confirmations">
           <label className="onboarding-check"><input type="checkbox" checked={adult} onChange={e => setAdult(e.target.checked)} /><span><b>Age confirmed</b>I am at least 18 years old.</span></label>
@@ -209,7 +204,7 @@ export default function SignInPanel() {
         </div>
 
         <footer className="onboarding-actions">
-          <span><ShieldCheck size={16} /> You can change visibility later.</span>
+          <span><ShieldCheck size={16} /> Change this anytime.</span>
           <button className="primary onboarding-submit" disabled={busy}>
             {busy ? 'Creating player…' : 'Finish setup'} <ArrowRight size={18} />
           </button>
