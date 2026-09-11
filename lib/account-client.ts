@@ -3,7 +3,7 @@ export async function requestAccount<T>(body?: Record<string, unknown>, query = 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const { firebaseIdToken } = await import('./firebase-client');
+    const { firebaseIdToken } = await import('./firebase-client.ts');
     const token = await firebaseIdToken();
     const response = await fetch('/api/community' + query, {
       method: body ? 'POST' : 'GET',

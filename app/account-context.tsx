@@ -8,7 +8,7 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import { onFirebaseUserChange } from '@/lib/firebase-client';
+import { firebaseAuth, loadFirebaseProfile, onFirebaseUserChange } from '@/lib/firebase-client';
 import type { Player, MatchRow } from '@/db/service';
 export type Summary = {
   matches: number;
@@ -41,6 +41,25 @@ export type ProfilePrefs = {
 };
 const defaultProfilePrefs: ProfilePrefs = { avatar: '', anonymous: false };
 const profilePrefsKey = 'fragstake-profile-prefs';
+async function authenticatedFallback(): Promise<AccountData | null> {
+  const user = firebaseAuth()?.currentUser;
+  if (!user) return null;
+  const profile = await loadFirebaseProfile();
+  const base = (profile?.handle || user.displayName || user.email?.split('@')[0] || 'player')
+    .toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 20);
+  const handle = base.length >= 3 ? base : `player_${user.uid.slice(0, 8).toLowerCase()}`;
+  return {
+    player: {
+      id: `firebase:${user.uid}`, handle,
+      name: profile?.displayName || user.displayName || user.email?.split('@')[0] || 'FragStake Player',
+      bio: '', color: 'orange', balance: 0,
+      created_at: user.metadata.creationTime ? Date.parse(user.metadata.creationTime) : Date.now(),
+      last_seen: Date.now(),
+    },
+    stats: { matches: 0, kills: 0, deaths: 0, wins: 0, net: 0 },
+    transactions: [], matches: [], active: null, pending: 0,
+  };
+}
 function readProfilePrefs() {
   if (typeof localStorage === 'undefined') return defaultProfilePrefs;
   try {
@@ -91,7 +110,11 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       setData(await accountApi());
       setError('');
     } catch (e) {
-      if (e instanceof AccountRequestError && e.status === 401) {
+      const fallback = await authenticatedFallback();
+      if (fallback) {
+        setData(fallback);
+        setError(e instanceof Error ? e.message : 'Account services are reconnecting.');
+      } else if (e instanceof AccountRequestError && e.status === 401) {
         setData(null);
         setError('');
       } else {

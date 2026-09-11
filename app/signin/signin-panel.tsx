@@ -15,6 +15,15 @@ import {
 import { useAccount } from '../account-context';
 import { safeReturnTo } from '@/lib/onboarding';
 
+function suggestedPlayer(user: { displayName: string | null; email: string | null }) {
+  const suggested = (user.displayName || user.email?.split('@')[0] || '')
+    .replace(/[^a-zA-Z0-9 _-]/g, '').trim().slice(0, 32);
+  return {
+    displayName: suggested.length >= 2 ? suggested : 'New Player',
+    handle: (suggested || 'player').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 20),
+  };
+}
+
 export default function SignInPanel() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -43,19 +52,23 @@ export default function SignInPanel() {
       setChecking(false);
       return;
     }
+    setBusy(false);
     try {
       const profile = await loadFirebaseProfile();
       if (!profile) {
-        const suggested = (user.displayName || user.email?.split('@')[0] || '')
-          .replace(/[^a-zA-Z0-9 _-]/g, '').trim().slice(0, 32);
-        setDisplayName(suggested.length >= 2 ? suggested : 'New Player');
-        setHandle((suggested || 'player').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 20));
+        const suggested = suggestedPlayer(user);
+        setDisplayName(suggested.displayName);
+        setHandle(suggested.handle);
         setOnboarding(true);
       } else {
         location.replace(returnTo);
       }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not create your player account.');
+    } catch {
+      const suggested = suggestedPlayer(user);
+      setDisplayName(suggested.displayName);
+      setHandle(suggested.handle);
+      setOnboarding(true);
+      setNotice('You are signed in. Finish your player setup to continue.');
     } finally {
       setChecking(false);
     }
@@ -123,11 +136,17 @@ export default function SignInPanel() {
     setBusy(true);
     setError('');
     try {
-      await saveFirebaseProfile({
+      const profile = {
         displayName,
         handle,
         anonymous: visibility === 'anonymous',
-      });
+      };
+      await Promise.allSettled([
+        saveFirebaseProfile(profile),
+        import('@/lib/account-client').then(({ requestAccount }) => requestAccount({
+          action: 'profile', name: displayName, handle, bio: '', color: 'orange',
+        })),
+      ]);
       saveProfilePrefs({ avatar: '', anonymous: visibility === 'anonymous' });
       location.replace(returnTo);
     } catch (e) {
