@@ -87,17 +87,18 @@
   z-index: 2;
   width: auto;
   max-width: none;
-  min-height: 100dvh;
+  height: 100dvh;
+  min-height: 0;
   border: 0;
   border-left: 1px solid #26303b;
   border-radius: 0;
   background: rgba(16, 21, 28, .96);
-  padding: clamp(100px, 15vh, 150px) clamp(36px, 5vw, 76px) 50px;
+  padding: clamp(72px, 9vh, 94px) clamp(36px, 5vw, 76px) 24px;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: clamp(10px, 1.5vh, 16px);
   box-shadow: -30px 0 80px #0007;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 .signin-card-mark {
@@ -142,7 +143,7 @@
 .signin-divider::before,.signin-divider::after { content: ''; border-top: 1px solid #2c3742; }
 .signin-notice { margin: 0 !important; padding: 10px 12px; border: 1px solid #28513f; border-radius: 6px; background: #10251c; color: #88ddb4 !important; font-size: 12px; }
 .signin-access-note { display: flex; align-items: center; justify-content: center; gap: 7px; color: #8291a1 !important; font-size: 12px !important; }
-.signin-trust { margin-top: auto; padding-top: 22px; border-top: 1px solid #ffffff12; }
+.signin-trust { margin-top: auto; padding-top: 14px; border-top: 1px solid #ffffff12; }
 .signin-card .error-text { color: #ff9b86; font-size: 13px; line-height: 1.5; margin: 0; }
 
 .signin-checking { min-height: 92px; display: flex; align-items: center; justify-content: center; gap: 12px; color: #aab8c8; }
@@ -263,6 +264,15 @@
 @keyframes onboarding-in { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
 
 @media (max-height: 800px) and (min-width: 901px) {
+  .signin-card:not(:has(.onboarding-form)) { padding-top: 54px; padding-bottom: 18px; gap: 8px; }
+  .signin-card:not(:has(.onboarding-form)) .signin-card-mark { width: 46px; height: 46px; }
+  .signin-card:not(:has(.onboarding-form)) h1 { font-size: 46px; }
+  .signin-card:not(:has(.onboarding-form)) > p { margin-bottom: 2px; line-height: 1.4; }
+  .signin-card:not(:has(.onboarding-form)) .signin-email-form { gap: 8px; }
+  .signin-card:not(:has(.onboarding-form)) .signin-email-form label { gap: 4px; }
+  .signin-card:not(:has(.onboarding-form)) .signin-email-form input { min-height: 42px; }
+  .signin-card:not(:has(.onboarding-form)) .primary { min-height: 44px; }
+  .signin-card:not(:has(.onboarding-form)) .signin-trust { padding-top: 8px; }
   .signin-card:has(.onboarding-form) { padding-top: 68px; padding-bottom: 20px; }
   .onboarding-form { gap: 14px; }
   .onboarding-topline { padding-bottom: 10px; }
@@ -285,11 +295,16 @@
   .step-visibility button { min-height: 98px; }
 }
 
+@media (max-height: 650px) and (min-width: 561px) {
+  .signin-card:not(:has(.onboarding-form)) { padding-top: 42px; }
+  .signin-card:not(:has(.onboarding-form)) .signin-trust { display: none; }
+}
+
 @media (max-width: 900px) {
-  .signin-page { grid-template-columns: 1fr; overflow: auto; }
+  .signin-page { grid-template-columns: 1fr; height: 100dvh; min-height: 0; overflow: hidden; }
   .signin-page::before { inset: 0; opacity: .25; }
   .signin-stage { display: none; }
-  .signin-card { width: min(100%, 560px); min-height: 100dvh; margin-left: auto; padding-top: 110px; }
+  .signin-card { width: min(100%, 560px); height: 100dvh; min-height: 0; margin-left: auto; padding-top: 82px; }
   .signin-page:has(.onboarding-form) { display: block; overflow-y: auto; }
   .signin-card:has(.onboarding-form) { width: 100%; max-width: none; min-height: 100dvh; padding: 90px clamp(24px, 6vw, 58px) 36px; }
   .signin-page:has(.onboarding-multistep) { height: 100dvh; min-height: 0; overflow: hidden; }
@@ -298,8 +313,9 @@
 }
 
 @media (max-width: 560px) {
+  .signin-page { height: auto; min-height: 100dvh; overflow-y: auto; }
   .signin-brand { top: 20px; left: 20px; }
-  .signin-card { padding: 94px 22px 28px; border-left: 0; }
+  .signin-card { height: auto; min-height: 100dvh; padding: 82px 22px 24px; border-left: 0; overflow: visible; }
   .signin-card h1 { font-size: 48px; }
   .visibility-choice { grid-template-columns: 1fr; }
   .onboarding-topline { align-items: flex-start; }
