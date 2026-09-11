@@ -111,7 +111,7 @@ export default function Play() {
             rate: 0,
             stake: 0,
             entry: 0,
-            target: 30,
+            target: 0,
             bestOf: 1,
             weaponRule: 'standard',
             balance: 0,
@@ -143,7 +143,7 @@ export default function Play() {
         rate: practice ? 0 : nextMode === 'ffa' ? ffaValue : 0,
         stake: practice || nextMode === 'ffa' ? 0 : stakeValue,
         entry: 0,
-        target: practice ? 30 : nextMode === 'ffa' ? 30 : 10,
+        target: practice ? 0 : nextMode === 'ffa' ? 30 : 10,
         bestOf: 1,
         balance: practice
           ? 0
@@ -261,7 +261,7 @@ export default function Play() {
                     id: 'practice',
                     title: 'Practice',
                     tag: 'Warm up',
-                    foot: 'Warm-up',
+                    foot: 'Always open',
                     Icon: Crosshair,
                   },
                   {

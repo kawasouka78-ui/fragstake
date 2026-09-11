@@ -266,6 +266,14 @@ test('a timed duel draw returns the reserved stake and freezes later ticks', () 
   matchesServerSettlement(sim, 'complete');
 });
 
+test('practice keeps running after the old round timer', () => {
+  const sim = shooting({ mode: 'practice' });
+  advance(sim, 240);
+  assert.equal(sim.ended, false);
+  assert.equal(sim.result, null);
+  assert.ok(sim.time >= 239);
+});
+
 test('free practice leaves balance unchanged while FFA applies kill/death credits', () => {
   const practice = shooting(), ffa = shooting({ mode: 'ffa', balance: 10, rate: 5 });
   kill(practice);

@@ -176,8 +176,9 @@ export class Simulation{
  step(dt:number,input:Controls){
   if(this.ended||this.paused||!this.started)return;
   // The caller supplies fixed simulation steps. Clamp protects collision and AI from a stalled frame.
-  dt=clamp(dt,0,1/30);this.elapsed+=dt;this.time=Math.max(0,this.time-dt);
-  if(this.time===0){if(this.config.mode==='duel'&&this.config.bestOf===3)this.completeRound();else this.finish();return;}
+  dt=clamp(dt,0,1/30);this.elapsed+=dt;
+  if(this.config.mode==='practice')this.time=this.elapsed;
+  else{this.time=Math.max(0,this.time-dt);if(this.time===0){if(this.config.mode==='duel'&&this.config.bestOf===3)this.completeRound();else this.finish();return;}}
   this.hitMarker=Math.max(0,this.hitMarker-dt);this.hurt=Math.max(0,this.hurt-dt);this.recoil*=Math.exp(-dt*9);this.bloom*=Math.exp(-dt*4);this.shotCooldown=Math.max(0,this.shotCooldown-dt);this.switchLeft=Math.max(0,this.switchLeft-dt);
   if(this.killConfirm&&(this.killConfirm.age+=dt)>1.1)this.killConfirm=null;
   this.shots=this.shots.filter(s=>(s.age+=dt)<.08);this.feed=this.feed.filter(f=>(f.age+=dt)<5);

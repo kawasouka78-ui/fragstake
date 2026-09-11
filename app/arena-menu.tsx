@@ -181,7 +181,7 @@ export default function ArenaMenu({
         : `First to ${config.target ?? 5}`
       : config.mode === 'ffa'
         ? 'Drop-in arena'
-        : '3 minutes';
+        : 'Open practice';
   const loadoutWeapons = game?.paused
       ? game.allowedWeapons
       : (game?.switchWeapons ?? []),
@@ -227,7 +227,9 @@ export default function ArenaMenu({
                   ? config.live.mode === 'ffa'
                     ? 'Drop-in arena · Leave anytime'
                     : 'Live match · Arena keeps running'
-                  : round + ' · Practice match'}
+                  : config.mode === 'practice'
+                    ? 'Open practice · Leave anytime'
+                    : round + ' · Practice match'}
               </span>
             </div>
           </div>

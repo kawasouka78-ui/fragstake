@@ -515,7 +515,8 @@ export default function Arena({
   }
   const duelHud =
     config.mode === 'duel' || (!!config.live && config.live.mode !== 'ffa');
-  const game = runtime.current?.game,
+  const practiceHud = config.mode === 'practice',
+    game = runtime.current?.game,
     p = game?.player,
     gun = game?.gun,
     zone = p
@@ -526,7 +527,9 @@ export default function Arena({
       : map.name,
     clock = game
       ? `${Math.floor(game.time / 60)}:${String(Math.floor(game.time % 60)).padStart(2, '0')}`
-      : '3:00';
+      : practiceHud
+        ? '0:00'
+        : '3:00';
   return (
     <div
       className={
@@ -625,7 +628,9 @@ export default function Arena({
               </div>
               <div className="fps-clock">
                 <small>
-                  {config.live && config.live.mode !== 'ffa'
+                  {practiceHud
+                    ? 'OPEN PRACTICE'
+                    : config.live && config.live.mode !== 'ffa'
                     ? 'FIRST TO 10'
                     : config.mode === 'duel'
                       ? config.bestOf === 3
@@ -642,7 +647,7 @@ export default function Arena({
                       {config.target ?? 5}
                     </small>
                   )}
-                  <strong className={game.time < 30 ? 'urgent' : ''}>
+                  <strong className={!practiceHud && game.time < 30 ? 'urgent' : ''}>
                     {clock}
                   </strong>
                   {duelHud && <b className="enemy">{game.enemyScore}</b>}
