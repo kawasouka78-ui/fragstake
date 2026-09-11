@@ -1,4 +1,4 @@
-import { Crosshair, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Crosshair } from 'lucide-react';
 import SignInPanel from './signin-panel';
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Sign in | FragStake' };
@@ -20,10 +20,6 @@ export default function Page() {
         <h1>Enter FragStake</h1>
         <p>Sign in, finish your player setup, then enter the arena.</p>
         <SignInPanel />
-        <small className="signin-trust">
-          <ShieldCheck size={15} />
-          Your account protects your identity, inventory and match history.
-        </small>
       </div>
     </main>
   );

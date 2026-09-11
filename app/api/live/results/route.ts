@@ -1,6 +1,5 @@
 import { env } from 'cloudflare:workers';
-import { database } from '@/db';
-import { recordLiveResult } from '@/db/live';
+import { recordFirebaseMatchResult } from '@/lib/firebase-records';
 import { verifySignature } from '@/lib/live/security';
 import { InputError } from '@/lib/account-rules';
 export const dynamic = 'force-dynamic';
@@ -25,7 +24,7 @@ export async function POST(request: Request) {
       ))
     )
       return new Response('Unauthorized', { status: 401 });
-    return Response.json(await recordLiveResult(database(), JSON.parse(raw)), {
+    return Response.json(await recordFirebaseMatchResult(JSON.parse(raw)), {
       headers: { 'Cache-Control': 'no-store' },
     });
   } catch (e) {

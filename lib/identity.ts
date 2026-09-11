@@ -36,7 +36,7 @@ function firebaseAdminAuth() {
   return getAuth(firebaseAdminApp());
 }
 
-function firebaseAdminApp() {
+export function firebaseAdminApp() {
   if (!getApps().length) {
     const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT;
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
@@ -50,11 +50,15 @@ function firebaseAdminApp() {
   return getApps()[0];
 }
 
+export function firebaseAdminFirestore() {
+  return getFirestore(firebaseAdminApp());
+}
+
 export async function firebasePlayerName(identity: string) {
   if (!identity.startsWith('firebase:')) return null;
   const uid = identity.slice('firebase:'.length);
   if (!uid) return null;
-  const snapshot = await getFirestore(firebaseAdminApp()).collection('players').doc(uid).get();
+  const snapshot = await firebaseAdminFirestore().collection('players').doc(uid).get();
   if (!snapshot.exists) return null;
   const profile = snapshot.data() as { displayName?: unknown; anonymous?: unknown };
   if (profile.anonymous === true) return 'Anonymous Player';

@@ -57,18 +57,3 @@ body .site-shell .header-wallet-add{display:grid;place-items:center;flex-shrink:
  body .site-shell .mobile-brand{min-width:32px;min-height:44px;justify-content:center}
  body .site-shell .mobile-brand>svg{width:24px;height:24px}
 }
-.sidebar-signout {
-  width: 100%;
-  min-height: 40px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  color: #8192a5;
-  border: 0;
-  background: transparent;
-  font: inherit;
-  cursor: pointer;
-  text-align: left;
-}
-.sidebar-signout:hover { color: #ff9670; }

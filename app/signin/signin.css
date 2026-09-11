@@ -1,7 +1,7 @@
 .signin-page {
   min-height: 100dvh;
   display: grid;
-  grid-template-columns: minmax(340px, 1fr) minmax(420px, 560px);
+  grid-template-columns: minmax(340px, 1fr) minmax(460px, 580px);
   align-items: stretch;
   padding: 0;
   background: #0b0e12;
@@ -93,23 +93,23 @@
   border-left: 1px solid #26303b;
   border-radius: 0;
   background: rgba(16, 21, 28, .96);
-  padding: clamp(72px, 9vh, 94px) clamp(36px, 5vw, 76px) 24px;
+  padding: clamp(48px, 7vh, 72px) clamp(42px, 4.4vw, 64px) 28px;
   display: flex;
   flex-direction: column;
-  gap: clamp(10px, 1.5vh, 16px);
+  gap: clamp(9px, 1.25vh, 13px);
   box-shadow: -30px 0 80px #0007;
   overflow: hidden;
 }
 
 .signin-card-mark {
-  width: 58px;
-  height: 58px;
+  width: 48px;
+  height: 48px;
   display: grid;
   place-items: center;
   color: #ff8d62;
   border: 1px solid #594036;
   background: #1a1d22;
-  border-radius: 12px;
+  border-radius: 10px;
 }
 
 .signin-eyebrow,
@@ -120,22 +120,22 @@
 }
 
 .signin-card h1 {
-  font: 800 clamp(48px, 5vw, 68px)/.92 var(--font-display);
+  font: 800 clamp(44px, 4.2vw, 58px)/.94 var(--font-display);
   letter-spacing: -1px;
   margin: 0;
 }
 
-.signin-card > p { margin: 0 0 12px; color: #9eacba; line-height: 1.65; }
-.signin-card .primary { min-height: 52px; justify-content: center; border-radius: 6px; }
+.signin-card > p { margin: 0 0 8px; color: #9eacba; font-size: 14px; line-height: 1.5; }
+.signin-card .primary { min-height: 48px; justify-content: center; border-radius: 6px; }
 
 .signin-google { display: grid !important; grid-template-columns: 30px 1fr 18px; }
 .google-mark { width: 28px; height: 28px; border-radius: 50%; background: white; color: #4285f4; display: grid; place-items: center; font: 800 15px Arial; }
 .signin-method-tabs { display: grid; grid-template-columns: 1fr 1fr; padding: 3px; border: 1px solid #2c3742; border-radius: 7px; background: #0c1117; }
 .signin-method-tabs button { min-height: 38px; border: 0; border-radius: 4px; background: transparent; color: #7f91a5; font-weight: 700; cursor: pointer; }
 .signin-method-tabs button[aria-selected='true'] { background: #252d36; color: white; box-shadow: 0 1px 8px #0005; }
-.signin-email-form { display: flex; flex-direction: column; gap: 13px; }
+.signin-email-form { display: flex; flex-direction: column; gap: 10px; }
 .signin-email-form label { display: flex; flex-direction: column; gap: 7px; color: #b9c5d1; font-size: 12px; font-weight: 700; }
-.signin-email-form input { width: 100%; min-height: 46px; border: 1px solid #34414e; border-radius: 6px; background: #0c1117; color: white; padding: 0 14px; font: inherit; outline: none; }
+.signin-email-form input { width: 100%; min-height: 44px; border: 1px solid #34414e; border-radius: 6px; background: #0c1117; color: white; padding: 0 14px; font: inherit; outline: none; }
 .signin-email-form input:focus { border-color: #ff7847; box-shadow: 0 0 0 3px #ff784720; }
 .signin-email-submit { width: 100%; margin-top: 3px; }
 .signin-forgot { align-self: flex-end; margin-top: -4px; padding: 1px 0; border: 0; background: transparent; color: #ff9b77; font: 600 12px/1.4 inherit; cursor: pointer; }
