@@ -9,6 +9,7 @@ import {
   signOut,
   type User,
 } from 'firebase/auth';
+import { doc, getDoc, getFirestore, serverTimestamp, setDoc } from 'firebase/firestore';
 import {
   firebaseWebConfig,
   hasFirebaseConfig,
@@ -54,4 +55,50 @@ export async function signOutFirebase() {
 export async function firebaseIdToken() {
   const user = firebaseAuth()?.currentUser;
   return user ? user.getIdToken() : null;
+}
+
+export type FirebasePlayerProfile = {
+  handle: string;
+  displayName: string;
+  avatarPath: string;
+  anonymous: boolean;
+  country: string;
+  walletStatus: string;
+  stats: { matches: number; kills: number; deaths: number; wins: number };
+};
+
+export async function loadFirebaseProfile() {
+  const user = firebaseAuth()?.currentUser;
+  const initialized = firebaseApp();
+  if (!user || !initialized) return null;
+  const snapshot = await getDoc(doc(getFirestore(initialized), 'players', user.uid));
+  return snapshot.exists() ? (snapshot.data() as FirebasePlayerProfile) : null;
+}
+
+export async function saveFirebaseProfile(profile: Pick<FirebasePlayerProfile, 'handle' | 'displayName' | 'anonymous'>) {
+  const user = firebaseAuth()?.currentUser;
+  const initialized = firebaseApp();
+  if (!user || !initialized) throw new Error('Sign in again to finish your profile.');
+  const reference = doc(getFirestore(initialized), 'players', user.uid);
+  const existing = await getDoc(reference);
+  if (existing.exists()) {
+    await setDoc(reference, {
+      handle: profile.handle,
+      displayName: profile.displayName,
+      anonymous: profile.anonymous,
+      lastSeen: serverTimestamp(),
+    }, { merge: true });
+  } else {
+    await setDoc(reference, {
+      handle: profile.handle,
+      displayName: profile.displayName,
+      avatarPath: '',
+      anonymous: profile.anonymous,
+      country: '',
+      createdAt: serverTimestamp(),
+      lastSeen: serverTimestamp(),
+      walletStatus: 'unfunded',
+      stats: { matches: 0, kills: 0, deaths: 0, wins: 0 },
+    });
+  }
 }

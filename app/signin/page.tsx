@@ -5,18 +5,24 @@ export const metadata = { title: 'Sign in | FragStake' };
 export default function Page() {
   return (
     <main className="signin-page">
+      <a className="signin-brand" href="/" aria-label="FragStake home">
+        <span><Crosshair size={22} /></span>
+        <b>FRAG<em>STAKE</em></b>
+      </a>
+      <div className="signin-stage" aria-hidden="true">
+        <span>01</span><span>IDENTITY</span><i />
+        <strong>YOUR NAME.<br />YOUR RECORD.<br /><em>YOUR STAKES.</em></strong>
+        <p>One verified player account connects your matches, inventory and squad across every device.</p>
+      </div>
       <div className="signin-card">
-        <Crosshair size={48} />
-        <h1>Sign in to FragStake</h1>
-        <p>
-          Sign in to save your profile, find friends, and keep your match record
-          across devices.
-        </p>
+        <div className="signin-card-mark"><Crosshair size={28} /></div>
+        <small className="signin-eyebrow">PLAYER ACCESS</small>
+        <h1>Enter FragStake</h1>
+        <p>Sign in, finish your player setup, then enter the arena.</p>
         <SignInPanel />
-        <small>
+        <small className="signin-trust">
           <ShieldCheck size={15} />
-          A real account is required for wallet, social, shop and saved match
-          progress.
+          Your account protects your identity, inventory and match history.
         </small>
       </div>
     </main>

@@ -50,7 +50,9 @@
  .mobile-utility-menu summary:focus-visible{outline:2px solid #ffab77;outline-offset:3px}
  .mobile-utility-menu nav{position:absolute;top:calc(100% - 4px);right:14px;width:190px;max-width:calc(100% - 28px);padding:7px;background:#182333;border:1px solid #40516a;border-radius:8px;box-shadow:0 15px 35px #0007;z-index:50}
  .mobile-utility-menu nav a{display:flex;align-items:center;min-height:44px;padding:10px;border-radius:5px;color:#dce8f6;font-size:13px}
- .mobile-utility-menu nav a:hover{background:#2a3b51}
+.mobile-utility-menu nav a:hover{background:#2a3b51}
+.mobile-utility-menu nav button{display:flex;align-items:center;width:100%;min-height:44px;padding:10px;border:0;border-radius:5px;background:transparent;color:#dce8f6;font:inherit;font-size:13px;cursor:pointer}
+.mobile-utility-menu nav button:hover{background:#2a3b51}
 }
 
 @media(max-width:740px){

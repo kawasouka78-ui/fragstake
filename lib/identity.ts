@@ -1,5 +1,6 @@
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 
 /** Only call behind Sites dispatch (or its local plugin), which owns these headers.
  * Some existing private dispatch sessions forward a verified email without the
@@ -32,6 +33,10 @@ async function firebaseIdentity(headers: Pick<Headers, 'get'>) {
 }
 
 function firebaseAdminAuth() {
+  return getAuth(firebaseAdminApp());
+}
+
+function firebaseAdminApp() {
   if (!getApps().length) {
     const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT;
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
@@ -42,5 +47,18 @@ function firebaseAdminAuth() {
       initializeApp(projectId ? { projectId } : undefined);
     }
   }
-  return getAuth();
+  return getApps()[0];
+}
+
+export async function firebasePlayerName(identity: string) {
+  if (!identity.startsWith('firebase:')) return null;
+  const uid = identity.slice('firebase:'.length);
+  if (!uid) return null;
+  const snapshot = await getFirestore(firebaseAdminApp()).collection('players').doc(uid).get();
+  if (!snapshot.exists) return null;
+  const profile = snapshot.data() as { displayName?: unknown; anonymous?: unknown };
+  if (profile.anonymous === true) return 'Anonymous Player';
+  return typeof profile.displayName === 'string' && profile.displayName.trim().length >= 2
+    ? profile.displayName.trim().slice(0, 32)
+    : null;
 }

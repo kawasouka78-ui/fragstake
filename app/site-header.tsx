@@ -17,8 +17,10 @@ import {
   LifeBuoy,
   ChevronRight,
   Menu,
+  LogOut,
 } from 'lucide-react';
 import { useAccount, accountApi, euro } from './account-context';
+import { signOutFirebase } from '@/lib/firebase-client';
 export function PlayerAvatar({
   name,
   color = 'orange',
@@ -91,6 +93,10 @@ export default function SiteHeader() {
   const partyMembers =
     party?.members.filter((m) => m.status === 'joined') ?? [];
   const partyCount = partyMembers.length;
+  const leaveAccount = async () => {
+    await signOutFirebase();
+    window.location.assign('/signin');
+  };
   return (
     <>
       <aside className="arena-sidebar">
@@ -152,6 +158,10 @@ export default function SiteHeader() {
               Help & support
               <ArrowUpRight size={14} />
             </a>
+            <button type="button" className="sidebar-signout" onClick={() => void leaveAccount()}>
+              <LogOut size={18} />
+              Sign out
+            </button>
           </nav>
           <a
             className="sidebar-player"
@@ -265,6 +275,7 @@ export default function SiteHeader() {
               <a href="/ranked">Rankings</a>
               <a href="/settings">Settings</a>
               <a href="/support">Help & support</a>
+              <button type="button" onClick={() => void leaveAccount()}>Sign out</button>
             </nav>
           </details>
         </div>

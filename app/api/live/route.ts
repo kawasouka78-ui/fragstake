@@ -2,13 +2,14 @@ import { env } from 'cloudflare:workers';
 import { database } from '@/db';
 import { ensureLaunchPlayer } from '@/db/launch';
 import { checkSanction, rateLimit } from '@/db/live';
-import { accountIdentity } from '@/lib/identity';
+import { accountIdentity, firebasePlayerName } from '@/lib/identity';
 import { issueTicket, type LiveMode } from '@/lib/live/security';
 import { InputError } from '@/lib/account-rules';
 import { validRoomId, type OpenRoom } from '@/lib/live/matchmaking';
 import { currentFfaMapId, nextFfaRotationAt } from '@/lib/live/rotation';
 export const dynamic = 'force-dynamic';
 const headers = { 'Cache-Control': 'no-store' };
+const firebaseTickets = new Map<string, { count: number; resetAt: number }>();
 export async function GET() {
   const enabled = !!env.LIVE_SERVER_URL && !!env.LIVE_TICKET_SECRET;
   let online = false,
@@ -76,26 +77,34 @@ export async function POST(request: Request) {
       throw new InputError('Choose a valid format and map.');
     if (b.roomId !== undefined && !validRoomId(b.roomId))
       throw new InputError('Choose a valid match.');
-    const db = database(),
-      id = await accountIdentity(request.headers);
-    await rateLimit(
-      db,
-      'ticket:' +
-        (id || request.headers.get('cf-connecting-ip') || 'anonymous'),
-      12,
-    );
-    const p = id ? await ensureLaunchPlayer(db, id) : null;
-    if (id) await checkSanction(db, id);
+    const id = await accountIdentity(request.headers);
+    if (!id) throw new InputError('Sign in to enter a FragStake match.', 401);
+    let playerName: string;
+    if (id.startsWith('firebase:')) {
+      const now = Date.now(), prior = firebaseTickets.get(id);
+      const usage = !prior || prior.resetAt <= now ? { count: 0, resetAt: now + 60000 } : prior;
+      if (++usage.count > 12) throw new InputError('Too many match requests. Wait a moment.', 429);
+      firebaseTickets.set(id, usage);
+      const firebaseName = await firebasePlayerName(id);
+      if (!firebaseName) throw new InputError('Finish your player setup before entering a match.', 403);
+      playerName = firebaseName;
+    } else {
+      const db = database();
+      await rateLimit(db, 'ticket:' + id, 12);
+      const player = await ensureLaunchPlayer(db, id);
+      await checkSanction(db, id);
+      playerName = player.name;
+    }
     const ticket = await issueTicket(env.LIVE_TICKET_SECRET, {
-      sub: id || 'guest:' + crypto.randomUUID(),
-      name: p?.name || 'Guest ' + Math.floor(1000 + Math.random() * 9000),
-      guest: !id,
+      sub: id,
+      name: playerName,
+      guest: false,
       mode,
       mapId: actualMapId,
       ...(b.roomId ? { roomId: b.roomId } : {}),
     });
     return Response.json(
-      { ticket, url: env.LIVE_SERVER_URL, guest: !id, mapId: actualMapId },
+      { ticket, url: env.LIVE_SERVER_URL, guest: false, mapId: actualMapId },
       { headers },
     );
   } catch (e) {
