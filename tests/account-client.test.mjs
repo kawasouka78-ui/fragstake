@@ -6,7 +6,7 @@ test('account failures finish with actionable messages instead of endless loadin
   const fetchMock=t.mock.method(globalThis,'fetch',async()=>new Response(JSON.stringify({error:'Sign in to access your FragStake account.'}),{status:401,headers:{'content-type':'application/json'}}));
   await assert.rejects(requestAccount(),/Sign in/);
   fetchMock.mock.mockImplementation(async()=>new Response('<html>Sign in</html>',{headers:{'content-type':'text/html'}}));
-  await assert.rejects(requestAccount(),/Sign in with ChatGPT/);
+  await assert.rejects(requestAccount(),/Account services are temporarily unavailable/);
   fetchMock.mock.mockImplementation((_url,{signal})=>new Promise((_resolve,reject)=>signal.addEventListener('abort',()=>reject(new DOMException('Aborted','AbortError')))));
   await assert.rejects(requestAccount(undefined,'',5),/too long/);
 });

@@ -706,6 +706,10 @@ body .site-shell .leaderboard-page {
   padding-bottom: 30px;
 }
 
+body .site-shell .profile-signout {
+  margin-top: 18px;
+}
+
 body .site-shell .leaderboard-hero {
   display: flex;
   align-items: flex-end;

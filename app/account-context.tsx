@@ -56,7 +56,7 @@ async function authenticatedFallback(): Promise<AccountData | null> {
       created_at: user.metadata.creationTime ? Date.parse(user.metadata.creationTime) : Date.now(),
       last_seen: Date.now(),
     },
-    stats: { matches: 0, kills: 0, deaths: 0, wins: 0, net: 0 },
+    stats: { ...(profile?.stats ?? { matches: 0, kills: 0, deaths: 0, wins: 0 }), net: 0 },
     transactions: [], matches: [], active: null, pending: 0,
   };
 }
@@ -113,7 +113,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
       const fallback = await authenticatedFallback();
       if (fallback) {
         setData(fallback);
-        setError(e instanceof Error ? e.message : 'Account services are reconnecting.');
+        setError('');
       } else if (e instanceof AccountRequestError && e.status === 401) {
         setData(null);
         setError('');

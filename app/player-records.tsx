@@ -5,6 +5,7 @@ import { Trophy, History, RefreshCw, Swords, Target, Crown } from 'lucide-react'
 import { PageHeading, EmptyState } from './page-ui';
 import { dateLabel, useAccount } from './account-context';
 import { getMap } from '@/lib/fps/maps';
+import { firebaseIdToken } from '@/lib/firebase-client';
 type Records = {
   leaders: {
     handle: string;
@@ -48,7 +49,10 @@ export default function PlayerRecords({
   async function load() {
     setLoading(true);
     try {
+      const token = await firebaseIdToken();
       const response = await fetch('/api/records', {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        cache: 'no-store',
         signal: AbortSignal.timeout(8000),
       });
       if (!response.ok)
@@ -56,7 +60,7 @@ export default function PlayerRecords({
       const next = (await response.json()) as Records;
       setRecords(next);
       setError('');
-    } catch (e) {
+    } catch {
       setRecords(null);
       setError('Match records are temporarily unavailable.');
     } finally {

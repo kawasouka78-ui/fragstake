@@ -23,6 +23,7 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
+  LogOut,
 } from 'lucide-react';
 import PlatformPage from './platform-page';
 import SocialChat from './social-chat';
@@ -39,6 +40,7 @@ import {
 } from './account-context';
 import { getMap } from '@/lib/fps/maps';
 import type { Player, MatchRow } from '@/db/service';
+import { signOutFirebase } from '@/lib/firebase-client';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Table,
@@ -1559,6 +1561,18 @@ export default function AccountPage({ section }: { section: Section }) {
                         your signed-in identity, so they follow you across
                         devices.
                       </p>
+                      <button
+                        className="secondary full profile-signout"
+                        type="button"
+                        onClick={() =>
+                          void signOutFirebase().then(() =>
+                            location.assign('/signin'),
+                          )
+                        }
+                      >
+                        Sign out
+                        <LogOut size={16} />
+                      </button>
                     </section>
                   </div>
                 </div>
