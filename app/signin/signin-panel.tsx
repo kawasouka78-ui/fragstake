@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { ArrowRight, Check, Eye, EyeOff, LogOut, ShieldCheck, UserRound } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, LogOut, ShieldCheck, UserRound } from 'lucide-react';
 import {
   createEmailAccount,
   firebaseEnabled,
@@ -22,6 +22,7 @@ export default function SignInPanel() {
   const [checking, setChecking] = useState(true);
   const [userEmail, setUserEmail] = useState('');
   const [onboarding, setOnboarding] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState<1 | 2 | 3>(1);
   const [displayName, setDisplayName] = useState('');
   const [handle, setHandle] = useState('');
   const [visibility, setVisibility] = useState<'visible' | 'anonymous'>('visible');
@@ -138,6 +139,16 @@ export default function SignInPanel() {
     }
   }
 
+  async function submitOnboarding(event: FormEvent) {
+    if (onboardingStep < 3) {
+      event.preventDefault();
+      setError('');
+      setOnboardingStep(onboardingStep === 1 ? 2 : 3);
+      return;
+    }
+    await finishOnboarding(event);
+  }
+
   if (!firebaseEnabled()) {
     return (
       <p className="error-text">
@@ -152,9 +163,14 @@ export default function SignInPanel() {
 
   if (onboarding) {
     return (
-      <form className="onboarding-form onboarding-compact" onSubmit={finishOnboarding}>
+      <form className="onboarding-form onboarding-multistep" onSubmit={submitOnboarding}>
         <header className="onboarding-topline">
-          <div className="onboarding-step"><span>02</span><i /><b>PLAYER SETUP</b></div>
+          <ol className="onboarding-progress" aria-label={`Player setup, step ${onboardingStep} of 3`}>
+            {(['CALLSIGN', 'VISIBILITY', 'CONFIRM'] as const).map((label, index) => {
+              const number = (index + 1) as 1 | 2 | 3;
+              return <li key={label} data-active={number === onboardingStep} data-complete={number < onboardingStep}><span>{number < onboardingStep ? <Check size={12} /> : `0${number}`}</span><b>{label}</b></li>;
+            })}
+          </ol>
           <div className="onboarding-account">
             <span><Check size={14} /></span>
             <div><small>CONNECTED AS</small><b>{userEmail}</b></div>
@@ -162,51 +178,73 @@ export default function SignInPanel() {
           </div>
         </header>
 
-        <div className="onboarding-heading">
-          <small>FINAL STEP</small>
-          <h2>Pick your callsign.</h2>
-        </div>
+        <div className="onboarding-step-content">
+          {onboardingStep === 1 && (
+            <section className="onboarding-screen" aria-labelledby="callsign-title">
+              <div className="onboarding-heading">
+                <small>STEP 1 OF 3</small>
+                <h2 id="callsign-title">Choose your callsign.</h2>
+                <p>Set the name other players will remember.</p>
+              </div>
+              <div className="callsign-layout">
+                <div className="onboarding-fields" aria-label="Player identity details">
+                  <label>
+                    <span>Display name <small>2–32 characters</small></span>
+                    <input value={displayName} onChange={e => setDisplayName(e.target.value)} minLength={2} maxLength={32} autoComplete="nickname" placeholder="How players know you" required autoFocus />
+                  </label>
+                  <label>
+                    <span>Player handle <small>Unique account tag</small></span>
+                    <div className="handle-field"><i>@</i><input value={handle} onChange={e => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} minLength={3} maxLength={20} pattern="[a-z0-9_]+" placeholder="your_handle" required /></div>
+                  </label>
+                </div>
+                <aside className="step-player-preview" aria-label="Player card preview">
+                  <div className="step-preview-avatar"><UserRound size={30} /></div>
+                  <div className="preview-identity"><small>YOUR PLAYER CARD</small><strong>{displayName.trim() || 'YOUR CALLSIGN'}</strong><span>@{handle || 'your_handle'}</span></div>
+                </aside>
+              </div>
+            </section>
+          )}
 
-        <aside className="compact-player-preview" aria-label="Player card preview">
-          <div className="compact-avatar"><UserRound size={25} /></div>
-          <div className="preview-identity">
-            <small>PLAYER CARD</small>
-            <strong>{visibility === 'anonymous' ? 'ANONYMOUS PLAYER' : displayName.trim() || 'YOUR CALLSIGN'}</strong>
-            <span>{visibility === 'anonymous' ? 'IDENTITY HIDDEN' : `@${handle || 'your_handle'}`}</span>
-          </div>
-          <div className="compact-ready"><i /> READY</div>
-        </aside>
+          {onboardingStep === 2 && (
+            <section className="onboarding-screen" aria-labelledby="visibility-title">
+              <div className="onboarding-heading">
+                <small>STEP 2 OF 3</small>
+                <h2 id="visibility-title">Choose how you appear.</h2>
+                <p>You can change this later from your profile.</p>
+              </div>
+              <fieldset className="visibility-choice step-visibility">
+                <legend className="sr-only">Match visibility</legend>
+                <button type="button" aria-pressed={visibility === 'visible'} onClick={() => setVisibility('visible')}>
+                  <Eye size={24} /><span><b>Public callsign</b><small>Players see {displayName.trim() || 'your name'} and @{handle || 'your_handle'}.</small></span><Check className="choice-check" size={17} />
+                </button>
+                <button type="button" aria-pressed={visibility === 'anonymous'} onClick={() => setVisibility('anonymous')}>
+                  <EyeOff size={24} /><span><b>Anonymous player</b><small>Your name and account tag stay hidden in matches.</small></span><Check className="choice-check" size={17} />
+                </button>
+              </fieldset>
+              <div className="visibility-result"><span>Match preview</span><b>{visibility === 'anonymous' ? 'ANONYMOUS PLAYER' : displayName.trim() || 'YOUR CALLSIGN'}</b><small>{visibility === 'anonymous' ? 'IDENTITY HIDDEN' : `@${handle || 'your_handle'}`}</small></div>
+            </section>
+          )}
 
-        <div className="compact-fields" aria-label="Player identity details">
-          <label>
-            <span>Display name <small>2–32 characters</small></span>
-            <input value={displayName} onChange={e => setDisplayName(e.target.value)} minLength={2} maxLength={32} autoComplete="nickname" placeholder="How players know you" required autoFocus />
-          </label>
-          <label>
-            <span>Player handle <small>Account tag</small></span>
-            <div className="handle-field"><i>@</i><input value={handle} onChange={e => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} minLength={3} maxLength={20} pattern="[a-z0-9_]+" placeholder="your_handle" required /></div>
-          </label>
-        </div>
-
-        <fieldset className="visibility-choice compact-visibility">
-          <legend>Shown in matches</legend>
-          <button type="button" aria-pressed={visibility === 'visible'} onClick={() => setVisibility('visible')}>
-            <Eye size={17} /><span><b>Public</b><small>Name and handle visible</small></span><Check className="choice-check" size={14} />
-          </button>
-          <button type="button" aria-pressed={visibility === 'anonymous'} onClick={() => setVisibility('anonymous')}>
-            <EyeOff size={17} /><span><b>Anonymous</b><small>Identity hidden</small></span><Check className="choice-check" size={14} />
-          </button>
-        </fieldset>
-
-        <div className="onboarding-confirmations">
-          <label className="onboarding-check"><input type="checkbox" checked={adult} onChange={e => setAdult(e.target.checked)} /><span><b>Age confirmed</b>I am at least 18 years old.</span></label>
-          <label className="onboarding-check"><input type="checkbox" checked={terms} onChange={e => setTerms(e.target.checked)} /><span><b>Rules accepted</b>I accept the <a href="/rules" target="_blank" rel="noreferrer">platform rules</a> and <a href="/privacy" target="_blank" rel="noreferrer">privacy policy</a>.</span></label>
+          {onboardingStep === 3 && (
+            <section className="onboarding-screen" aria-labelledby="confirm-title">
+              <div className="onboarding-heading">
+                <small>STEP 3 OF 3</small>
+                <h2 id="confirm-title">Ready to enter?</h2>
+                <p>Confirm the essentials before your first match.</p>
+              </div>
+              <div className="onboarding-summary"><div><span>CALLSIGN</span><b>{displayName}</b><small>@{handle}</small></div><div><span>IN MATCHES</span><b>{visibility === 'anonymous' ? 'Anonymous' : 'Public'}</b><small>Change anytime</small></div></div>
+              <div className="onboarding-confirmations">
+                <label className="onboarding-check"><input type="checkbox" checked={adult} onChange={e => setAdult(e.target.checked)} /><span><b>I am 18 or older</b>Cash matches are restricted to adults.</span></label>
+                <label className="onboarding-check"><input type="checkbox" checked={terms} onChange={e => setTerms(e.target.checked)} /><span><b>I accept the platform rules</b>I agree to the <a href="/rules" target="_blank" rel="noreferrer">rules</a> and <a href="/privacy" target="_blank" rel="noreferrer">privacy policy</a>.</span></label>
+              </div>
+            </section>
+          )}
         </div>
 
         <footer className="onboarding-actions">
-          <span><ShieldCheck size={16} /> Change this anytime.</span>
+          {onboardingStep > 1 ? <button className="onboarding-back" type="button" onClick={() => { setError(''); setOnboardingStep(onboardingStep === 3 ? 2 : 1); }}><ArrowLeft size={17} /> Back</button> : <span><ShieldCheck size={16} /> Protected player account</span>}
           <button className="primary onboarding-submit" disabled={busy}>
-            {busy ? 'Creating player…' : 'Finish setup'} <ArrowRight size={18} />
+            {busy ? 'Creating player…' : onboardingStep === 3 ? 'Enter FragStake' : 'Continue'} <ArrowRight size={18} />
           </button>
         </footer>
         {error && <p className="error-text onboarding-error" role="alert">{error}</p>}
