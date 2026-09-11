@@ -9,6 +9,7 @@ import './play-restore.css';
 import { useLiveStatus } from '../use-live-status';
 import LiveRoomList from '../live-room-list';
 import { requestLiveMatch } from '@/lib/live/launch';
+import { firebaseIdToken } from '@/lib/firebase-client';
 import { maps, getMap } from '@/lib/fps/maps';
 import type { LiveMode } from '@/lib/live/security';
 import type { OpenRoom } from '@/lib/live/matchmaking';
@@ -80,7 +81,6 @@ export default function Play() {
     nextMap = category === 'ffa' ? status?.currentFfaMapId ?? mapId : mapId,
     roomId?: string,
     practice = category === 'practice',
-    instantFill = false,
   ) {
     if (busy) return;
     setBusy(true);
@@ -103,37 +103,11 @@ export default function Play() {
       const stakeValue =
         duelStakes.find((stake) => stake.id === duelStake)?.value ?? 10;
       const accountBalance = (data?.player.balance ?? 10000) / 100;
-      const config = practice
-        ? {
-            mode: 'practice' as const,
-            mapId: nextMap,
-            team: '1v1' as const,
-            rate: 0,
-            stake: 0,
-            entry: 0,
-            target: 0,
-            bestOf: 1,
-            weaponRule: 'standard',
-            balance: 0,
-          }
-        : instantFill && nextMode !== 'ffa'
-          ? {
-              mode: 'duel' as const,
-              mapId: nextMap,
-              team: nextMode === '2v2' ? ('2v2' as const) : ('1v1' as const),
-              rate: 0,
-              stake: stakeValue,
-              entry: 0,
-              target: 10,
-              bestOf: 1,
-              weaponRule: 'standard',
-              balance: Math.max(0, accountBalance - stakeValue),
-            }
-        : await requestLiveMatch(nextMode, nextMap, fetch, roomId);
+      const config = await requestLiveMatch(practice ? 'practice' : nextMode, nextMap, fetch, roomId, await firebaseIdToken());
       setMode(nextMode);
       if (practice) setCategory('practice');
       else setCategory(nextMode === 'ffa' ? 'ffa' : 'duels');
-      setMapId(nextMap);
+      setMapId(config.mapId ?? nextMap);
       setResult(null);
       setGame({
         ...config,
@@ -145,11 +119,7 @@ export default function Play() {
         entry: 0,
         target: practice ? 0 : nextMode === 'ffa' ? 30 : 10,
         bestOf: 1,
-        balance: practice
-          ? 0
-          : instantFill && nextMode !== 'ffa'
-            ? Math.max(0, accountBalance - stakeValue)
-            : accountBalance,
+        balance: practice ? 0 : accountBalance,
       });
     } catch (e) {
       setError(
@@ -206,7 +176,7 @@ export default function Play() {
   async function finishDuelSearch() {
     const room = matchingRealDuel(await freshRooms());
     if (room) void join(room.mode, room.mapId, room.id, false);
-    else void join(mode, mapId, undefined, false, true);
+    else void join(mode, mapId, undefined, false);
   }
   function cancelDuelSearch() {
     if (duelSearchTimer.current) clearTimeout(duelSearchTimer.current);
@@ -455,7 +425,7 @@ export default function Play() {
                 disabled={
                   busy ||
                   duelSearching ||
-                  (category === 'ffa' && !status?.online)
+                  !status?.online
                 }
                 onClick={requestJoin}
               >
@@ -477,9 +447,7 @@ export default function Play() {
                   ? 'Connecting to match server…'
                   : status.online
                     ? status.players + ' players online'
-                    : category === 'duels'
-                      ? 'Instant duel ready'
-                      : 'Match server unavailable. Retry shortly.'}
+                    : 'Match server unavailable. Retry shortly.'}
               </p>
               {!data && (
                 <a className="record-signin" href="/signin">
@@ -525,24 +493,7 @@ export default function Play() {
               instantMapId={mapId}
               standingFfaMapId={rotatingMapId}
               instantStake={selectedStake.value}
-              onJoin={(room) =>
-                room.instantFill
-                  ? (setCategory('duels'),
-                    setMode(room.mode),
-                    setMapId(room.mapId),
-                    void join(room.mode, room.mapId, undefined, false, true))
-                  : room.mode === 'ffa'
-                    ? void join(
-                      room.mode,
-                      room.mapId,
-                      room.standing ? undefined : room.id,
-                      false,
-                    )
-                    : (setCategory('duels'),
-                      setMode(room.mode),
-                      setMapId(room.mapId),
-                      void join(room.mode, room.mapId, room.id, false))
-              }
+              onJoin={(room) => void join(room.mode, room.mapId, room.standing ? undefined : room.id, room.mode === 'practice')}
             />
           )}
         </section>

@@ -7,10 +7,12 @@ export async function requestLiveMatch(
   mapId: string,
   fetcher: typeof fetch = fetch,
   roomId?: string,
+  idToken?: string | null,
 ): Promise<MatchConfig> {
   const response = await fetcher('/api/live', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(idToken ? { Authorization: 'Bearer ' + idToken } : {}) },
+    credentials: 'same-origin',
     body: JSON.stringify({ mode, mapId, ...(roomId ? { roomId } : {}) }),
     signal: AbortSignal.timeout(8000),
   });

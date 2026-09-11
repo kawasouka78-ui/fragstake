@@ -297,9 +297,11 @@ test('a slide is fast, collides with cover, and cannot immediately retrigger', (
   assert.ok(brain.slideIn > 2);
 });
 
-test('jump uses player gravity, lands, and respawn clears all movement and perception', () => {
+test('evasive jump uses player gravity, lands, and respawn clears all movement and perception', () => {
   const { sim, bot, brain } = scene();
   sim.player.hp = 0;
+  bot.lastDamage = sim.elapsed;
+  brain.memory = { id: -1, point: { x: 0, y: 1.2, z: -10 }, expires: 99 };
   brain.goal = { x: 0, z: -30 }; brain.goalUntil = 99; brain.decideIn = 99;
   sim.nav.route = () => [{ x: 0, z: -30 }];
   brain.vz = -5; brain.mobility = 1; brain.jumpIn = 0; brain.slideIn = 99;

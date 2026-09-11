@@ -50,7 +50,7 @@ export async function verifySignature(
     return false;
   }
 }
-export type LiveMode = 'ffa' | '1v1' | '2v2';
+export type LiveMode = 'practice' | 'ffa' | '1v1' | '2v2';
 export type Ticket = {
   sub: string;
   name: string;
@@ -105,7 +105,7 @@ export async function readTicket(
       c.name.length <= 32 &&
       typeof c.guest === 'boolean' &&
       typeof c.nonce === 'string' &&
-      ['ffa', '1v1', '2v2'].includes(c.mode) &&
+      ['practice', 'ffa', '1v1', '2v2'].includes(c.mode) &&
       ['citadel', 'depot', 'underpass'].includes(c.mapId) &&
       (c.roomId === undefined || validRoomId(c.roomId))
       ? c

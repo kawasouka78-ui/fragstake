@@ -25,9 +25,9 @@ export function liveResultDetails(
   return {
     standings,
     liveMode: snapshot.mode,
-    placement: snapshot.mode === 'ffa' ? place : undefined,
+    placement: (snapshot.mode === 'ffa' || snapshot.mode === 'practice') ? place : undefined,
     reason:
-      snapshot.mode === 'ffa'
+      (snapshot.mode === 'ffa' || snapshot.mode === 'practice')
         ? 'FFA complete'
         : snapshot.state.score === snapshot.state.enemyScore
           ? 'Draw'

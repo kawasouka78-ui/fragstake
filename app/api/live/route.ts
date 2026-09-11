@@ -35,7 +35,7 @@ export async function GET() {
         players = data.players;
         region = data.region;
         rooms = (data.openRooms ?? []).filter(
-          (room) => room.mode !== 'ffa' || room.mapId === rotationMapId,
+          (room) => !['ffa', 'practice'].includes(room.mode) || room.mapId === rotationMapId,
         );
       }
     } catch {}
@@ -68,9 +68,9 @@ export async function POST(request: Request) {
     if (raw.length > 1024) throw new InputError('Request too large.', 413);
     const b = JSON.parse(raw);
     const mode = b.mode as LiveMode,
-      actualMapId = mode === 'ffa' ? currentFfaMapId() : b.mapId;
+      actualMapId = (mode === 'ffa' || mode === 'practice') ? currentFfaMapId() : b.mapId;
     if (
-      !['ffa', '1v1', '2v2'].includes(b.mode) ||
+      !['practice', 'ffa', '1v1', '2v2'].includes(b.mode) ||
       !['citadel', 'depot', 'underpass'].includes(actualMapId)
     )
       throw new InputError('Choose a valid format and map.');

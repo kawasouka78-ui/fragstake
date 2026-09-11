@@ -183,6 +183,20 @@ test(
         await fetch(`http://127.0.0.1:${port}/health`)
       ).json();
       assert.equal(health.payments, false);
+      const practiceTicket = sub => issueTicket(secret, {
+        sub, name: sub, guest: true, mode: 'practice', mapId: health.currentFfaMapId,
+      });
+      const practiceA = connect({ type: 'join', ticket: await practiceTicket('practice-a') });
+      const practiceWelcome = await practiceA.wait(m => m.type === 'welcome');
+      practiceA.ws.send(JSON.stringify({ type: 'ready' }));
+      await practiceA.wait(m => m.type === 'snapshot' && m.actors.length === 10 && m.status === 'playing');
+      const practiceB = connect({ type: 'join', ticket: await practiceTicket('practice-b') });
+      assert.equal((await practiceB.wait(m => m.type === 'welcome')).room, practiceWelcome.room);
+      practiceB.ws.send(JSON.stringify({ type: 'ready' }));
+      const shared = await practiceA.wait(m => m.type === 'snapshot' && m.roster.some(p => p.name === 'practice-b' && p.ready));
+      assert.equal(shared.actors.length, 10);
+      assert.equal(shared.roster.filter(p => p.bot).length, 8);
+      assert.ok(shared.actors.some(a => a.motion?.weapon), 'shared bots must replicate their movement and weapon pose');
       assert.equal(
         (await fetch(`http://127.0.0.1:${port}/metrics`)).status,
         404,

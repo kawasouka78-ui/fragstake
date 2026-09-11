@@ -50,7 +50,7 @@ const server = createServer((req, res) => {
         currentFfaMapId: currentFfaMapId(),
         nextFfaRotationAt: nextFfaRotationAt(),
         openRooms: openRooms(rooms.values()).filter(
-          (room) => room.mode !== 'ffa' || room.mapId === currentFfaMapId(),
+          (room) => !['ffa', 'practice'].includes(room.mode) || room.mapId === currentFfaMapId(),
         ),
       }),
     );
@@ -188,7 +188,7 @@ wss.on('connection', (ws: WebSocket) => {
             old.socket ||
             Date.now() - old.disconnectedAt > RECONNECT_MS ||
             old.room.status === 'finished' ||
-            old.room.players.get(old.subject)?.left
+            !old.room.players.has(old.subject) || old.room.players.get(old.subject)?.left
           )
             throw new Error('Reconnect window expired.');
           session = old;
@@ -212,7 +212,7 @@ wss.on('connection', (ws: WebSocket) => {
               throw new Error('All servers are busy. Try again soon.');
             room = new LiveRoom(
               claims.mode,
-              claims.mode === 'ffa' ? currentFfaMapId() : claims.mapId,
+              (claims.mode === 'ffa' || claims.mode === 'practice') ? currentFfaMapId() : claims.mapId,
             );
             rooms.set(room.id, room);
           }
@@ -272,7 +272,7 @@ const finalizing=new Set<string>();
 async function finishRoom(room:LiveRoom){
   // Persist once, then include each private invitation in the final snapshot.
   const result=room.result();
-  storage.prepare('INSERT OR IGNORE INTO outbox(id,body) VALUES(?,?)').run(room.id,JSON.stringify(result));
+  if (room.mode !== 'practice') storage.prepare('INSERT OR IGNORE INTO outbox(id,body) VALUES(?,?)').run(room.id,JSON.stringify(result));
   let rematch:Awaited<ReturnType<typeof prepareRematch>>=null;
   try{
     if(rooms.size<24)rematch=await prepareRematch(room,secret);
@@ -298,13 +298,13 @@ const timer = setInterval(() => {
   const activeFfaMap = currentFfaMapId();
   for (const [id, room] of rooms) {
     if (
-      room.mode === 'ffa' &&
+      room.continuous &&
       room.mapId !== activeFfaMap &&
-      ![...room.players.values()].some((p) => !p.left && p.connected)
+      ![...room.players.values()].some((p) => !p.left && p.connected && !p.bot)
     )
       room.finish();
     if (
-      room.mode !== 'ffa' &&
+      !room.continuous &&
       room.status === 'waiting' &&
       Date.now() - room.created > 300000
     )
@@ -316,7 +316,7 @@ const timer = setInterval(() => {
       continue;
     }
     for (const s of sessions.values())
-      if (s.room === room && s.socket) send(s.socket, room.snapshot(s.subject));
+      if (s.room === room && s.socket && room.players.has(s.subject)) send(s.socket, room.snapshot(s.subject));
     if (room.tick % 6 === 0 && room.status === 'playing')
       storage
         .prepare(

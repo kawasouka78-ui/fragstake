@@ -2,7 +2,7 @@ export function liveConfig(env: Record<string, string | undefined>) {
   const production = env.NODE_ENV === 'production';
   const secret = env.LIVE_TICKET_SECRET || '';
   if (secret.length < 32) throw new Error('LIVE_TICKET_SECRET must contain at least 32 characters. For local setup, run npm run live:setup.');
-  const port = Number(env.LIVE_PORT ?? 3010);
+  const port = Number(env.LIVE_PORT ?? env.PORT ?? 3010);
   if (!Number.isInteger(port) || port < 0 || port > 65535 || (production && port === 0))
     throw new Error('LIVE_PORT must be a valid listening port.');
   const site = new URL(env.LIVE_SITE_URL || 'http://localhost:3000');

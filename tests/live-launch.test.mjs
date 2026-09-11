@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { requestLiveMatch } from '../lib/live/launch.ts';
 
-for (const mode of ['ffa', '1v1', '2v2']) {
+for (const mode of ['practice', 'ffa', '1v1', '2v2']) {
   test(`main selector joins ${mode} on the selected map without a wallet transaction`, async () => {
     const calls = [];
     const config = await requestLiveMatch(
@@ -35,6 +35,14 @@ for (const mode of ['ffa', '1v1', '2v2']) {
     assert.equal(config.entry, undefined);
   });
 }
+
+test('signed-in matchmaking sends the Firebase identity to the ticket endpoint', async () => {
+  await requestLiveMatch('practice', 'citadel', async (_url, options) => {
+    assert.equal(options.headers.Authorization, 'Bearer test-identity-token');
+    assert.equal(options.credentials, 'same-origin');
+    return Response.json({ ticket: 'test', url: 'ws://localhost:3010/play', guest: false });
+  }, undefined, 'test-identity-token');
+});
 
 test('targeted entry passes the selected room to the ticket service', async () => {
   const roomId = crypto.randomUUID();

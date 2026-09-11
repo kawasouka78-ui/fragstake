@@ -20,7 +20,7 @@ export default function LiveRoster({ game }: { game: NetworkSimulation }) {
             ? snapshot.roster.some((p) => p.you && p.ready)
               ? 'You’re ready. Waiting for the other players.'
               : 'Choose your loadout, then press Ready up.'
-            : snapshot.mode === 'ffa'
+            : ['ffa', 'practice'].includes(snapshot.mode)
               ? 'Free-for-all'
               : `Your team ${game.score} — ${game.enemyScore} Opponents`}
         </small>
@@ -51,7 +51,7 @@ export default function LiveRoster({ game }: { game: NetworkSimulation }) {
                     : p.ready
                       ? 'Ready'
                       : 'Choosing loadout'}
-                {snapshot.mode !== 'ffa' && !p.left && ` · Team ${p.team + 1}`}
+                {!['ffa', 'practice'].includes(snapshot.mode) && !p.left && ` · Team ${p.team + 1}`}
               </small>
             </span>
             {p.connected && p.ready && !p.left ? (
@@ -67,8 +67,8 @@ export default function LiveRoster({ game }: { game: NetworkSimulation }) {
       {remaining > 0 && snapshot.status === 'waiting' && (
         <p className="live-roster-spaces">
           {remaining} open {remaining === 1 ? 'place' : 'places'} ·{' '}
-          {snapshot.mode === 'ffa'
-            ? 'Starts with 2 ready players'
+          {['ffa', 'practice'].includes(snapshot.mode)
+            ? 'Join and leave anytime'
             : 'Everyone must be ready to start'}
         </p>
       )}

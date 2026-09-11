@@ -514,7 +514,7 @@ export default function Arena({
     };
   }
   const duelHud =
-    config.mode === 'duel' || (!!config.live && config.live.mode !== 'ffa');
+    config.mode === 'duel' || (!!config.live && ['1v1', '2v2'].includes(config.live.mode));
   const practiceHud = config.mode === 'practice',
     game = runtime.current?.game,
     p = game?.player,
@@ -630,7 +630,7 @@ export default function Arena({
                 <small>
                   {practiceHud
                     ? 'OPEN PRACTICE'
-                    : config.live && config.live.mode !== 'ffa'
+                    : config.live && ['1v1', '2v2'].includes(config.live.mode)
                     ? 'FIRST TO 10'
                     : config.mode === 'duel'
                       ? config.bestOf === 3

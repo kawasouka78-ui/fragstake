@@ -1,7 +1,6 @@
 'use client';
 import { ArrowRight, Users } from 'lucide-react';
 import { getMap } from '@/lib/fps/maps';
-import { instantDuelRooms } from '@/lib/live/instant-rooms';
 import type { OpenRoom } from '@/lib/live/matchmaking';
 import type { LiveStatus } from './use-live-status';
 
@@ -44,12 +43,7 @@ export default function LiveRoomList({
           },
         ]
       : [];
-  const instantRooms =
-    filter === 'ffa'
-      ? []
-      : instantDuelRooms(instantMapId, instantStake).filter(
-          (room) => filter === 'all' || room.mode === filter,
-        );
+  const instantRooms: OpenRoom[] = [];
   const rooms = [...realRooms, ...standingFfaRooms, ...instantRooms];
   return (
     <div className="available-matches" aria-label="Available player matches">
@@ -72,7 +66,7 @@ export default function LiveRoomList({
                       ? room.mode + ' instant duel'
                       : room.mode === 'ffa'
                         ? 'Cash FFA'
-                        : room.mode + ' money duel'}
+                        : room.mode === 'practice' ? 'Open practice' : room.mode + ' money duel'}
                 </small>
               </h3>
               <p>

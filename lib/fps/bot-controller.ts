@@ -185,8 +185,13 @@ export class BotController {
       const tracking = candidate.id === this.memory?.id && sim.elapsed - this.lastVisualAt < botAwareness.trackingGrace;
       const halfFov = tracking ? 2.6 : d < 18 ? 1.85 : d < 45 ? 1.5 : 1.3;
       if (d > botAwareness.closeRange && dot < Math.cos(halfFov)) continue;
-      const point = visibleTargetPoint(sim, actor, candidate);
+      let point = visibleTargetPoint(sim, actor, candidate);
       if (!point) continue;
+      // Skilled opponents raise their aim once settled, but only at an exposed head.
+      if (this.difficulty !== 'easy' && this.settledAim > .35 && d < 42) {
+        const head = { x: candidate.x, y: candidate.y + 1.58 * (candidate.crouch ? .67 : 1), z: candidate.z };
+        if (visible(sim.boxes, sim.eye(actor), head)) point = head;
+      }
       const score = 100 / (1 + d * .08) + (candidate.id === this.sighted ? 13 : 0) + (d < 7 ? 32 : 0) + (candidate.id === this.attackerId && sim.elapsed < this.attackedUntil ? 24 : 0);
       if (score > bestScore) { best = candidate; bestPoint = point; bestScore = score; }
     }
@@ -395,8 +400,9 @@ export class BotController {
       this.crouchLeft = 0;
       sprinting = false;
     }
-    const slideJump = this.slideLeft > 0 && this.slideLeft < .2 && this.jumpIn === 0 && combat && this.mobility > .6;
-    if (actor.y === 0 && this.jumpIn === 0 && openAhead && speedBefore > 2.7 && this.crouchLeft === 0 && (slideJump || (this.slideLeft === 0 && (damaged || combat || this.mobility > .65)))) {
+    const slideJump = this.slideLeft > 0 && this.slideLeft < .2 && this.jumpIn === 0 && combat && range < 18 && this.mobility > .6;
+    const evasiveJump = (damaged && range < 24) || (combat && range < 12 && this.steadyLeft === 0);
+    if (actor.y === 0 && this.jumpIn === 0 && openAhead && speedBefore > 2.7 && this.crouchLeft === 0 && (slideJump || (this.slideLeft === 0 && evasiveJump))) {
       actor.vy = 5.4;
       this.jumpIn = sampleSkill(this.skill.jumpCooldown, sim.rng);
       this.slideLeft = 0;

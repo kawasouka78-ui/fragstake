@@ -67,11 +67,16 @@ export class NetworkSimulation extends Simulation {
           this.capacity = s.capacity;
           this.status =
             s.status === 'waiting'
-              ? `Waiting for ready players · ${s.ready}/${s.mode === 'ffa' ? 2 : s.capacity}`
+              ? `Waiting for ready players · ${s.ready}/${s.mode === 'ffa' || s.mode === 'practice' ? 1 : s.capacity}`
               : s.status === 'finished'
                 ? 'Match complete'
                 : 'Connected';
           this.target = s.actors;
+          const previous = new Map(this.actors.map(actor => [actor.id, actor]));
+          this.actors = s.actors.map(actor => {
+            const old = previous.get(actor.id);
+            return old && old.name === actor.name ? old : { ...actor };
+          });
           if (!received) {
             this.actors = this.actors.map((old, i) =>
               s.actors[i] ? { ...s.actors[i] } : { ...old, hp: 0 },
@@ -153,6 +158,7 @@ export class NetworkSimulation extends Simulation {
         return;
       }
       const snap =
+        a.id !== target.id ||
         Math.hypot(a.x - target.x, a.z - target.z) > 3 ||
         (a.hp <= 0 && target.hp > 0);
       const x = a.x,

@@ -22,8 +22,8 @@ export const validRoomId = (value: unknown): value is string =>
 export function canJoinRoom(room: LiveRoom) {
   return (
     room.status !== 'finished' &&
-    (room.status === 'waiting' || room.mode === 'ffa') &&
-    room.players.size < room.capacity
+    (room.status === 'waiting' || room.continuous) &&
+    room.humanCount < room.capacity
   );
 }
 
@@ -33,7 +33,7 @@ export function openRooms(rooms: Iterable<LiveRoom>): OpenRoom[] {
     .filter(
       (room) =>
         !room.reservedSlots && canJoinRoom(room) &&
-        [...room.players.values()].some((p) => !p.left && p.connected),
+        [...room.players.values()].some((p) => !p.left && p.connected && !p.bot),
     )
     .slice(0, 24)
     .map((room) => ({
@@ -41,12 +41,12 @@ export function openRooms(rooms: Iterable<LiveRoom>): OpenRoom[] {
       mode: room.mode,
       mapId: room.mapId,
       status: room.status === 'finished' ? 'waiting' : room.status,
-      players: [...room.players.values()].filter((p) => !p.left).length,
+      players: room.humanCount,
       ready: [...room.players.values()].filter(
-        (p) => !p.left && p.connected && p.ready,
+        (p) => !p.left && p.connected && p.ready && !p.bot,
       ).length,
       capacity: room.capacity,
-      openSlots: room.capacity - room.players.size,
+      openSlots: room.capacity - room.humanCount,
     }));
 }
 

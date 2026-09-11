@@ -80,6 +80,7 @@ export class ArenaRenderer{
   const pose=this.motion.step(dt,{speed:p.hp>0?p.moving:0,grounded:p.y===0,vy:p.vy,crouch:p.crouch,sprinting:g.sprinting,sliding:g.sliding,aim,reload,switching:g.switchLeft>0,kick:g.weapon==='knife'?0:this.kick,sightHeight:model.rig.sightHeight,bobScale:this.weaponBob});
   const eye=g.eye(p);this.camera.position.set(eye.x,eye.y+pose.cameraBob,eye.z);this.camera.rotation.set(g.pitch+g.recoil,g.yaw,pose.cameraRoll);
   const desired=this.fov-aim*(g.weapon==='marksman'?37:21)+pose.sprintBlend*5+pose.slideBlend*3;this.camera.fov+=(desired-this.camera.fov)*(1-Math.exp(-dt*12));this.camera.updateProjectionMatrix();
+  while(this.rigs.length<g.actors.length-1)this.rigs.push(this.actor(g.actors[this.rigs.length+1]));
   for(let i=0;i<this.rigs.length;i++)this.updateActor(this.rigs[i],g.actors[i+1],dt);
   this.pickupMeshes.forEach((mesh,i)=>{mesh.visible=g.pickups[i].ready<=0;mesh.position.y=.45+Math.sin(g.elapsed*2+i)*.1;mesh.rotation.y=g.elapsed*.7;});
   for(let i=0;i<this.tracers.length;i++){const shot=g.shots[i],line=this.tracers[i],impact=this.impacts[i];line.visible=!!shot;impact.visible=!!shot;if(!shot)continue;const from=shot.from;const positions=line.geometry.attributes.position as THREE.BufferAttribute;positions.setXYZ(0,from.x,from.y-.08,from.z);positions.setXYZ(1,shot.to.x,shot.to.y,shot.to.z);positions.needsUpdate=true;(line.material as THREE.LineBasicMaterial).opacity=(1-shot.age/.08)*.75;impact.position.set(shot.to.x,shot.to.y,shot.to.z);}

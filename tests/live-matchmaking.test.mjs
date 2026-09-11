@@ -76,7 +76,7 @@ test('selecting a match joins that exact room and never falls back after a race'
   );
 });
 
-test('in-progress FFA can be joined but consumed slots are not advertised as available', () => {
+test('in-progress FFA releases departed slots for new players', () => {
   const value = room('ffa');
   value.add(claims('b', 'ffa'));
   value.ready('a');
@@ -85,7 +85,7 @@ test('in-progress FFA can be joined but consumed slots are not advertised as ava
   value.leave('b');
   assert.equal(openRooms([value])[0].status, 'playing');
   assert.equal(openRooms([value])[0].players, 1);
-  assert.equal(openRooms([value])[0].openSlots, 8);
+  assert.equal(openRooms([value])[0].openSlots, 9);
   assert.equal(findRoom([value], claims('c', 'ffa')), value);
 });
 

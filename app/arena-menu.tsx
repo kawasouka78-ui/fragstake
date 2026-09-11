@@ -166,7 +166,7 @@ export default function ArenaMenu({
         (config.weaponRule === 'sniper' ? 'marksman' : 'rifle'));
   const gun = weapons[selected],
     mode = config.live
-      ? config.live.mode === 'ffa'
+      ? config.live.mode === 'practice' ? 'Practice' : config.live.mode === 'ffa'
         ? 'Cash FFA'
         : config.live.mode + ' Duel'
       : config.mode === 'duel'
@@ -186,7 +186,7 @@ export default function ArenaMenu({
       ? game.allowedWeapons
       : (game?.switchWeapons ?? []),
     helpKeys = loadoutWeapons.length || 6,
-    isDuel = config.live ? config.live.mode !== 'ffa' : config.mode === 'duel';
+    isDuel = config.live ? ['1v1', '2v2'].includes(config.live.mode) : config.mode === 'duel';
   const showDuelPrep = !game?.started && isDuel;
   return (
     <div className="fps-menu-scrim deployment-scrim">
@@ -468,7 +468,7 @@ export default function ArenaMenu({
                 <ArrowLeft size={16} />
                 {!game?.started
                   ? 'Back to Play'
-                  : config.live && config.live.mode !== 'ffa'
+                  : config.live && ['1v1', '2v2'].includes(config.live.mode)
                     ? 'Forfeit & leave'
                     : config.mode === 'ffa'
                       ? 'Cash out & leave'

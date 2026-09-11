@@ -16,16 +16,16 @@ export const botSkills: Record<BotDifficulty, BotSkill> = {
     tracking: .15, memory: 3, coverHealth: 30, flankChance: .1,
   },
   hard: {
-    reaction: [.28, .4], turnRate: [4.2, 5.4], sense: [.09, .135], decision: [.65, .95],
+    reaction: [.24, .34], turnRate: [4.6, 5.8], sense: [.075, .115], decision: [.55, .8],
     aggression: [.45, .65], mobility: [.6, .8], jumpCooldown: [4, 6.5], slideCooldown: [4, 6],
     burstPause: [.2, .36], semiPause: [.12, .2], aimError: .013, aimSpread: .01,
-    tracking: .55, memory: 4.5, coverHealth: 40, flankChance: .22,
+    tracking: .68, memory: 4.5, coverHealth: 40, flankChance: .25,
   },
   pro: {
-    reaction: [.18, .26], turnRate: [5.6, 6.8], sense: [.065, .095], decision: [.4, .65],
+    reaction: [.17, .23], turnRate: [6, 7.2], sense: [.05, .08], decision: [.35, .55],
     aggression: [.58, .85], mobility: [.8, .98], jumpCooldown: [3.2, 5], slideCooldown: [3.2, 4.8],
-    burstPause: [.09, .2], semiPause: [.04, .09], aimError: .0075, aimSpread: .0055,
-    tracking: .8, memory: 5, coverHealth: 52, flankChance: .32,
+    burstPause: [.08, .15], semiPause: [.035, .075], aimError: .006, aimSpread: .0045,
+    tracking: .92, memory: 5, coverHealth: 52, flankChance: .38,
   },
 };
 

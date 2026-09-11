@@ -14,9 +14,10 @@ import {
 import { parseInput, LIVE_TICK } from './protocol.ts';
 import type { Ticket, LiveMode } from './security.ts';
 import { ffaRotationRemainingSeconds } from './rotation.ts';
+import { BotController } from '../fps/bot-controller.ts';
 
 // Reuse the tested movement, collision, slide, ammo and recoil rules on the server.
-// Every human owns one simulation. No bot AI or browser result ever runs here.
+// Each participant uses server physics; all combat resolves in the shared room.
 class HumanSimulation extends Simulation {
   room?: LiveRoom;
   subject = '';
@@ -31,8 +32,18 @@ class HumanSimulation extends Simulation {
     this.room?.cast(this.subject, dir, damage, headMultiplier, range);
   }
   override finish() {} // The shared room alone ends the match.
+  override respawn(actor: Actor) {
+    const own = this.actors;
+    this.actors = [actor, ...(this.room?.opponents(this.subject) ?? [])];
+    try { super.respawn(actor); } finally { this.actors = own; }
+    this.room?.players.get(this.subject)?.bot?.reset(actor);
+  }
+  override notifyBotSound(source: Actor, range: number) {
+    this.room?.notifySound(this.subject, source, range);
+  }
 }
 export type Participant = {
+  bot?: BotController;
   claims: Ticket;
   game: HumanSimulation;
   slot: number;
@@ -69,18 +80,37 @@ export class LiveRoom {
   mapId: string;
   capacity: number;
   startAt = 0;
+  get continuous() { return this.mode === 'ffa' || this.mode === 'practice'; }
+  get humanCount() { return [...this.players.values()].filter(p => !p.left && !p.bot).length; }
+  opponents(subject: string) {
+    return [...this.players.values()].filter(p => p.claims.sub !== subject && p.ready && !p.left)
+      .map(p => ({ ...p.game.player, id: p.slot + 1 }));
+  }
+  notifySound(subject: string, source: Actor, range: number) {
+    const from = this.players.get(subject);
+    if (!from) return;
+    for (const p of this.players.values()) if (p.bot && !p.left && p.game.player.hp > 0)
+      p.bot.hear(p.game, p.game.player, { ...source, id: from.slot + 1 }, range);
+  }
   constructor(mode: LiveMode, mapId: string) {
     this.mode = mode;
     this.mapId = mapId;
-    this.capacity = mode === 'ffa' ? 10 : mode === '1v1' ? 2 : 4;
+    this.capacity = this.continuous ? 10 : mode === '1v1' ? 2 : 4;
   }
   add(claims: Ticket) {
+    if (this.continuous) {
+      for (const [id, p] of this.players) if (p.left) this.players.delete(id);
+      if (this.players.size >= this.capacity && !claims.sub.startsWith('bot:')) {
+        const replaceable = [...this.players.values()].find(p => p.bot);
+        if (replaceable) this.players.delete(replaceable.claims.sub);
+      }
+    }
     if(this.reservedSlots&&!this.reservedSlots.has(claims.sub))throw new Error('This rematch is reserved for its original players.');
     if (
       this.status === 'finished' ||
       this.players.size >= this.capacity ||
       this.players.has(claims.sub) ||
-      (this.status === 'playing' && this.mode !== 'ffa')
+      (this.status === 'playing' && !this.continuous)
     )
       throw new Error('This match is full or already started.');
     const game = new HumanSimulation({
@@ -90,13 +120,14 @@ export class LiveRoom {
         rate: 0,
         balance: 0,
       }),
-      slot = this.reservedSlots?.get(claims.sub)??this.players.size;
+      slot = this.reservedSlots?.get(claims.sub) ?? Array.from({ length: this.capacity }, (_, i) => i)
+        .find(i => ![...this.players.values()].some(p => p.slot === i))!;
     game.actors = game.actors.slice(0, 1);
     game.pickups = [];
     game.player.name = claims.name;
-    game.player.team = this.mode === 'ffa' ? slot : slot % 2;
+    game.player.team = this.continuous ? slot : slot % 2;
     const spawn =
-      this.mode === 'ffa'
+      this.continuous
         ? game.map.spawns[
             Math.floor((slot * game.map.spawns.length) / this.capacity)
           ]
@@ -191,11 +222,11 @@ export class LiveRoom {
     p.input = idleInput();
     this.events.push({ tick: this.tick, kind: 'leave', actor: subject });
     // Rebuild an incomplete group instead of trapping it with consumed slots.
-    if (this.status === 'waiting') {
+    if (this.status === 'waiting' && !this.continuous) {
       this.finish();
       return;
     }
-    if (this.status === 'playing' && this.mode !== 'ffa') {
+    if (this.status === 'playing' && !this.continuous) {
       this.score[1 - p.game.player.team] = Math.max(
         10,
         this.score[p.game.player.team] + 1,
@@ -203,15 +234,53 @@ export class LiveRoom {
       this.finish();
     }
   }
+  fillPractice() {
+    if (this.mode !== 'practice' || !this.humanCount) return;
+    while ([...this.players.values()].filter(p => !p.left).length < this.capacity) {
+      const sub = 'bot:' + crypto.randomUUID();
+      const p = this.add({ sub, name: 'Practice opponent', guest: true, mode: 'practice',
+        mapId: this.mapId, nonce: '', exp: 0, aud: 'skillclash-game' });
+      const actor = p.game.player;
+      actor.id = p.slot + 1;
+      p.bot = new BotController(p.game, actor, p.slot % 9 === 0 ? 'hard' : 'pro');
+      actor.id = 0;
+      actor.name = p.claims.name = `Sparring ${p.slot + 1}`;
+      p.game.weapon = p.game.matchWeapon = p.bot.weapon;
+      this.ready(sub);
+    }
+  }
+  stepBot(p: Participant) {
+    const g = p.game, a = g.player, brain = p.bot!;
+    g.elapsed += LIVE_TICK;
+    g.events = [];
+    g.shots = [];
+    a.shield = Math.max(0, a.shield - LIVE_TICK);
+    if (a.hp <= 0) {
+      a.respawn -= LIVE_TICK;
+      if (a.respawn <= 0) g.respawn(a);
+      return;
+    }
+    if (a.hp < 100 && g.elapsed - a.lastDamage > 7) a.hp = Math.min(100, a.hp + LIVE_TICK * 7);
+    const own = g.actors;
+    a.id = p.slot + 1;
+    g.actors = [a, ...this.opponents(p.claims.sub)];
+    try { brain.step(g, a, LIVE_TICK); } finally { g.actors = own; a.id = 0; }
+    g.yaw = a.yaw;
+    g.pitch = brain.pitch;
+    g.events = [];
+    g.shots = [];
+  }
   step() {
     if (this.status === 'finished') return;
+    if (this.mode === 'practice' && this.status === 'playing' && !this.humanCount) { this.finish(); return; }
+    this.fillPractice();
     this.tick++;
     const ready = [...this.players.values()].filter(
       (p) => p.ready && !p.left && p.connected,
     );
     if (this.status === 'waiting') {
       const enough =
-        this.mode === 'ffa'
+        this.continuous
           ? ready.length >= 1
           : ready.length === this.capacity;
       if (enough) {
@@ -230,25 +299,26 @@ export class LiveRoom {
           : idleInput();
       if (p.ready) {
         g.start();
-        g.step(LIVE_TICK, input);
+        if (p.bot) this.stepBot(p);
+        else g.step(LIVE_TICK, input);
         p.seconds += LIVE_TICK;
       }
       p.input.reload = false;
       p.input.firePressed = false;
       p.input.weapon = undefined;
       g.time =
-        this.mode === 'ffa'
+        this.continuous
           ? ffaRotationRemainingSeconds()
           : Math.max(0, 180 - this.elapsed);
     }
     this.feed = this.feed.filter((e) => e.age < 6);
     for (const e of this.feed) e.age += LIVE_TICK;
     if (
-      (this.mode !== 'ffa' && this.elapsed >= 180) ||
-      (this.mode !== 'ffa' && this.score.some((n) => n >= 10))
+      (!this.continuous && this.elapsed >= 180) ||
+      (!this.continuous && this.score.some((n) => n >= 10))
     )
       this.finish();
-    if (this.mode !== 'ffa' && ![...this.players.values()].some((p) => !p.left))
+    if (!this.continuous && ![...this.players.values()].some((p) => !p.left))
       this.finish();
   }
   finish() {
@@ -330,6 +400,7 @@ export class LiveRoom {
       a = target.player;
     a.hp = Math.max(0, a.hp - Math.round(amount * (head ? multiplier : 1)));
     a.lastDamage = target.elapsed;
+    victim.bot?.onDamage(target, a, { ...g.player, id: shooter.slot + 1 });
     g.hitMarker = 0.17;
     g.headMarker = head;
     g.events.push({ kind: 'hit', head });
@@ -377,7 +448,7 @@ export class LiveRoom {
       won:
         this.status === 'finished' &&
         !p.left &&
-        (this.mode === 'ffa'
+        (this.continuous
           ? g.player.kills > 0 &&
             g.player.kills ===
               Math.max(
@@ -393,7 +464,7 @@ export class LiveRoom {
       ack: p.seq,
       elapsed: this.elapsed,
       time:
-        this.mode === 'ffa'
+        this.continuous
           ? ffaRotationRemainingSeconds()
           : Math.max(0, 180 - this.elapsed),
       count: [...this.players.values()].filter((p) => !p.left).length,
@@ -408,13 +479,14 @@ export class LiveRoom {
         you: member === p,
         ready: member.ready,
         connected: member.connected,
+        ...(member.bot ? { bot: true } : {}),
         left: member.left,
       })),
       actors: [
         actor(p, 0),
         ...[...this.players.values()]
           .filter((a) => a !== p)
-          .map((a, i) => actor(a, i + 1)),
+          .map((a) => actor(a, a.slot + 1)),
       ],
       state: {
         weapon: g.weapon,
@@ -459,7 +531,7 @@ export class LiveRoom {
       finishedAt: this.endedAt,
       duration: Math.round(this.elapsed),
       players: [...this.players.values()]
-        .filter((p) => !p.claims.guest)
+        .filter((p) => !p.claims.guest && !p.bot)
         .map((p) => ({
           id: p.claims.sub,
           kills: p.game.player.kills,
@@ -470,7 +542,7 @@ export class LiveRoom {
           completed: !p.left && this.hadOpponents,
           won:
             !p.left &&
-            (this.mode === 'ffa'
+            (this.continuous
               ? p.game.player.kills > 0 &&
                 p.game.player.kills ===
                   Math.max(
