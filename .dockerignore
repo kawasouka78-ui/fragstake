@@ -1,0 +1,16 @@
+node_modules
+.next
+.vinext
+dist
+.wrangler
+.firebase
+.git
+.env*
+coverage
+outputs
+work
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store

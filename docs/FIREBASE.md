@@ -45,6 +45,8 @@ Build the app:
 npm run build
 ```
 
+For Cloud Run source builds, keep the generated service on the Dockerfile path at the repository root. The Dockerfile installs dependencies, runs the Vinext production build, and starts the web service on Cloud Run's `PORT`.
+
 Deploy rules, indexes, storage rules and hosting config:
 
 ```sh
