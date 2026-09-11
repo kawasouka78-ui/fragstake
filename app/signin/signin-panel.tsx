@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { ArrowRight, Check, LogOut, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Check, Eye, EyeOff, LogOut, ShieldCheck, Swords, UserRound } from 'lucide-react';
 import {
   createEmailAccount,
   firebaseEnabled,
@@ -153,34 +153,68 @@ export default function SignInPanel() {
   if (onboarding) {
     return (
       <form className="onboarding-form" onSubmit={finishOnboarding}>
-        <div className="onboarding-account">
-          <span><Check size={15} /></span>
-          <div><small>ACCOUNT CONNECTED</small><b>{userEmail}</b></div>
-          <button type="button" aria-label="Use a different account" onClick={() => void signOutFirebase()}><LogOut size={16} /></button>
-        </div>
+        <header className="onboarding-topline">
+          <div className="onboarding-step"><span>02</span><i /><b>PLAYER SETUP</b></div>
+          <div className="onboarding-account">
+            <span><Check size={14} /></span>
+            <div><small>CONNECTED AS</small><b>{userEmail}</b></div>
+            <button type="button" aria-label="Use a different account" title="Use a different account" onClick={() => void signOutFirebase()}><LogOut size={16} /></button>
+          </div>
+        </header>
+
         <div className="onboarding-heading">
-          <small>PLAYER SETUP · 2 OF 2</small>
-          <h2>Build your identity</h2>
+          <small>FINAL STEP</small>
+          <h2>Choose your callsign.</h2>
+          <p>This is how you appear in matches, results and the leaderboard.</p>
         </div>
-        <label>
-          <span>Display name</span>
-          <input value={displayName} onChange={e => setDisplayName(e.target.value)} minLength={2} maxLength={32} autoComplete="nickname" required />
-        </label>
-        <label>
-          <span>Unique handle</span>
-          <div className="handle-field"><i>@</i><input value={handle} onChange={e => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} minLength={3} maxLength={20} pattern="[a-z0-9_]+" required /></div>
-        </label>
-        <fieldset className="visibility-choice">
-          <legend>Public match identity</legend>
-          <button type="button" aria-pressed={visibility === 'visible'} onClick={() => setVisibility('visible')}><b>Visible</b><small>Players see your name</small></button>
-          <button type="button" aria-pressed={visibility === 'anonymous'} onClick={() => setVisibility('anonymous')}><b>Anonymous</b><small>Shown as Anonymous Player</small></button>
-        </fieldset>
-        <label className="onboarding-check"><input type="checkbox" checked={adult} onChange={e => setAdult(e.target.checked)} /><span>I confirm that I am at least 18 years old.</span></label>
-        <label className="onboarding-check"><input type="checkbox" checked={terms} onChange={e => setTerms(e.target.checked)} /><span>I accept the <a href="/rules" target="_blank">platform rules</a> and <a href="/privacy" target="_blank">privacy policy</a>.</span></label>
-        <button className="primary onboarding-submit" disabled={busy}>
-          {busy ? 'Creating player…' : 'Enter the arena'} <ArrowRight size={18} />
-        </button>
-        {error && <p className="error-text" role="alert">{error}</p>}
+
+        <div className="onboarding-layout">
+          <section className="onboarding-fields" aria-label="Player identity details">
+            <label>
+              <span>Display name <small>2–32 characters</small></span>
+              <input value={displayName} onChange={e => setDisplayName(e.target.value)} minLength={2} maxLength={32} autoComplete="nickname" placeholder="How players know you" required autoFocus />
+            </label>
+            <label>
+              <span>Player handle <small>Your account tag</small></span>
+              <div className="handle-field"><i>@</i><input value={handle} onChange={e => setHandle(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} minLength={3} maxLength={20} pattern="[a-z0-9_]+" placeholder="your_handle" required /></div>
+            </label>
+
+            <fieldset className="visibility-choice">
+              <legend>Match visibility</legend>
+              <button type="button" aria-pressed={visibility === 'visible'} onClick={() => setVisibility('visible')}>
+                <Eye size={18} /><span><b>Public callsign</b><small>Players see your name and handle</small></span><Check className="choice-check" size={15} />
+              </button>
+              <button type="button" aria-pressed={visibility === 'anonymous'} onClick={() => setVisibility('anonymous')}>
+                <EyeOff size={18} /><span><b>Anonymous</b><small>Your identity stays hidden in matches</small></span><Check className="choice-check" size={15} />
+              </button>
+            </fieldset>
+          </section>
+
+          <aside className="onboarding-preview" aria-label="Player card preview">
+            <div className="preview-grid" aria-hidden="true" />
+            <span className="preview-label">LIVE PLAYER CARD</span>
+            <div className="preview-emblem"><UserRound size={30} /></div>
+            <div className="preview-identity">
+              <strong>{visibility === 'anonymous' ? 'ANONYMOUS PLAYER' : displayName.trim() || 'YOUR CALLSIGN'}</strong>
+              <span>{visibility === 'anonymous' ? 'IDENTITY HIDDEN' : `@${handle || 'your_handle'}`}</span>
+            </div>
+            <div className="preview-status"><i /> READY FOR MATCHMAKING</div>
+            <Swords className="preview-mark" size={108} strokeWidth={1} aria-hidden="true" />
+          </aside>
+        </div>
+
+        <div className="onboarding-confirmations">
+          <label className="onboarding-check"><input type="checkbox" checked={adult} onChange={e => setAdult(e.target.checked)} /><span><b>Age confirmed</b>I am at least 18 years old.</span></label>
+          <label className="onboarding-check"><input type="checkbox" checked={terms} onChange={e => setTerms(e.target.checked)} /><span><b>Rules accepted</b>I accept the <a href="/rules" target="_blank" rel="noreferrer">platform rules</a> and <a href="/privacy" target="_blank" rel="noreferrer">privacy policy</a>.</span></label>
+        </div>
+
+        <footer className="onboarding-actions">
+          <span><ShieldCheck size={16} /> You can change visibility later.</span>
+          <button className="primary onboarding-submit" disabled={busy}>
+            {busy ? 'Creating player…' : 'Finish setup'} <ArrowRight size={18} />
+          </button>
+        </footer>
+        {error && <p className="error-text onboarding-error" role="alert">{error}</p>}
       </form>
     );
   }
