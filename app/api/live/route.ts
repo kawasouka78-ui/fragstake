@@ -1,7 +1,3 @@
-import { env } from 'cloudflare:workers';
-import { database } from '@/db';
-import { ensureLaunchPlayer } from '@/db/launch';
-import { checkSanction, rateLimit } from '@/db/live';
 import { accountIdentity, firebasePlayerName } from '@/lib/identity';
 import { issueTicket, type LiveMode } from '@/lib/live/security';
 import { InputError } from '@/lib/account-rules';
@@ -11,7 +7,9 @@ export const dynamic = 'force-dynamic';
 const headers = { 'Cache-Control': 'no-store' };
 const firebaseTickets = new Map<string, { count: number; resetAt: number }>();
 export async function GET() {
-  const enabled = !!env.LIVE_SERVER_URL && !!env.LIVE_TICKET_SECRET;
+  const liveServerUrl = process.env.LIVE_SERVER_URL;
+  const liveTicketSecret = process.env.LIVE_TICKET_SECRET;
+  const enabled = !!liveServerUrl && !!liveTicketSecret;
   let online = false,
     players = 0,
     region = 'unavailable';
@@ -20,7 +18,7 @@ export async function GET() {
     rotationNextAt = nextFfaRotationAt();
   if (enabled)
     try {
-      const health = new URL(env.LIVE_SERVER_URL!);
+      const health = new URL(liveServerUrl!);
       health.protocol = health.protocol === 'wss:' ? 'https:' : 'http:';
       health.pathname = '/health';
       const r = await fetch(health, { signal: AbortSignal.timeout(1500) });
@@ -61,7 +59,9 @@ export async function POST(request: Request) {
       request.headers.get('sec-fetch-site') === 'cross-site'
     )
       throw new InputError('Request origin rejected.', 403);
-    if (!env.LIVE_SERVER_URL || !env.LIVE_TICKET_SECRET)
+    const liveServerUrl = process.env.LIVE_SERVER_URL;
+    const liveTicketSecret = process.env.LIVE_TICKET_SECRET;
+    if (!liveServerUrl || !liveTicketSecret)
       throw new InputError('Multiplayer servers are not connected yet.', 503);
     if (!request.headers.get('content-type')?.startsWith('application/json'))
       throw new InputError('Use JSON.');
@@ -89,13 +89,20 @@ export async function POST(request: Request) {
       if (!firebaseName) throw new InputError('Finish your player setup before entering a match.', 403);
       playerName = firebaseName;
     } else {
+      // D1 is only available in the Cloudflare deployment. Keep it out of the
+      // Node/Cloud Run route unless a legacy dispatch identity actually uses it.
+      const [{ database }, { ensureLaunchPlayer }, { checkSanction, rateLimit }] = await Promise.all([
+        import('@/db'),
+        import('@/db/launch'),
+        import('@/db/live'),
+      ]);
       const db = database();
       await rateLimit(db, 'ticket:' + id, 12);
       const player = await ensureLaunchPlayer(db, id);
       await checkSanction(db, id);
       playerName = player.name;
     }
-    const ticket = await issueTicket(env.LIVE_TICKET_SECRET, {
+    const ticket = await issueTicket(liveTicketSecret, {
       sub: id,
       name: playerName,
       guest: false,
@@ -104,7 +111,7 @@ export async function POST(request: Request) {
       ...(b.roomId ? { roomId: b.roomId } : {}),
     });
     return Response.json(
-      { ticket, url: env.LIVE_SERVER_URL, guest: false, mapId: actualMapId },
+      { ticket, url: liveServerUrl, guest: false, mapId: actualMapId },
       { headers },
     );
   } catch (e) {

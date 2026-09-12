@@ -1,14 +1,14 @@
-import { env } from 'cloudflare:workers';
 import { recordFirebaseMatchResult } from '@/lib/firebase-records';
 import { verifySignature } from '@/lib/live/security';
 import { InputError } from '@/lib/account-rules';
 export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
   try {
+    const liveTicketSecret = process.env.LIVE_TICKET_SECRET;
     const stamp = request.headers.get('X-Game-Timestamp') || '',
       sig = request.headers.get('X-Game-Signature') || '';
     if (
-      !env.LIVE_TICKET_SECRET ||
+      !liveTicketSecret ||
       !/^\d{13}$/.test(stamp) ||
       Math.abs(Date.now() - Number(stamp)) > 60000
     )
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     if (raw.length > 16000) return new Response('Too large', { status: 413 });
     if (
       !(await verifySignature(
-        env.LIVE_TICKET_SECRET,
+        liveTicketSecret,
         'result',
         stamp + '\n' + raw,
         sig,
