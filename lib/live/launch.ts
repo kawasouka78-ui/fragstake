@@ -1,5 +1,6 @@
 import type { MatchConfig } from '../game-rules.ts';
 import type { LiveMode } from './security.ts';
+import { assertEntryEnabled } from './entry-policy.ts';
 
 /** Live entry uses the multiplayer service only. */
 export async function requestLiveMatch(
@@ -9,6 +10,7 @@ export async function requestLiveMatch(
   roomId?: string,
   idToken?: string | null,
 ): Promise<MatchConfig> {
+  assertEntryEnabled(mode);
   const response = await fetcher('/api/live', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...(idToken ? { Authorization: 'Bearer ' + idToken } : {}) },

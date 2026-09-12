@@ -24,6 +24,7 @@ import LiveMatchResult from '../live-match-result';
 import { duelOutcome } from '@/lib/duel-result';
 import { accountApi, useAccount } from '../account-context';
 import { equippedCosmetics } from '@/lib/catalog';
+import { assertEntryEnabled, paidPlay } from '@/lib/live/entry-policy';
 const Arena = dynamic(() => import('../arena'), {
   ssr: false,
   loading: () => (
@@ -86,6 +87,9 @@ export default function Play() {
     setBusy(true);
     setError('');
     try {
+      assertEntryEnabled(practice ? 'practice' : nextMode);
+      if (!practice && !status?.paidMatches)
+        throw new Error(status?.paidUnavailableReason ?? paidPlay.reason);
       let cosmetics: ReturnType<typeof equippedCosmetics> = {
         skin: undefined,
         knifeStyle: 'standard',
@@ -102,8 +106,9 @@ export default function Play() {
         ffaTiers.find((tier) => tier.id === ffaTier)?.value ?? 2;
       const stakeValue =
         duelStakes.find((stake) => stake.id === duelStake)?.value ?? 10;
-      const accountBalance = (data?.player.balance ?? 10000) / 100;
+      const accountBalance = (data?.player.balance ?? 0) / 100;
       const online = !!status?.online;
+      if (!practice && !online) throw new Error('Match servers are unavailable. Please try again shortly.');
       const config = online
         ? await requestLiveMatch(
             practice ? 'practice' : nextMode,
@@ -145,18 +150,26 @@ export default function Play() {
     }
   }
   function requestJoin() {
-    if (category === 'practice' || !status?.online) {
+    if (category !== 'practice' && !status?.paidMatches) {
+      setError(status?.paidUnavailableReason ?? paidPlay.reason);
+      return;
+    }
+    if (category === 'practice') {
       void join(
-        category === 'duels' ? mode : 'ffa',
-        category === 'duels' ? mapId : rotatingMapId,
+        'practice',
+        rotatingMapId,
         undefined,
-        category === 'practice',
+        true,
       );
       return;
     }
     setStakePickerOpen(true);
   }
   function startDuelSearch() {
+    if (!status?.paidMatches || !status.online) {
+      setError(status?.paidUnavailableReason ?? paidPlay.reason);
+      return;
+    }
     setStakePickerOpen(false);
     setDuelSearching(true);
     setError('');
@@ -221,24 +234,12 @@ export default function Play() {
   const selectedMap = getMap(displayMapId);
   const title =
     category === 'practice' ? 'Practice' : category === 'ffa' ? 'FFA' : 'Duels';
-  const moneyLabel =
-    !status?.online
-      ? category === 'practice'
-        ? 'Free'
-        : 'No stake'
-      : category === 'practice'
+  const moneyLabel = category === 'practice'
         ? 'Free'
         : category === 'ffa'
           ? selectedFfa.label
           : selectedStake.label + ' buy-in';
-  const formatLabel =
-    !status?.online
-      ? category === 'duels'
-        ? mode
-        : category === 'ffa'
-          ? 'Free for all'
-          : 'Practice opponents'
-      : category === 'practice'
+  const formatLabel = category === 'practice'
         ? 'Practice opponents'
         : category === 'ffa'
           ? `-€${selectedFfa.value} / death`
@@ -261,21 +262,21 @@ export default function Play() {
                     id: 'practice',
                     title: 'Practice',
                     tag: 'Warm up',
-                    foot: 'Always open',
+                    foot: 'Free to play',
                     Icon: Crosshair,
                   },
                   {
                     id: 'ffa',
                     title: 'FFA',
                     tag: 'Cash FFA',
-                    foot: '€2 per kill',
+                    foot: selectedFfa.label,
                     Icon: Zap,
                   },
                   {
                     id: 'duels',
                     title: 'Duels',
                     tag: 'Head to head',
-                    foot: '€10 buy-in',
+                    foot: selectedStake.label + ' buy-in',
                     Icon: Swords,
                   },
                 ] as const
@@ -423,7 +424,7 @@ export default function Play() {
                   value={mapId}
                   onChange={(e) => setMapId(e.target.value)}
                 >
-                  {maps.map((map) => (
+                  {maps.filter((map) => ['citadel', 'depot', 'underpass'].includes(map.id)).map((map) => (
                     <option key={map.id} value={map.id}>
                       {map.name}
                     </option>
@@ -452,7 +453,8 @@ export default function Play() {
               </div>
               <button
                 className="primary play-button"
-                disabled={busy || duelSearching || checking}
+                disabled={busy || duelSearching || (!status && checking) || (category !== 'practice' && (!status?.paidMatches || !status?.online))}
+                aria-describedby="match-availability"
                 onClick={requestJoin}
               >
                 {duelSearching
@@ -461,10 +463,8 @@ export default function Play() {
                     ? 'Connecting…'
                     : checking && !status
                       ? 'Checking servers…'
-                      : !status?.online && category === 'duels'
-                        ? 'Start duel'
-                        : !status?.online && category === 'ffa'
-                          ? 'Start FFA'
+                      : category !== 'practice' && !status?.paidMatches
+                        ? 'Cash matches unavailable'
                       : category === 'practice'
                         ? 'Start practice'
                         : category === 'duels'
@@ -472,16 +472,18 @@ export default function Play() {
                           : 'Enter Cash FFA'}
                 <ArrowRight size={18} />
               </button>
-              <p className="queue-note">
-                {!status
+              <p className="queue-note" id="match-availability">
+                {category !== 'practice' && !status?.paidMatches
+                  ? <>Deposits and payouts are not connected yet. <a href="/wallet">Funding status</a></>
+                  : !status
                   ? 'Connecting to match server…'
                   : status.online
                     ? status.players + ' players online'
-                    : 'Training matches are ready while online matchmaking reconnects.'}
+                    : 'Solo practice · No stake · Online matchmaking unavailable'}
               </p>
               {!data && (
                 <a className="record-signin" href="/signin">
-                  Save your results · Sign in
+                  Sign in to your account
                 </a>
               )}
               {error && (
@@ -640,13 +642,15 @@ export default function Play() {
           <DialogContent className="sc-dialog">
             <DialogTitle>
               {result
-                ? result.liveMode === 'ffa'
+                ? result.mode === 'practice' || result.liveMode === 'practice'
+                  ? 'Practice summary'
+                  : result.liveMode === 'ffa' || result.mode === 'ffa'
                   ? result.reason
                   : duelOutcome(result).title
                 : 'Match report'}
             </DialogTitle>
             <DialogDescription>
-              {result?.liveMode === 'ffa'
+              {result?.liveMode === 'ffa' || result?.mode === 'ffa'
                 ? 'Cash FFA'
                 : result?.liveMode === '1v1' || result?.liveMode === '2v2'
                   ? 'Money duel'

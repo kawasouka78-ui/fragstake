@@ -22,13 +22,14 @@ export default function LiveRoomList({
   onJoin: (room: OpenRoom) => void;
 }) {
   const realRooms = (status?.rooms ?? []).filter(
-    (room) => filter === 'all' || room.mode === filter,
+    (room) => (room.mode === 'practice' || status?.paidMatches === true) &&
+      (filter === 'all' || room.mode === filter),
   );
   const hasStandingFfa = realRooms.some(
     (room) => room.mode === 'ffa' && room.mapId === standingFfaMapId,
   );
   const standingFfaRooms: OpenRoom[] =
-    !!status?.online && (filter === 'all' || filter === 'ffa') && !hasStandingFfa
+    !!status?.online && status.paidMatches === true && (filter === 'all' || filter === 'ffa') && !hasStandingFfa
       ? [
           {
             id: `standing-ffa-${standingFfaMapId}`,
@@ -128,7 +129,7 @@ export default function LiveRoomList({
                 ? 'Checking available rooms.'
                 : !status?.online
                   ? 'Try refreshing in a moment.'
-                  : 'Choose a mode above to start a match, or play an instant duel while you wait.'}
+                  : 'Start practice above, or refresh to check for available rooms.'}
             </p>
           </div>
         </div>

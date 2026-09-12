@@ -870,152 +870,52 @@ body .stake-dialog-summary b {
 }
 
 
-/* Stable mode switch height */
+/* One sizing contract for all three modes. Content can grow without clipping. */
 body .site-shell .restored-play .lobby-layout {
-  grid-template-rows: auto 390px;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 306px);
+  grid-template-rows: auto minmax(420px, auto);
+  gap: 16px;
 }
-
+body .site-shell .restored-play .mode-grid { grid-auto-rows: minmax(108px, auto); }
+body .site-shell .restored-play .mode-card { height: auto; min-height: 108px; }
 body .site-shell .restored-play .feature,
+body .site-shell .restored-play .match-panel { height: auto; min-height: 420px; }
 body .site-shell .restored-play .match-panel {
-  height: 390px;
-  min-height: 0;
+  padding: 22px; gap: 0; overflow: visible; min-width: 0;
 }
-
-body .site-shell .restored-play .match-panel {
-  overflow: hidden;
+body .site-shell .restored-play .match-title { margin: 16px 0; }
+body .site-shell .restored-play .real-formats { margin: 0 0 16px; gap: 8px; }
+body .site-shell .restored-play .real-formats button { min-height: 40px; }
+body .site-shell .restored-play .match-map-picker { margin-top: 0; gap: 8px; }
+body .site-shell .restored-play .match-map-picker select { min-height: 42px; }
+body .site-shell .restored-play .match-bottom { margin-top: auto; padding-top: 18px; }
+body .site-shell .restored-play .stake-summary { padding: 14px 0; align-items: end; gap: 10px; }
+body .site-shell .restored-play .stake-summary b { font-size: 18px; line-height: 1.3; }
+body .site-shell .restored-play .stake-summary > div { min-width: 0; }
+body .site-shell .restored-play .stake-summary > div:last-child { text-align: right; }
+body .site-shell .restored-play .play-button { min-height: 44px; margin: 0; white-space: normal; }
+body .site-shell .restored-play .queue-note { margin: 12px 0 0; font-size: 12px; line-height: 1.5; }
+body .site-shell .restored-play .queue-note a { color: #ffc1a5; text-decoration: underline; text-underline-offset: 3px; }
+body .site-shell .restored-play .feature-copy { padding: 82px 26px 100px; }
+body .site-shell .restored-play .restored-open-matches { margin-top: 24px; }
+body .site-shell .restored-play .available-match { padding: 16px 0; }
+@media (max-width: 1100px) {
+  body .site-shell .restored-play .lobby-layout { grid-template-columns: minmax(0,1fr) 280px; }
 }
-
-@media (max-width: 650px) {
-  body .site-shell .restored-play .lobby-layout {
-    grid-template-rows: auto;
-  }
-
-  body .site-shell .restored-play .feature,
-  body .site-shell .restored-play .match-panel {
-    height: auto;
-  }
-
-  body .site-shell .restored-play .feature {
-    min-height: 250px;
-  }
-}
-
-/* Practice-safe stable switch height */
-body .site-shell .restored-play .modes-section {
-  min-height: 148px;
-}
-
-body .site-shell .restored-play .mode-grid {
-  grid-auto-rows: 108px;
-}
-
-body .site-shell .restored-play .mode-card {
-  height: 108px;
-  min-height: 0;
-}
-
-body .site-shell .restored-play .lobby-layout {
-  grid-template-rows: 148px 390px;
-}
-
-@media (max-width: 650px) {
-  body .site-shell .restored-play .modes-section {
-    min-height: 0;
-  }
-
-  body .site-shell .restored-play .mode-grid {
-    grid-auto-rows: auto;
-  }
-
-  body .site-shell .restored-play .mode-card {
-    height: auto;
-    min-height: 104px;
-  }
-
-  body .site-shell .restored-play .lobby-layout {
-    grid-template-rows: auto;
-  }
-}
-
-/* Match setup spacing polish */
-body .site-shell .restored-play .match-panel {
-  padding: 24px 20px 18px;
-  gap: 0;
-}
-
-body .site-shell .restored-play .match-title {
-  margin: 22px 0 14px;
-}
-
-body .site-shell .restored-play .real-formats {
-  margin: 0 0 18px;
-  gap: 7px;
-}
-
-body .site-shell .restored-play .real-formats button {
-  min-height: 40px;
-}
-
-body .site-shell .restored-play .match-map-picker {
-  margin-top: 0;
-  gap: 8px;
-}
-
-body .site-shell .restored-play .match-map-picker select {
-  min-height: 43px;
-}
-
-body .site-shell .restored-play .match-bottom {
-  padding-top: 18px;
-}
-
-body .site-shell .restored-play .stake-summary {
-  padding: 14px 0 16px;
-  align-items: end;
-}
-
-body .site-shell .restored-play .play-button {
-  margin-top: 2px;
-}
-
-body .site-shell .restored-play .queue-note {
-  margin-top: 11px;
-}
-
-/* Keep every duel control inside the fixed setup-card height. */
-body .site-shell .restored-play .match-panel-duels .match-title {
-  margin: 12px 0 10px;
-}
-
-body .site-shell .restored-play .match-panel-duels .real-formats {
-  margin-bottom: 12px;
-}
-
-body .site-shell .restored-play .match-panel-duels .real-formats button {
-  min-height: 36px;
-}
-
-body .site-shell .restored-play .match-panel-duels .match-map-picker {
-  gap: 6px;
-}
-
-body .site-shell .restored-play .match-panel-duels .match-map-picker select {
-  min-height: 40px;
-}
-
-body .site-shell .restored-play .match-panel-duels .match-bottom {
-  padding-top: 8px;
-}
-
-body .site-shell .restored-play .match-panel-duels .stake-summary {
-  padding: 11px 0 12px;
-}
-
-body .site-shell .restored-play .match-panel-duels .play-button {
-  min-height: 44px;
-  margin-top: 0;
-}
-
-body .site-shell .restored-play .match-panel-duels .queue-note {
-  margin-top: 7px;
+@media (max-width: 760px) {
+  body .site-shell .restored-play .lobby-layout { grid-template-columns: minmax(0,1fr); grid-template-rows: auto; }
+  body .site-shell .restored-play .feature { grid-column: 1; grid-row: 2; min-height: 250px; }
+  body .site-shell .restored-play .match-panel { grid-column: 1; grid-row: 3; min-height: 0; padding: 20px; }
+  body .site-shell .restored-play .feature-copy { padding: 65px 22px 85px; }
+  body .site-shell .restored-play .feature-copy h2 { font-size: clamp(36px,8vw,52px); }
+  body .site-shell .restored-play .mode-card { padding: 12px 10px; }
+  body .site-shell .restored-play .mode-content { display: block; padding: 12px 0 6px; }
+  body .site-shell .restored-play .mode-icon,
+  body .site-shell .restored-play .mode-check { display: none; }
+  body .site-shell .restored-play .mode-content h3 { font-size: 24px; }
+  body .site-shell .restored-play .match-title { margin: 10px 0 14px; }
+  body .site-shell .restored-play .available-match { grid-template-columns: 56px minmax(0,1fr) auto; gap: 12px; }
+  body .site-shell .restored-play .available-slots { grid-column: 2; justify-self: start; }
+  body .site-shell .restored-play .available-match > button { grid-column: 3; grid-row: 1 / span 2; }
+  body .site-shell .restored-play .available-description h3 small { display: block; margin: 4px 0 0; }
 }

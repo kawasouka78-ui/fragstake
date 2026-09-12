@@ -15,7 +15,8 @@
     "live:setup": "node scripts/setup-live.mjs",
     "live": "node --env-file=.env.local --experimental-strip-types server/game-server.ts",
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
-    "ops:backup": "node scripts/backup-game.mjs"
+    "ops:backup": "node scripts/backup-game.mjs",
+    "release:check": "node scripts/check-production.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",

@@ -3,6 +3,7 @@
   display: grid;
   grid-template-columns: minmax(340px, 1fr) minmax(460px, 580px);
   align-items: stretch;
+  justify-items: stretch;
   padding: 0;
   background: #0b0e12;
   color: #f3f5f7;
@@ -85,7 +86,7 @@
 .signin-card {
   position: relative;
   z-index: 2;
-  width: auto;
+  width: 100%;
   max-width: none;
   height: 100dvh;
   min-height: 0;
@@ -98,7 +99,7 @@
   flex-direction: column;
   gap: clamp(9px, 1.25vh, 13px);
   box-shadow: -30px 0 80px #0007;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .signin-card-mark {
@@ -349,4 +350,17 @@
 
 @media (prefers-reduced-motion: reduce) {
   .signin-checking i,.auth-loading-mark { animation: none; }
+}
+
+body .signin-page .signin-card .signin-google {
+  background: #212832; border: 1px solid #3a4654; color: #eef2f7;
+  min-height: 44px; font-size: 14px; box-shadow: none;
+}
+body .signin-page .signin-card .signin-google:hover { background: #2b3542; }
+body .signin-page .signin-card > p { font-size: 14px; line-height: 1.5; }
+body .signin-page .signin-email-form input { min-height: 44px; }
+@media (max-width: 560px) {
+  body .signin-page .signin-card { width: 100%; padding: 80px 22px 24px; }
+  body .signin-page .signin-email-form input { font-size: 16px; }
+  body .signin-page .signin-card h1 { font-size: 30px; }
 }

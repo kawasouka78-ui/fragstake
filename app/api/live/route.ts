@@ -3,6 +3,7 @@ import { issueTicket, type LiveMode } from '@/lib/live/security';
 import { InputError } from '@/lib/account-rules';
 import { validRoomId, type OpenRoom } from '@/lib/live/matchmaking';
 import { currentFfaMapId, nextFfaRotationAt } from '@/lib/live/rotation';
+import { assertEntryEnabled, paidPlay } from '@/lib/live/entry-policy';
 export const dynamic = 'force-dynamic';
 const headers = { 'Cache-Control': 'no-store' };
 const firebaseTickets = new Map<string, { count: number; resetAt: number }>();
@@ -34,7 +35,8 @@ export async function GET() {
         players = data.players;
         region = data.region;
         rooms = (data.openRooms ?? []).filter(
-          (room) => !['ffa', 'practice'].includes(room.mode) || room.mapId === rotationMapId,
+          (room) => (room.mode === 'practice' || paidPlay.enabled) &&
+            (!['ffa', 'practice'].includes(room.mode) || room.mapId === rotationMapId),
         );
       }
     } catch {}
@@ -45,7 +47,8 @@ export async function GET() {
       players,
       region,
       rooms,
-      paidMatches: false,
+      paidMatches: paidPlay.enabled,
+      paidUnavailableReason: paidPlay.reason,
       currentFfaMapId: rotationMapId,
       nextFfaRotationAt: rotationNextAt,
     },
@@ -77,6 +80,7 @@ export async function POST(request: Request) {
       throw new InputError('Choose a valid format and map.');
     if (b.roomId !== undefined && !validRoomId(b.roomId))
       throw new InputError('Choose a valid match.');
+    assertEntryEnabled(mode);
     const id = await accountIdentity(request.headers);
     if (!id) throw new InputError('Sign in to enter a FragStake match.', 401);
     let playerName: string;

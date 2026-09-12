@@ -2,6 +2,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { OpenRoom } from '@/lib/live/matchmaking';
 export type LiveStatus = {
+  paidMatches?: boolean;
+  paidUnavailableReason?: string;
   online: boolean;
   players: number;
   region: string;

@@ -21,6 +21,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { WeaponPreview } from './arena-menu';
+import { paidPlay } from '@/lib/live/entry-policy';
 
 import './cosmetic-shop.css';
 
@@ -71,6 +72,7 @@ export default function CosmeticShop({
     e.stopPropagation();
   }
   async function confirmBuy(item: Cosmetic) {
+    if (!paidPlay.enabled) return;
     await act(
       { action: 'shop_buy', sku: item.sku },
       item.price === 0 ? item.name + ' claimed.' : item.name + ' unlocked.',
@@ -99,7 +101,8 @@ export default function CosmeticShop({
       return (
         <button
           className="primary compact"
-          disabled={busy || !signedIn}
+          disabled={busy || !signedIn || !paidPlay.enabled}
+          title={!paidPlay.enabled ? 'Purchases open when wallet funding is connected.' : undefined}
           onClick={(e) => {
             stopCardOpen(e);
             if (inInspector && buyIntent) void confirmBuy(item);
@@ -180,8 +183,8 @@ export default function CosmeticShop({
         </div>
       </div>
       <p className="armory-caption">
-        Buy a finish or knife, then equip it for your next match. Cosmetics
-        never change weapon damage.
+        Inspect any finish or knife. Cosmetics never change weapon damage.
+        {!paidPlay.enabled && <> Purchases are not available yet. <a href="/wallet">View funding status</a>.</>}
       </p>
       <div className="cosmetic-grid">
         {items.map((item, index) => (

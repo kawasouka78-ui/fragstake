@@ -305,3 +305,22 @@
   outline: 2px solid #ffab77;
   outline-offset: 3px;
 }
+
+/* Predictable card sizing and a toolbar that wraps before it collides. */
+body .site-shell .armory-toolbar { flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
+body .site-shell .armory-caption { font-size: 13px; line-height: 1.55; margin-bottom: 20px; }
+body .site-shell .armory-caption a { color: #ffc1a5; text-underline-offset: 3px; text-decoration: underline; }
+body .site-shell .cosmetic-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(235px,1fr)); gap: 18px; }
+body .site-shell .cosmetic-card { min-width: 0; padding: 16px; display: flex; flex-direction: column; }
+body .site-shell .cosmetic-card h2 { font-size: 23px; line-height: 1.2; margin: 12px 0 8px; }
+body .site-shell .cosmetic-card > p { font-size: 13px; line-height: 1.5; flex: 1; }
+body .site-shell .cosmetic-card .cosmetic-inspect { height: 150px; min-height: 150px; border-radius: 7px; }
+body .site-shell .cosmetic-card .loadout-model { height: 100%; }
+body .site-shell .cosmetic-card button { min-height: 40px; }
+@media (max-width: 560px) {
+  body .site-shell .armory-actions { width: 100%; margin: 0; justify-content: flex-start; }
+  body .site-shell .armory-tabs { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); width: 100%; }
+  body .site-shell .armory-tabs button { justify-content: center; min-height: 44px; }
+  body .site-shell .cosmetic-grid { grid-template-columns: minmax(0,1fr); }
+  body .sc-dialog.finish-inspector { max-height: calc(100dvh - 24px); overflow-y: auto; }
+}

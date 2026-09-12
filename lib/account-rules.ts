@@ -7,7 +7,7 @@ export function settlement(match:{mode:string;rate:number;stake?:number;target?:
  const limit=match.best_of===3?2:(match.target??5),stake=match.stake??1000,entry=match.entry??0;
  const kills=countValue(v.kills,'kills'),deaths=countValue(v.deaths,'deaths'),score=countValue(v.score,'team score',limit),enemyScore=countValue(v.enemyScore,'opponent score',limit),headshots=countValue(v.headshots??0,'headshots',kills),maxStreak=countValue(v.maxStreak??0,'kill streak',kills);
  const ending=String(v.ending);if(!['complete','leave','cancel','cashout'].includes(ending)||(ending==='cashout'&&match.mode!=='ffa'))throw new InputError('Invalid match ending.');
- if(ending==='cancel'&&(kills||deaths||score||enemyScore))throw new InputError('A played match cannot be cancelled.');if(score===limit&&enemyScore===limit)throw new InputError('Both teams cannot win.');
+ if(ending==='cancel'&&(kills||deaths||score||enemyScore))throw new InputError('A played match cannot be cancelled.');if(match.mode==='duel'&&score===limit&&enemyScore===limit)throw new InputError('Both teams cannot win.');
  const won=['complete','cashout'].includes(ending)&&(match.mode==='duel'?score>enemyScore:kills>deaths),draw=ending==='complete'&&score===enemyScore;
  let delta=0,reserved=0;
  if(match.mode==='duel'){reserved=stake;delta=ending==='cancel'?stake:won?stake*2:draw?stake:0;}
