@@ -228,7 +228,7 @@ export default function ArenaMenu({
                     ? 'Drop-in arena · Leave anytime'
                     : 'Live match · Arena keeps running'
                   : config.mode === 'practice'
-                    ? 'Open practice · Leave anytime'
+                    ? 'Practice arena'
                     : round + ' · Practice match'}
               </span>
             </div>

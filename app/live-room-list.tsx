@@ -67,7 +67,7 @@ export default function LiveRoomList({
                       ? room.mode + ' instant duel'
                       : room.mode === 'ffa'
                         ? 'Cash FFA'
-                        : room.mode === 'practice' ? 'Open practice' : room.mode + ' money duel'}
+                      : room.mode === 'practice' ? 'Practice' : room.mode + ' money duel'}
                 </small>
               </h3>
               <p>
