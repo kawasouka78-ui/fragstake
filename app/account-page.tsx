@@ -30,6 +30,7 @@ import SocialChat from './social-chat';
 import HistoryStats from './history-stats';
 import SiteHeader, { PlayerAvatar } from './site-header';
 import { PageHeading, EmptyState } from './page-ui';
+import { ContentSkeleton } from './skeleton-loaders';
 import {
   useAccount,
   accountApi,
@@ -595,10 +596,7 @@ export default function AccountPage({ section }: { section: Section }) {
           </div>
         )}
         {loading ? (
-          <div className="loading-account">
-            <RefreshCw size={24} />
-            <p>Loading your player account…</p>
-          </div>
+          <ContentSkeleton />
         ) : !data ? (
           <EmptyState
             icon={<Users size={26} />}

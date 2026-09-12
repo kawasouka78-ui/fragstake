@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import SiteHeader from './site-header';
 import { PageHeading } from './page-ui';
+import { ContentSkeleton } from './skeleton-loaders';
 import {
   dateLabel,
   useAccount,
@@ -242,9 +243,14 @@ export default function PlatformPage({
       id={embedded ? 'party' : undefined}
     >
       {!embedded && <SiteHeader />}
-      <Content className={embedded ? '' : 'main account-main platform-main'}>
+      <Content className={embedded ? '' : `main account-main platform-main${loading ? ' is-loading' : ''}`}>
         {!embedded && (
           <PageHeading title={heading[0]} description={heading[1]} />
+        )}
+        {loading && !embedded && (
+          <div className="platform-loading">
+            <ContentSkeleton />
+          </div>
         )}
         {!loading &&
           !data &&
@@ -879,12 +885,6 @@ export default function PlatformPage({
               )}
             </section>
           </div>
-        )}
-        {loading && section !== 'settings' && (
-          <p className="platform-note">
-            Connecting your saved account… You can still browse match rules and
-            the catalog.
-          </p>
         )}
         {!embedded && (
           <footer>

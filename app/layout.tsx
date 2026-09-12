@@ -13,6 +13,7 @@ import './site-motion.css';
 import './site-header.css';
 import './product-ui.css';
 import './signin/signin.css';
+import './skeleton-loaders.css';
 
 const displayFont = Barlow_Condensed({ variable: '--font-display', subsets: ['latin'], weight: ['600', '700', '800'], display: 'swap' });
 
