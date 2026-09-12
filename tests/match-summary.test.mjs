@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {matchOutcome,signedEuros} from '../lib/match-summary.ts';
+import {ffaCashoutPreview,matchOutcome,signedEuros} from '../lib/match-summary.ts';
 import {Simulation,idleInput} from '../lib/fps/simulation.ts';
 
 const ffa={mode:'ffa',rate:2,team:'1v1',balance:80,entry:20};
@@ -20,6 +20,11 @@ test('duel forfeit, victory and draw reports show actual stake outcomes',()=>{
  assert.deepEqual(matchOutcome(config,{...stats,score:4,enemyScore:1},'leave'),{net:-10,returned:0});
  assert.deepEqual(matchOutcome(config,{...stats,score:5,enemyScore:2},'complete'),{net:10,returned:20});
  assert.deepEqual(matchOutcome(config,{...stats,score:2,enemyScore:2},'complete'),{net:0,returned:10});
+});
+test('pause cash-out preview ignores unfinished duel score state',()=>{
+ const config={mode:'duel',rate:2,team:'1v1',balance:0,stake:10,target:5,bestOf:3};
+ const impossibleMidFrame={kills:12,deaths:11,score:2,enemyScore:2,headshots:2,maxStreak:3};
+ assert.equal(ffaCashoutPreview(config,impossibleMidFrame),null);
 });
 test('every death exposes its actual deduction once, including the terminal death report',()=>{
  const g=new Simulation(ffa,()=>.5);g.start();g.player.shield=0;const bot=g.actors[1];
