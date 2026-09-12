@@ -1336,15 +1336,29 @@ export default function AccountPage({ section }: { section: Section }) {
                     </h2>
                     <p>@{data.player.handle}</p>
                   </div>
-                  <span className="member-date">
-                    <Clock size={15} />
-                    Joined{' '}
-                    {new Intl.DateTimeFormat('en-GB', {
-                      month: 'long',
-                      year: 'numeric',
-                      timeZone: 'UTC',
-                    }).format(new Date(data.player.created_at))}
-                  </span>
+                  <div className="profile-banner-actions">
+                    <span className="member-date">
+                      <Clock size={15} />
+                      Joined{' '}
+                      {new Intl.DateTimeFormat('en-GB', {
+                        month: 'long',
+                        year: 'numeric',
+                        timeZone: 'UTC',
+                      }).format(new Date(data.player.created_at))}
+                    </span>
+                    <button
+                      className="secondary compact profile-signout"
+                      type="button"
+                      onClick={() =>
+                        void signOutFirebase().then(() =>
+                          location.assign('/signin'),
+                        )
+                      }
+                    >
+                      <LogOut size={16} />
+                      Sign out
+                    </button>
+                  </div>
                 </section>
                 <div className="profile-grid">
                   <section className="account-panel">
@@ -1561,18 +1575,6 @@ export default function AccountPage({ section }: { section: Section }) {
                         your signed-in identity, so they follow you across
                         devices.
                       </p>
-                      <button
-                        className="secondary full profile-signout"
-                        type="button"
-                        onClick={() =>
-                          void signOutFirebase().then(() =>
-                            location.assign('/signin'),
-                          )
-                        }
-                      >
-                        Sign out
-                        <LogOut size={16} />
-                      </button>
                     </section>
                   </div>
                 </div>
