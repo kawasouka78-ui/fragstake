@@ -93,9 +93,14 @@ export function toFirestore(value: unknown): FirestoreValue {
 }
 
 export async function firebasePlayerProfile(uid: string) {
-  const response = await firestoreRequest(`/players/${encodeURIComponent(uid)}?mask.fieldPaths=displayName&mask.fieldPaths=handle&mask.fieldPaths=anonymous`);
+  const response = await firestoreRequest(`/players/${encodeURIComponent(uid)}?mask.fieldPaths=displayName&mask.fieldPaths=handle&mask.fieldPaths=anonymous&mask.fieldPaths=stats`);
   if (response.status === 404) return null;
   if (!response.ok) throw new Error('Player profile is unavailable.');
   const document = await response.json() as { fields?: Record<string, FirestoreValue> };
-  return firestoreFields(document.fields) as { displayName?: unknown; handle?: unknown; anonymous?: unknown };
+  return firestoreFields(document.fields) as {
+    displayName?: unknown;
+    handle?: unknown;
+    anonymous?: unknown;
+    stats?: unknown;
+  };
 }

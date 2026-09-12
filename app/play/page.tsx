@@ -103,7 +103,22 @@ export default function Play() {
       const stakeValue =
         duelStakes.find((stake) => stake.id === duelStake)?.value ?? 10;
       const accountBalance = (data?.player.balance ?? 10000) / 100;
-      const config = await requestLiveMatch(practice ? 'practice' : nextMode, nextMap, fetch, roomId, await firebaseIdToken());
+      const online = !!status?.online;
+      const config = online
+        ? await requestLiveMatch(
+            practice ? 'practice' : nextMode,
+            nextMap,
+            fetch,
+            roomId,
+            await firebaseIdToken(),
+          )
+        : {
+            mode: 'practice' as const,
+            mapId: nextMap,
+            team: nextMode === '2v2' ? ('2v2' as const) : ('1v1' as const),
+            rate: 0,
+            balance: 0,
+          };
       setMode(nextMode);
       if (practice) setCategory('practice');
       else setCategory(nextMode === 'ffa' ? 'ffa' : 'duels');
@@ -114,8 +129,8 @@ export default function Play() {
         ...cosmetics,
         mode: practice ? 'practice' : nextMode === 'ffa' ? 'ffa' : 'duel',
         team: nextMode === '2v2' ? '2v2' : '1v1',
-        rate: practice ? 0 : nextMode === 'ffa' ? ffaValue : 0,
-        stake: practice || nextMode === 'ffa' ? 0 : stakeValue,
+        rate: practice || !online ? 0 : nextMode === 'ffa' ? ffaValue : 0,
+        stake: practice || nextMode === 'ffa' || !online ? 0 : stakeValue,
         entry: 0,
         target: practice ? 0 : nextMode === 'ffa' ? 30 : 10,
         bestOf: 1,
@@ -130,8 +145,13 @@ export default function Play() {
     }
   }
   function requestJoin() {
-    if (category === 'practice') {
-      void join('ffa', rotatingMapId, undefined, true);
+    if (category === 'practice' || !status?.online) {
+      void join(
+        category === 'duels' ? mode : 'ffa',
+        category === 'duels' ? mapId : rotatingMapId,
+        undefined,
+        category === 'practice',
+      );
       return;
     }
     setStakePickerOpen(true);
@@ -202,19 +222,29 @@ export default function Play() {
   const title =
     category === 'practice' ? 'Practice' : category === 'ffa' ? 'FFA' : 'Duels';
   const moneyLabel =
-    category === 'practice'
-      ? 'Free'
-      : category === 'ffa'
-        ? selectedFfa.label
-        : selectedStake.label + ' buy-in';
+    !status?.online
+      ? category === 'practice'
+        ? 'Free'
+        : 'No stake'
+      : category === 'practice'
+        ? 'Free'
+        : category === 'ffa'
+          ? selectedFfa.label
+          : selectedStake.label + ' buy-in';
   const formatLabel =
-    category === 'practice'
-      ? 'Practice opponents'
-      : category === 'ffa'
-        ? `-€${selectedFfa.value} / death`
-        : mode === '2v2'
-          ? `€${selectedStake.value * 4} pot`
-          : `€${selectedStake.value * 2} pot`;
+    !status?.online
+      ? category === 'duels'
+        ? mode
+        : category === 'ffa'
+          ? 'Free for all'
+          : 'Practice opponents'
+      : category === 'practice'
+        ? 'Practice opponents'
+        : category === 'ffa'
+          ? `-€${selectedFfa.value} / death`
+          : mode === '2v2'
+            ? `€${selectedStake.value * 4} pot`
+            : `€${selectedStake.value * 2} pot`;
   return (
     <div className="site-shell">
       <SiteHeader />
@@ -422,11 +452,7 @@ export default function Play() {
               </div>
               <button
                 className="primary play-button"
-                disabled={
-                  busy ||
-                  duelSearching ||
-                  !status?.online
-                }
+                disabled={busy || duelSearching || checking}
                 onClick={requestJoin}
               >
                 {duelSearching
@@ -435,6 +461,10 @@ export default function Play() {
                     ? 'Connecting…'
                     : checking && !status
                       ? 'Checking servers…'
+                      : !status?.online && category === 'duels'
+                        ? 'Start duel'
+                        : !status?.online && category === 'ffa'
+                          ? 'Start FFA'
                       : category === 'practice'
                         ? 'Start practice'
                         : category === 'duels'
@@ -447,7 +477,7 @@ export default function Play() {
                   ? 'Connecting to match server…'
                   : status.online
                     ? status.players + ' players online'
-                    : 'Match server unavailable. Retry shortly.'}
+                    : 'Training matches are ready while online matchmaking reconnects.'}
               </p>
               {!data && (
                 <a className="record-signin" href="/signin">
